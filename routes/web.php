@@ -1,0 +1,295 @@
+<?php
+
+use App\Http\Controllers\JsonController;
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\MarketplaceController;
+use App\Http\Controllers\ShowroomController;
+use App\Http\Controllers\FlobotShowroomController;
+use App\Http\Controllers\BuilderController;
+use App\Http\Controllers\BuilderSalesController;
+use App\Http\Controllers\FlobotBuilderController;
+use App\Http\Controllers\AsteroidBuilderController;
+use App\Http\Controllers\FlobotBuilderSalesController;
+use App\Http\Controllers\PackController;
+use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\FlovatarController;
+use App\Http\Controllers\FlobotController;
+use App\Http\Controllers\FlovatarImageController;
+use App\Http\Controllers\TemplateImageController;
+use App\Http\Controllers\FlobotImageController;
+use App\Http\Controllers\FlobotTemplateImageController;
+use App\Http\Controllers\FlovatarComponentController;
+use App\Http\Controllers\CollectionController;
+use App\Http\Controllers\CollectionFindController;
+use App\Http\Controllers\CollectionApiController;
+use App\Http\Controllers\HomeController;
+use \App\Http\Controllers\DownloadController;
+use \App\Http\Controllers\TwitterController;
+use \App\Http\Controllers\LoginController;
+use \App\Http\Controllers\SubscriberController;
+use \App\Http\Controllers\MoonpayController;
+use \App\Http\Controllers\GraffleController;
+use \App\Http\Controllers\SearchController;
+use \App\Http\Controllers\SearchTransactionController;
+use \App\Http\Controllers\SearchFlovatarController;
+use \App\Http\Controllers\SearchFlobotController;
+use \App\Http\Controllers\RedirectController;
+use \App\Http\Controllers\MemeController;
+use \App\Http\Controllers\TreasureHuntingController;
+use \App\Http\Controllers\FubController;
+use \App\Http\Controllers\FubTestController;
+use \App\Http\Controllers\DustAccessoryController;
+use \App\Http\Controllers\DustCollectibleController;
+use \App\Http\Controllers\DustCollectibleShowroomController;
+use \App\Http\Controllers\SearchDustCollectibleController;
+use \App\Http\Controllers\DustCollectibleImageController;
+use \App\Http\Controllers\DustTemplateImageController;
+use \App\Http\Controllers\AsteroidImageController;
+use \App\Http\Controllers\AsteroidTemplateImageController;
+use \App\Http\Controllers\DustBuilderController;
+use \App\Http\Controllers\DustSeriesBuilderController;
+use \App\Http\Controllers\DustTokenController;
+use \App\Http\Controllers\GptController;
+
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+|
+| Here is where you can register web routes for your application. These
+| routes are loaded by the RouteServiceProvider within a group which
+| contains the "web" middleware group. Now create something great!
+|
+*/
+
+Route::get('/', HomeController::class)->name('home');
+Route::get('builder', BuilderController::class)->name('builder');
+Route::get('flobot/builder', FlobotBuilderController::class)->name('flobot.builder');
+Route::get('builder/flobot', FlobotBuilderController::class)->name('builder.flobot');
+Route::get('builder/dust', DustBuilderController::class)->name('builder.dust');
+Route::get('builder/asteroid', AsteroidBuilderController::class)->name('builder.asteroid');
+Route::get('builder/dust/{series}', DustSeriesBuilderController::class)->name('builder.dust.series');
+Route::view('fub-sale', 'sales')->name('fub.sale');
+Route::view('land-sale', 'sales')->name('land.sale');
+Route::get('fub', FubController::class)->name('fub');
+Route::get('fub-test', FubTestController::class)->name('fub.test');
+Route::post('builder/search', BuilderSalesController::class)->name('builder.search');
+Route::post('flobot/builder/search', FlobotBuilderSalesController::class)->name('flobot.builder.search');
+Route::post('subscribe', [SubscriberController::class,'store'])->name('subscribe');
+Route::post('moonpay/sign', [MoonpayController::class,'sign'])->name('moonpay.sign');
+Route::post('graffle', GraffleController::class)->name('grafflepost');
+Route::get('graffle', GraffleController::class)->name('graffle');
+Route::get('search', SearchController::class)->name('search');
+Route::post('search', SearchController::class)->name('searchpost');
+Route::get('marketplace', MarketplaceController::class)->name('marketplace');
+Route::view('get-started', 'getstarted')->name('getstarted');
+Route::get('meme-maker', MemeController::class)->name('mememaker');
+
+Route::get('treasure-hunting', [TreasureHuntingController::class, 'index'])->name('treasurehunting');
+Route::post('treasure-hunting', [TreasureHuntingController::class, 'verify'])->name('treasurehuntingverify');
+
+Route::get('collection/api/', [CollectionApiController::class,'latest'])
+    ->where('address','0x([a-f0-9]{16})')
+    ->name('collectionapi');
+
+Route::get('collection/api/{address}', [CollectionApiController::class,'address'])
+    ->where('address','0x([a-f0-9]{16})')
+    ->name('collectionapiaddress');
+
+Route::get('templates/svg/{templateId}.svg', [DownloadController::class,'templateSvg'])
+    ->whereNumber('templateId')
+    ->name('templatesvg');
+
+
+Route::get('api/image/{flovatarId}', [FlovatarImageController::class,'svg'])
+    ->whereNumber('flovatarId')
+    ->name('flovatarimageapi');
+Route::get('api/image/nobg/{flovatarId}', [FlovatarImageController::class,'svgNoBg'])
+    ->whereNumber('flovatarId')
+    ->name('flovatarimageapinobg');
+
+Route::get('api/image/template/{templateId}', TemplateImageController::class)
+    ->whereNumber('templateId')
+    ->name('templateimageapi');
+
+
+Route::get('api/image/flobot/{flobotId}', [FlobotImageController::class,'svg'])
+    ->whereNumber('flobotId')
+    ->name('flobotimageapi');
+Route::get('api/image/flobot/nobg/{flobotId}', [FlobotImageController::class,'svgNoBg'])
+    ->whereNumber('flobotId')
+    ->name('flobotimageapinobg');
+Route::get('api/image/flobot/template/{templateId}', FlobotTemplateImageController::class)
+    ->whereNumber('templateId')
+    ->name('flobottemplateimageapi');
+
+
+Route::get('api/image/collectible/{collectibleId}', [DustCollectibleImageController::class,'svg'])
+    ->whereNumber('collectibleId')
+    ->name('collectibleimageapi');
+Route::get('api/image/collectible/template/{templateId}', DustTemplateImageController::class)
+    ->whereNumber('templateId')
+    ->name('collectibletemplateimageapi');
+
+Route::get('api/image/asteroid/{asteroidId}', [AsteroidImageController::class,'svg'])
+    ->whereNumber('asteroidId')
+    ->name('asteroidimageapi');
+Route::get('api/image/asteroid/template/{templateId}', AsteroidTemplateImageController::class)
+    ->whereNumber('templateId')
+    ->name('asteroidtemplateimageapi');
+
+Route::get('api/image/gif/{flovatarId}', [FlovatarImageController::class,'gif'])
+    ->whereNumber('flovatarId')
+    ->name('flovatarimageapigif');
+Route::get('api/image/gif/nobg/{flovatarId}', [FlovatarImageController::class,'gifNoBg'])
+    ->whereNumber('flovatarId')
+    ->name('flovatarimageapigifnobg');
+
+Route::get('api/image/png/{flovatarId}', [FlovatarImageController::class,'png'])
+    ->whereNumber('flovatarId')
+    ->name('flovatarimageapipng');
+Route::get('api/image/png/nobg/{flovatarId}', [FlovatarImageController::class,'pngNoBg'])
+    ->whereNumber('flovatarId')
+    ->name('flovatarimageapipngnobg');
+
+Route::get('api/image/mp4/{flovatarId}', [FlovatarImageController::class,'mp4'])
+    ->whereNumber('flovatarId')
+    ->name('flovatarimageapimp4');
+Route::get('api/image/mp4/nobg/{flovatarId}', [FlovatarImageController::class,'mp4NoBg'])
+    ->whereNumber('flovatarId')
+    ->name('flovatarimageapimp4nobg');
+
+
+
+Route::get('showroom', ShowroomController::class)->name('showroom');
+Route::post('showroom/search', SearchFlovatarController::class)->name('searchflovatar');
+Route::get('showroom/flobot', FlobotShowroomController::class)->name('showroom.flobot');
+Route::post('showroom/flobot/search', SearchFlobotController::class)->name('searchflobot');
+Route::get('showroom/dust-collectible', DustCollectibleShowroomController::class)->name('showroom.dustcollectible');
+Route::post('showroom/dust-collectible/search', SearchDustCollectibleController::class)->name('searchdustcollectible');
+
+Route::view('privacy', 'privacy')->name('privacy');
+
+
+Route::get('pack/login', [PackController::class,'login'])->name('pack.login');
+
+if(config('flovatar.isTest')){
+    Route::get('pack', [PackController::class,'buyAll'])->name('pack.buy');
+    Route::post('pack/reserve', [PackController::class,'reserve'])->name('pack.reserve');
+    Route::post('pack/purchased', [PackController::class,'purchased'])->name('pack.purchased');
+    Route::get('pack/dust/buy', [PackController::class,'dustBuy'])->name('pack.dustbuy');
+
+} else {
+    Route::get('pack', [PackController::class,'home'])->name('pack');
+    Route::get('pack/buy', [PackController::class,'buy'])->name('pack.buy')->middleware(['auth:sanctum', 'verified', 'queueit']);
+    Route::get('pack/dust/buy', [PackController::class,'dustBuy'])->name('pack.dustbuy');
+    Route::post('pack/reserve', [PackController::class,'reserve'])->name('pack.reserve');
+    Route::post('pack/purchased', [PackController::class,'purchased'])->name('pack.purchased')->middleware(['auth:sanctum', 'verified', 'queueit']);
+    Route::post('sportpacks', [PackController::class,'sport'])->name('pack.sport')->middleware(['auth:sanctum', 'verified']);
+
+}
+
+
+Route::get('flovatars/json/{flovatarId}', [JsonController::class, 'flovatar']);
+Route::get('flobots/json/{flobotId}', [JsonController::class, 'flobot']);
+Route::get('components/json/{componentId}',  [JsonController::class, 'component']);
+Route::get('collectibles/json/{collectibleId}', [JsonController::class, 'collectible']);
+
+Route::get('flovatars/{flovatarId}', [RedirectController::class, 'flovatar']);
+Route::get('flobots/{flobotId}', [RedirectController::class, 'flobot']);
+Route::get('components/{componentId}',  [RedirectController::class, 'component']);
+Route::get('collectibles/{collectibleId}', [RedirectController::class, 'collectible']);
+
+
+Route::get('transactions/{address?}', TransactionController::class)
+    ->where('address','0x([a-f0-9]{16})')
+    ->name('transactions');
+
+Route::post('transactions/search', SearchTransactionController::class)->name('searchtransaction');
+
+Route::get('flovatars/{flovatarId}/{address}', FlovatarController::class)
+    ->whereNumber('flovatarId')
+    ->where('address','0x([a-f0-9]{16})')
+    ->name('flovatar');
+
+Route::get('flobots/{flobotId}/{address}', FlobotController::class)
+    ->whereNumber('flobotId')
+    ->where('address','0x([a-f0-9]{16})')
+    ->name('flobot');
+
+
+Route::get('collectibles/{collectibleId}/{address}', DustCollectibleController::class)
+    ->whereNumber('flovatarId')
+    ->where('address','0x([a-f0-9]{16})')
+    ->name('collectible');
+
+Route::get('flovatars/{flovatarId}/{address}/download/svg', [DownloadController::class,'svg'])
+    ->whereNumber('flovatarId')
+    ->where('address','0x([a-f0-9]{16})')
+    ->name('flovatar-download-svg');
+
+Route::get('flovatars/{flovatarId}/{address}/download/png', [DownloadController::class,'png'])
+    ->whereNumber('flovatarId')
+    ->where('address','0x([a-f0-9]{16})')
+    ->name('flovatar-download-png');
+
+Route::get('components/{componentId}/{address}', FlovatarComponentController::class)
+    ->whereNumber('componentId')
+    ->where('address','0x([a-f0-9]{16})')
+    ->name('flovatarcomponent');
+
+Route::get('collection/{address}', CollectionController::class)
+    ->where('address','0x([a-f0-9]{16})')
+    ->name('collection');
+
+Route::get('collection/{name}', CollectionFindController::class)
+    ->name('collectionfind');
+
+
+
+Route::get('dust/accessories/{accessoryId}/{address}', DustAccessoryController::class)
+    ->whereNumber('accessoryId')
+    ->where('address','0x([a-f0-9]{16})')
+    ->name('dustaccessory');
+
+
+Route::get('api/dust/total-available', DustTokenController::class)
+    ->name('dustavailable');
+
+
+
+Route::get('/login', [LoginController::class,'login'])->name('login');
+Route::post('/login', [LoginController::class,'submit'])->name('login.submit');
+Route::get('/logout', [LoginController::class,'logout'])->name('logout-get');
+
+
+Route::get('twitter/login', [TwitterController::class,'login'])->name('twitter.login');
+Route::get('twitter/callback', [TwitterController::class,'callback'])->name('twitter.callback');
+Route::get('twitter/error', [TwitterController::class,'error'])->name('twitter.error');
+Route::get('twitter/logout', [TwitterController::class,'logout'])->name('twitter.logout');
+Route::get('twitter/webhook', [TwitterController::class,'webhook'])->name('twitter.webhook');
+
+Route::get('flovatars/{flovatarId}/{address}/twitter', [TwitterController::class,'setProfileImage'])
+    ->whereNumber('flovatarId')
+    ->where('address','0x([a-f0-9]{16})')
+    ->name('twitter.profile');
+
+
+Route::view('flovatar-detail', 'flovatar-detail')->name('flovatar-detail');
+Route::view('flovatar-detail-non-owner', 'flovatar-detail-non-owner')->name('flovatar-detail-non-owner');
+Route::view('flobit-detail-owner', 'flobit-detail-owner')->name('flobit-detail-owner');
+Route::view('flobit-detail-owner-gift-panel', 'flobit-detail-owner-gift-panel')->name('flobit-detail-owner-gift-panel');
+Route::view('builder-psyche', 'builder-psyche')->name('builder-psyche');
+Route::view('my-collection', 'my-collection')->name('my-collection');
+Route::view('explore', 'explore')->name('explore');
+Route::view('dust', 'dust')->name('dust');
+Route::view('story', 'story')->name('story');
+
+
+Route::get('chat', [GptController::class,'index'])->name('chat.index');
+Route::get('chat/{flovatarId}', [GptController::class,'show'])->name('chat.show');
+Route::post('chat/send', [GptController::class,'sendMessage'])->name('chat.send');
+Route::post('chat/check', [GptController::class,'checkThread'])->name('chat.check');
+Route::post('chat/checkaddress', [GptController::class,'checkThreadByAddress'])->name('chat.checkByAddress');
+Route::post('chat/tts', [GptController::class,'tts'])->name('chat.tts');
+Route::post('chat/update', [GptController::class,'update'])->name('chat.update');

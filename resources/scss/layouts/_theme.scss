@@ -1,0 +1,713 @@
+// ---------------------------------------------------------===
+// theme styles
+// ---------------------------------------------------------===
+
+[class*="theme--"] {
+  .fub-builder {
+    &.flovatar-builder {
+      background: none;
+
+      &:after {
+        display: none;
+      }
+    }
+
+    .part-btn {
+      width: 97px;
+
+      &:after {
+        right: 0;
+      }
+    }
+
+    .flovatar-builder_bg {
+      background: none;
+      display: block;
+
+      @include media('<desktop') {
+        bottom: 250px;
+      }
+    }
+
+    .scrollable-frame {
+
+      &:before,
+      &:after {
+        @include media('<desktop') {
+          border-radius: 0;
+        }
+      }
+    }
+
+    .widget-frame {
+      border: none;
+
+      &.no-bg {
+        border: none;
+      }
+    }
+
+    .core-parts {
+      padding-left: 0;
+
+      &:after {
+        content: none;
+      }
+
+      .connector {
+        display: none;
+      }
+
+      .widget-frame {
+        .triangle-icon {
+          background: #FF6E00;
+          border: 2px solid #000 !important;
+          height: 16px;
+          border-radius: 4px;
+          transform: none;
+          left: 8px;
+          right: 8px;
+          width: auto;
+          @include animate(opacity);
+
+          &:hover {
+            opacity: 0.8;
+          }
+
+          &:after {
+            content: '';
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 0 5px 7px 5px;
+            border-color: transparent transparent #000 transparent;
+            @include box-align(vhc);
+          }
+
+          &.scrl-down {
+            &:after {
+              border-width: 7px 5px 0 5px;
+              border-color: #000 transparent transparent transparent;
+            }
+          }
+        }
+      }
+
+      .widget-content {
+        background: #FE158A;
+      }
+    }
+
+    .flovatar-info {
+      border-radius: 18px;
+
+      .widget-frame {
+        background: none;
+      }
+
+      .widget-content {
+        padding: 14px;
+        background: none;
+        border: none;
+      }
+    }
+
+    .flovatar-parts {
+      border-radius: 18px;
+
+      .connector {
+        display: none;
+      }
+
+      .widget-frame {
+        padding: 54px 14px 16px;
+        background: none;
+
+        @include media('<desktop') {
+          padding-bottom: 57px;
+          padding-top: 8px;
+        }
+      }
+
+      .widget-content {
+        background: #FE0794;
+      }
+    }
+
+    .flovatar-machine {
+
+      @include media('<desktop') {
+        width: 450px;
+        height: 490px;
+        margin: 0 auto 10px;
+      }
+
+      @include media('<tablet') {
+        width: 375px;
+        height: 375px;
+      }
+
+      @include media('<374px') {
+        width: 320px;
+        height: 320px;
+      }
+
+      .widget-frame {
+        background: none;
+
+        &:before {
+          display: none;
+        }
+      }
+
+      .widget-content {
+        border: none;
+        background: none;
+
+        &:before,
+        &:after {
+          display: none;
+        }
+      }
+
+      .machine {
+        &:after {
+          display: none;
+        }
+      }
+
+      .btns-list {
+        /*top: 650px;*/
+        bottom: 30px;
+
+        @include media('<1500px') {
+          top: 606px;
+        }
+
+        @include media('<widescreen') {
+          top: 515px;
+        }
+
+        @include media('<1150px') {
+          top: 480px;
+        }
+      }
+
+      .flovatar-img {
+        .builder-svg {
+          border: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+      }
+    }
+
+    .rarity-score,
+    .fub-revenue,
+    .fub-price {
+      &.alt {
+        &:after {
+          content: '';
+          background: none;
+          border: none;
+          @include box-align(vhc);
+          right: auto;
+          bottom: auto;
+          border-radius: 0;
+          @include size(147px);
+          display: block;
+          background-size: contain;
+          background-repeat: no-repeat;
+
+          @include media('<desktop') {
+            @include size(80px);
+          }
+        }
+      }
+
+      .widget-frame {
+        padding: 14px;
+      }
+    }
+  }
+}
+
+.theme--rainbow-unicorn {
+  .fub-builder {
+
+    .btn {
+      &.btn-lilac,
+      &.btn-gray {
+        .inner {
+          background: #0DD4FF;
+        }
+
+        &:hover {
+          .inner {
+            background: #0AC0E7;
+          }
+        }
+
+        &:active,
+        &.active {
+          .inner {
+            background: #0AC0E7;
+          }
+        }
+
+        &:before {
+          background: #0AC0E7;
+        }
+      }
+
+      &.btn-icon.btn-lilac {
+        .inner {
+          background: #FFFF00;
+        }
+
+        &:hover {
+          .inner {
+            background: #E6E600;
+          }
+        }
+
+        &:active,
+        &.active {
+          .inner {
+            background: #E6E600;
+          }
+        }
+
+        &:before {
+          background: #E6E600;
+        }
+      }
+    }
+
+    .flovatar-builder_bg {
+      background-image: url('#{$image-path}/fub-bg01.png');
+      background-size: cover;
+    }
+
+    .widget-frame {
+      background: white;
+    }
+
+    .flovatar-info {
+      .connector {
+        width: 68px;
+        height: 11px;
+        background: url('#{$image-path}/fub-ru-connector.png');
+        background-size: 100% 100%;
+        border: none;
+        transform: translate(-50%, -2px);
+      }
+
+      background-image: url('#{$image-path}/fub-ru-bg01.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+    }
+
+    .flovatar-parts {
+      background-image: url('#{$image-path}/fub-ru-bg02.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+
+    .flovatar-machine {
+      background-image: url('#{$image-path}/fub-ru-bg03.png');
+      background-size: 100% 100%;
+      background-repeat: no-repeat;
+      background-position: center;
+
+      .fub-max-mint .inner-circle {
+        background: url(/images/text-fub-max-mint-w.svg);
+      }
+
+      .fub-price .inner-circle {
+        background: url(/images/text-fub-trait-price-w.svg);
+      }
+
+      .fub-revenue .inner-circle {
+        background: url(/images/text-fub-revenue-w.svg);
+      }
+    }
+
+    .rarity-score,
+    .fub-revenue,
+    .fub-price {
+      &.alt {
+        &:after {
+          background-image: url('#{$image-path}/fub-ru-stamp.png');
+        }
+      }
+    }
+  }
+}
+
+.theme--horror-movie {
+  .fub-builder {
+
+    .btn {
+      &.btn-lilac,
+      &.btn-gray {
+        .inner {
+          background: #148C70;
+        }
+
+        &:hover {
+          .inner {
+            background: #185A2C;
+          }
+        }
+
+        &:active,
+        &.active {
+          .inner {
+            background: #185A2C;
+          }
+        }
+
+        &:before {
+          background: #185A2C;
+        }
+      }
+
+      &.btn-icon.btn-lilac {
+        .inner {
+          background: #DDE3E2;
+        }
+
+        &:hover {
+          .inner {
+            background: #C7C7C2;
+          }
+        }
+
+        &:active,
+        &.active {
+          .inner {
+            background: #C7C7C2;
+          }
+        }
+
+        &:before {
+          background: #C7C7C2;
+        }
+      }
+    }
+
+    .flovatar-builder_bg {
+      background: url('#{$image-path}/fub-bg-hm.png');
+      background-size: cover;
+    }
+
+    .widget-frame {
+      background: none;
+    }
+
+    .core-parts {
+      background-image: url('#{$image-path}/fub-hm-bg00.png');
+      background-size: 100% 100%;
+      background-repeat: no-repeat;
+
+      .widget-frame {
+        .triangle-icon {
+          background: #fff;
+          border: 2px solid #0B1320 !important;
+        }
+      }
+
+      .widget-content {
+        background: #0B1320;
+      }
+    }
+
+    .flovatar-info {
+      background-image: url('#{$image-path}/fub-hm-bg01.png');
+      background-size: 100% 100%;
+      background-repeat: no-repeat;
+
+      .connector {
+        width: 177px;
+        height: 50px;
+        background: url('#{$image-path}/fub-hm-connector.png');
+        background-repeat: no-repeat;
+        border: none;
+        transform: translate(-50%, -18px);
+      }
+    }
+
+    .flovatar-parts {
+      background-image: url('#{$image-path}/fub-hm-bg02.png');
+      background-size: 100% 100%;
+      background-repeat: no-repeat;
+      background-position: center;
+
+      @include media('<desktop') {
+        background: #e3e3ec;
+      }
+
+      .widget-content {
+        background: #0B1320;
+      }
+    }
+
+    .flovatar-machine {
+      background-image: url('#{$image-path}/fub-hm-bg03.png');
+      background-size: 100% 100%;
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+
+    .rarity-score,
+    .fub-revenue,
+    .fub-price {
+      color: #2D3C5D;
+
+      &.alt {
+        &:after {
+          background-image: url('#{$image-path}/fub-hm-stamp.png');
+        }
+      }
+    }
+  }
+}
+
+.theme--retro-80s-pixelated {
+  .fub-builder {
+
+    .btn {
+      &.btn-lilac,
+      &.btn-gray {
+        .inner {
+          background: #DDF44C;
+        }
+
+        &:hover {
+          .inner {
+            background: #B0C52C;
+          }
+        }
+
+        &:active,
+        &.active {
+          .inner {
+            background: #B0C52C;
+          }
+        }
+
+        &:before {
+          background: #B0C52C;
+        }
+      }
+
+      &.btn-icon.btn-lilac {
+        .inner {
+          background: #DDF44C;
+        }
+
+        &:hover {
+          .inner {
+            background: #B0C52C;
+          }
+        }
+
+        &:active,
+        &.active {
+          .inner {
+            background: #B0C52C;
+          }
+        }
+
+        &:before {
+          background: #B0C52C;
+        }
+      }
+    }
+
+    .flovatar-builder_bg {
+      background: url('#{$image-path}/fub-bg-rp.png');
+      background-size: cover;
+    }
+
+    .widget-frame {
+      background: none;
+    }
+
+    .core-parts {
+      background-image: url('#{$image-path}/fub-rp-bg00.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+
+      .widget-frame {
+        .triangle-icon {
+          background: #fff;
+          border: 2px solid #0B1320 !important;
+        }
+      }
+
+      .widget-content {
+        background: #0B1320;
+      }
+    }
+
+    .flovatar-info {
+      background-image: url('#{$image-path}/fub-rp-bg01.png');
+      background-size: 100% 100%;
+      background-repeat: no-repeat;
+
+      .connector {
+        display: none;
+      }
+    }
+
+    .flovatar-parts {
+      background-image: url('#{$image-path}/fub-rp-bg02.png');
+      background-size: 100% 100%;
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+
+    .flovatar-machine {
+      background-image: url('#{$image-path}/fub-rp-bg03.png');
+      background-size: 100% 100%;
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+
+    .rarity-score,
+    .fub-revenue,
+    .fub-price {
+      color: #2D3C5D;
+
+      &.alt {
+        &:after {
+          background-image: url('#{$image-path}/fub-rp-stamp.png');
+        }
+      }
+    }
+  }
+}
+
+.theme--metalic {
+  .fub-builder {
+
+    .btn {
+      &.btn-lilac,
+      &.btn-gray {
+        .inner {
+          background: #DDF44C;
+        }
+
+        &:hover {
+          .inner {
+            background: #B0C52C;
+          }
+        }
+
+        &:active,
+        &.active {
+          .inner {
+            background: #B0C52C;
+          }
+        }
+
+        &:before {
+          background: #B0C52C;
+        }
+      }
+
+      &.btn-icon.btn-lilac {
+        .inner {
+          background: #DDF44C;
+        }
+
+        &:hover {
+          .inner {
+            background: #B0C52C;
+          }
+        }
+
+        &:active,
+        &.active {
+          .inner {
+            background: #B0C52C;
+          }
+        }
+
+        &:before {
+          background: #B0C52C;
+        }
+      }
+    }
+
+    .flovatar-builder_bg {
+      background: #262626;
+      background-size: cover;
+    }
+
+    .widget-frame {
+      background: none;
+    }
+
+    .core-parts {
+      background-image: url('#{$image-path}/fub-mt-bg00.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+
+      .widget-frame {
+        .triangle-icon {
+          background: linear-gradient(to bottom, #bcc6cc, #eee, #bcc6cc);
+          border: 2px solid #0B1320 !important;
+        }
+      }
+
+      .widget-content {
+        background: #474747;
+      }
+    }
+
+    .flovatar-info {
+      background-image: url('#{$image-path}/fub-mt-bg01.png');
+      background-size: 100% 100%;
+      background-repeat: no-repeat;
+
+      .connector {
+        display: none;
+      }
+    }
+
+    .flovatar-parts {
+      background-image: url('#{$image-path}/fub-mt-bg02.png');
+      background-size: 100% 100%;
+      background-repeat: no-repeat;
+      background-position: center;
+
+      .widget-content {
+        background: #474747;
+      }
+    }
+
+    .flovatar-machine {
+      background-image: url('#{$image-path}/fub-mt-bg03.png');
+      background-size: 100% 100%;
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+
+    .rarity-score,
+    .fub-revenue,
+    .fub-price {
+      color: #2D3C5D;
+
+      &.alt {
+        &:after {
+          background-image: url('#{$image-path}/fub-mt-stamp.png');
+        }
+      }
+    }
+  }
+}

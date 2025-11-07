@@ -1,0 +1,72 @@
+import FungibleToken from "FungibleToken"
+import NonFungibleToken from "NonFungibleToken"
+import FlowToken from "FlowToken"
+import Flovatar from "Flovatar"
+import FlovatarComponent from "FlovatarComponent"
+import FlovatarComponentTemplate from "FlovatarComponentTemplate"
+import FlovatarPack from "FlovatarPack"
+import FlovatarMarketplace from "FlovatarMarketplace"
+
+
+//this transaction will create a new Pack from a group of components
+transaction(
+    components: [UInt64],
+    randomString: [String],
+    price: UFix64,
+    sparkCount: UInt32,
+    series: UInt32,
+    name: String,
+    packCount: UInt32,
+    compPerPack: UInt32
+    ) {
+
+    let flovatarComponentCollection: &FlovatarComponent.Collection
+    let flovatarPackCollection: &FlovatarPack.Collection
+    let flovatarAdmin: &Flovatar.Admin
+
+
+
+    prepare(account: AuthAccount) {
+
+        self.flovatarComponentCollection = account.borrow<&FlovatarComponent.Collection>(from: FlovatarComponent.CollectionStoragePath)!
+
+        self.flovatarPackCollection = account.borrow<&FlovatarPack.Collection>(from: FlovatarPack.CollectionStoragePath)!
+
+        self.flovatarAdmin = account.borrow<&Flovatar.Admin>(from: Flovatar.AdminStoragePath)!
+
+
+    }
+
+    execute {
+
+        var i: UInt32 = 0
+        while i < packCount {
+
+            let componentsNFT: @[FlovatarComponent.NFT] <- []
+
+            var j: UInt32 = 0
+            while j < compPerPack {
+                let tempNFT <- self.flovatarComponentCollection.withdraw(withdrawID: components[(i*compPerPack) + j]) as! @FlovatarComponent.NFT
+                componentsNFT.append(<-tempNFT)
+                j = j + UInt32(1)
+            }
+
+            let flovatarPack <- self.flovatarAdmin.createPack(
+                        components: <-componentsNFT,
+                        randomString: randomString[i],
+                        price: price,
+                        sparkCount: sparkCount,
+                        series: series,
+                        name: name
+                    ) as! @FlovatarPack.Pack
+
+            self.flovatarPackCollection.deposit(token: <-flovatarPack)
+
+            i = i + UInt32(1)
+        }
+
+
+
+
+    }
+}

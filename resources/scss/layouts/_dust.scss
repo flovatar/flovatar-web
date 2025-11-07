@@ -1,0 +1,159 @@
+.token {
+    position: absolute;
+    animation: bounce 1s ease infinite alternate;
+    z-index: 2;
+
+    &.dust {
+        left: -7px;
+        top: 28px;
+
+        @include media('<tablet') {
+        	left: -20px;
+    	}
+    }
+
+    &.dust2 {
+        text-align: right;
+        right: 15px;
+        top: 111px;
+        animation: bounce 1s ease infinite alternate 1s;
+
+        @include media('<tablet') {
+        	right: 0;
+    	}
+    }
+
+
+    img {
+        @include media('<tablet') {
+            width: 70%;
+        }
+    }
+}
+
+.hero-dust h1 {
+	color: color(blue,7);
+}
+
+.text-blue {
+	color: color(blue,7);
+}
+
+.world-map {
+	width: 550px;
+}
+
+.name-badge {
+	width: 420px;
+}
+
+.psyche-likee {
+    width: 1000px; 
+}
+
+.dust-stack {
+	width: 400px;
+}
+
+.dust-features .wrap img:hover {
+    transform: scale(1);  
+}
+
+.dust-bio {
+	width: 300px;
+}
+
+.wrap-inner {
+	position: relative;
+}
+
+img.dust-tradable,
+img.tradable-arrows {
+	position: absolute !important;
+	top: 0;
+	left: 0;
+	z-index: 10;
+}
+
+img.tradable-arrows {
+	animation: rotating 4s linear infinite;
+	animation-direction: reverse;
+}
+
+.wrap.large {
+    @include media('<tablet') {
+        max-width: 100% !important;
+    }
+}
+
+.dust {
+    max-width: 270px;
+
+    @include media('<tablet') {
+        margin-left: -50px;
+    }
+}
+
+.dust2 {
+    max-width: 360px;
+}
+
+.flobit-upgrade {
+    margin: 0 5%;
+    max-width: 90%;
+}
+
+.second-division.top-slant {
+    background: #180835;
+    padding: 0;
+}
+
+.second-division.top-slant:before {
+    content: "";
+    position: absolute;
+    top: -150px;
+    left: 0;
+    display: block;
+    z-index: 10;
+    width: 0;
+    height: 0;
+    border-bottom: 150px solid #180835;
+    border-left: 100vw solid transparent;
+    transform: none;
+}
+
+.third-division.top-slant,
+.second-division.top-slant {
+    position: relative;
+}
+
+.third-division.top-slant:before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: block;
+    z-index: 10;
+    width: 0;
+    height: 0;
+    border-top: 150px solid #180835;
+    border-right: 100vw solid transparent;
+}
+
+.explore-features .second-division {
+        position: relative;
+        background: #180835;
+        padding: 0;
+
+        @include media('<tablet') {
+            padding: 120px 0;
+        }
+  
+}
+
+.hero-CTA {
+        width: 100%;
+        display: block;
+        text-align: center;
+        margin: 60px 0;
+}

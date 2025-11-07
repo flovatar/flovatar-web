@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="SKY" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 3025.27 4033.12">
+  <defs>
+    <linearGradient id="linear-gradient" x1="1510.66" y1="4036.42" x2="1510.66" y2="-7.31" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4a0f69"/>
+      <stop offset=".34" stop-color="#1b0b42"/>
+    </linearGradient>
+  </defs>
+  <rect id="SKY-2" data-name="SKY" x="-2.17" y="-7.31" width="3025.67" height="4043.73" style="fill: url(#linear-gradient);"/>
+</svg>

@@ -1,0 +1,536 @@
+// // ---------------------------------------------------------===
+// // Explore Styles
+// // ---------------------------------------------------------===
+
+.hero-explore {
+    padding: 144px 0 150px;
+    background: url('/images/stars-pattern.png') repeat;
+    position: relative;
+    z-index: 2;
+
+    @include media('<tablet') {
+        padding: 140px 0 200px;
+    }
+
+    .container {
+        max-width: 1050px;
+        position: relative;
+    }
+
+    h1 {
+        font: 700 85px/1 $korolev-compressed;
+        text-align: center;
+        margin-bottom: 71px;
+
+        @include media('<desktop') {
+            font-size: 55px;
+        }
+    }
+
+    .hero-content {
+        margin: -20px -43px;
+        font: 700 36px/1.167 $korolev-compressed;
+        display: flex;
+        flex-wrap: wrap;
+
+        @include media('<desktop') {
+            font-size: 26px;
+            margin: -20px;
+        }
+
+        @include media('<tablet') {
+            display: block;
+            text-align: center;
+        }
+
+        .col {
+            width: 50%;
+            padding: 20px 43px;
+
+            @include media('<desktop') {
+                padding: 20px;
+            }
+
+            @include media('<tablet') {
+                width: 100%;
+            }
+
+            p {
+                margin: 0;
+
+                + p {
+                    margin-top: 1rem;
+                }
+            }
+        }
+
+        .text-blue {
+            color: color(blue,7);
+        }
+    }
+
+    .illustration {
+        position: absolute;
+
+        &.tl {
+            left: -92px;
+            top: 101px;
+
+            @include media('<widescreen') {
+                left: 20px;
+                top: -120px;
+            }
+        }
+
+        &.br {
+            bottom: -127px;
+            right: -44px;
+
+            @include media('<widescreen') {
+                right: 20px;
+                bottom: -150px;
+            }
+
+            @include media('<tablet') {
+                bottom: -180px;
+            }
+        }
+    }
+}
+
+
+.explore-links {
+
+    border-bottom: 2px solid #878398;
+    max-width: 1200px;
+    margin: 0 auto;
+
+    .explore-list {
+        @extend %listreset;
+        font-family: $korolev-condensed;
+        font-size: 24px;
+        font-weight: 700;
+        line-height: 1;
+        text-transform: uppercase;
+        flex-wrap: wrap;
+        padding: 12px 0;
+        justify-content: center;
+
+
+        @include media('screen', '>=tablet') {
+            display: flex !important;
+        }
+
+        @include media('<widescreen') {
+            font-size: 22px;
+        }
+
+        @include media('<desktop') {
+            font-size: 20px;
+        }
+
+        @include media('<tablet') {
+            font-size: 24px;
+            display: flex !important;
+        }
+
+        a, button {
+            display: flex;
+            align-items: center;
+            border-bottom: 2px solid transparent;
+            padding-bottom: 8px;
+            color: #878398;
+            @include animate(color border);
+
+            @include media('<tablet') {
+                border: none;
+                padding: 5px 0;
+            }
+
+            &:hover {
+                color: color(white);
+                border-bottom: 2px solid color(white);
+
+                @include media('<tablet') {
+                    border: none;
+                }
+
+                .count {
+                    border-color: color(white);
+                }
+            }
+        }
+
+        li {
+            margin: 0 40px 10px 0;
+            padding-bottom: 8px;
+
+
+            @include media('<widescreen') {
+                margin-right: 30px;
+            }
+
+            @include media('<tablet') {
+                margin: 3px 10px;
+            }
+
+            &.active {
+                a, button {
+                    color: color(white);
+                    border-bottom: 2px solid color(white);
+
+                    @include media('<tablet') {
+                        border: none;
+                    }
+
+                    .count {
+                        border-color: color(white);
+                    }
+                }
+            }
+        }
+    }
+
+    @include media('<tablet') {
+        margin: 0 10px;
+    }
+
+}
+
+
+
+.explore-features {
+    position: relative;
+    padding-bottom: 366px;
+
+    @include media('<desktop') {
+        text-align: center;
+    }
+
+    &:before {
+        content: "";
+        background: linear-gradient(to bottom, rgba(24,8,53,1) 0%,rgba(93,54,197,1) 100%);
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 880px;
+        z-index: 1;
+    }
+
+    &:after {
+        content: "";
+        background: linear-gradient(to bottom, rgba(94,55,197,1) 0%,rgba(25,8,48,1) 100%);
+        position: absolute;
+        bottom: 352px;
+        left: 0;
+        right: 0;
+        height: 500px;
+        z-index: 1;
+    }
+
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        position: relative;
+        z-index: 2;
+    }
+
+    .first-division {
+        position: relative;
+        padding-bottom: 177px;
+
+        @include media('<tablet') {
+            padding-bottom: 120px;
+        }
+
+        &:after {
+            content: "";
+            position: absolute;
+            top: 900px;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: color(blue, 8);
+            z-index: 1;
+        }
+
+        &:before {
+            content: "";
+            background: linear-gradient(to bottom, rgba(0,0,0,0) 0%,rgba(20,12,43,0) 22%,rgba(86,50,183,1) 93%,rgba(93,54,197,1) 100%);
+            position: absolute;
+            top: 0;
+            height: 900px;
+            left: 0;
+            right: 0;
+            z-index: 1;
+        }
+    }
+
+    .second-division {
+        position: relative;
+        background: color(blue,8);
+        padding: 177px 0;
+
+        @include media('<tablet') {
+            padding: 120px 0;
+        }
+
+        
+    }
+
+    .third-division {
+        background: #5D36C5;
+        padding: 100px 0 0;
+
+        &:after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 800px;
+            background: url('/images/stars-pattern.png') repeat;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .illustration {
+            position: absolute;
+
+            &.planet {
+                left: 148px;
+                bottom: -178px;
+
+                @include media('<tablet') {
+                    left: 20px;
+                }
+            }
+
+            &.ufo {
+                right: 156px;
+                bottom: -313px;
+
+                @include media('<tablet') {
+                    right: 20px;
+                }
+            }
+        }
+    }
+
+    .wrap img {
+        transition: transform .3s ease;
+        cursor: pointer;
+    }
+
+    .wrap img:hover {
+        transform: scale(1.05);  
+    }
+
+
+
+    .row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+
+        @include media('<desktop') {
+            display: block;
+        }
+
+        &.alt {
+            flex-direction: row-reverse;
+            
+            .txt-col {
+
+                @include media('>=desktop') {
+                    padding: 0 50px 0 0;
+                }
+
+                @include media('>=widescreen') {
+                    padding: 0 50px 0 55px;
+                }
+            }
+
+            .img-col {
+                justify-content: flex-end;
+            }
+        }
+
+        + .row {
+            margin-top: 40px;
+
+            @include media('<tablet') {
+                margin-top: 20px;
+            }
+        }
+
+        .txt-col {
+            width: 497px;
+            padding-left: 50px;
+            font: 700 28px/1.125 $korolev-compressed;
+
+            @include media('<widescreen') {
+                width: 50%;
+                padding-left: 50px;
+            }
+
+            @include media('<desktop') {
+                width: 100%;
+                padding: 50px 0 0;
+            }
+
+            @include media('<tablet') {
+                font-size: 26px;
+            }
+        }
+
+        .img-col {
+            flex: 1;
+            display: flex;
+            align-items: center;
+
+            .img {
+                min-width: 504px;
+                min-height: 504px;
+                position: relative;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+
+                @include media('<widescreen') {
+                    min-width: 482px;
+                    min-height: 482px;
+                }
+
+                @include media('<desktop') {
+                    margin: 0 auto;
+                }
+
+                @include media('<tablet') {
+                    min-width: 1px;
+                    min-height: 1px;
+                    flex: none;
+                    width: 100%;
+                    padding-top: 100%;
+                    position: relative;
+                }
+
+                img {
+                    position: relative;
+                    z-index: 2;
+                }
+
+                .bg {
+                    position: absolute;
+                    top: 0;
+                    bottom: 0;
+                    left: 0;
+                    right: 0;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    z-index: 1;
+                }
+
+                .wrap {
+
+                    @include media('<tablet') {
+                        position: absolute;
+                        top: 0;
+                        right: 0;
+                        bottom: 0;
+                        left: 0;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        max-width: 75%;
+                        margin: 0 auto;
+                    }
+                }
+            }
+        }
+
+        h2 {
+            color: color(blue,7);
+            font: 700 56px/1 $korolev-compressed;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+
+            @include media('<tablet') {
+                font-size: 40px;
+            }
+        }
+
+        p {
+            margin-bottom: 39px;
+        }
+
+        .btn-pink {
+            @include animate(all);
+            display: inline-block;
+            vertical-align: top;
+            background: color(pink,3);
+            font: 700 32px/1 $korolev-condensed;
+            color: white;
+            padding: 16px 14px;
+            border-radius: 8px;
+            text-transform: uppercase;
+            min-width: 289px;
+            text-align: center;
+            margin: 0 0 8px 0;
+
+            @include media('<tablet') {
+                font-size: 28px;
+            }
+
+            &:hover {
+                background: darken(color(pink,3), 10%);
+            }
+        }
+    }
+
+    .rotating {
+      -webkit-animation: rotating 15s linear infinite;
+      -moz-animation: rotating 15s linear infinite;
+      -ms-animation: rotating 15s linear infinite;
+      -o-animation: rotating 15s linear infinite;
+      animation: rotating 15s linear infinite;
+  }
+
+  .social-network {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    margin: -13px;
+
+    @include media('<desktop') {
+        justify-content: center;
+    }
+
+    li {
+        padding: 13px;
+
+        a {
+            @include animate(all);
+            color: color(pink,3);
+
+            &:hover {
+                color: darken(color(pink,3), 10%);
+            }
+
+            &.icon-twitter {
+                font-size: 55px;
+            }
+
+            &.icon-discord {
+                font-size: 67px;
+            }
+
+            &.icon-instagram {
+                font-size: 50px;
+            }
+        }
+    }
+}
+}

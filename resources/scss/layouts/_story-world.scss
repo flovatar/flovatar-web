@@ -1,0 +1,150 @@
+// ---------------------------------------------------------===
+// Story World styles
+// ---------------------------------------------------------===
+
+.story {
+    margin-top: 150px;
+    background: transparent;
+}
+
+.story.features:before {
+    content: none;
+}
+
+
+    
+.video-wrap.trailer {
+    
+    margin: 100px 0;
+
+    .video {
+        box-shadow: 0px 0px 80px rgba(174, 215, 247, .4);
+    }
+
+    .video-cover {
+        width: 100%;
+    }
+    .play-video:before {
+        content: '';
+        display: inline-block;
+        background: #1A083A;
+        opacity: .5;
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 5;
+        transition: opacity .5s ease;
+    }
+    .play-video:hover:before {
+        opacity: 0;
+    }
+    .play-video:hover ~ .icon-play img {
+        transform: scale(1.2);
+    }
+}
+
+.episode-cover {
+    box-shadow: 0px 0px 50px rgba(174, 215, 247, .4);
+}
+
+.icon-play {
+    z-index: 10;
+    pointer-events: none;
+}
+
+.video-stats {
+    font-size: 20px;
+    display: flex;
+}
+.video-stats div {
+    margin: 0 15px;
+}
+.video-stats div:before {
+    content: '|';
+    margin-right: 15px;
+}
+.video-stats div:first-child:before {
+    display: none;
+    margin: 0;
+}
+.video-stats div:first-child {
+    margin: 0;
+}
+
+
+.icon-play img {
+    width: 100px;
+    height: 100px;
+    transform-origin: center;
+    transition: all .5s ease;
+}
+
+
+.story-world {
+    background: color(blue,6);
+    font: 32px/1.093 $korolev-compressed;
+
+    @include media('<tablet') {
+        font-size: 28px;
+    }
+
+    .top {
+        padding: 50px 0 34px;
+        text-align: center;
+
+        > .container {
+            position: relative;
+            z-index: 2;
+            max-width: 960px;
+        }
+
+        h2 {
+            text-transform: uppercase;
+            color: color(blue,7);
+            margin-bottom: 22px;
+
+            @include media('>=tablet') {
+                font: 700 56px/1 $korolev-compressed;
+            }
+        }
+
+        .desc {
+            max-width: 740px;
+            margin: 0 auto;
+        }
+    }
+
+    .btm {
+        margin-bottom: -15%;
+        position: relative;
+
+        &:before {
+            content: '';
+            position: absolute;
+            left: -50px;
+            right: -50px;
+            bottom: -6px;
+            height: 39%;
+            background: white;
+            transform: rotate(-8deg);
+            transform-origin: 0 0;
+            z-index: 1;
+        }
+
+        > .container {
+            position: relative;
+            z-index: 2;
+        }
+    }
+}
+
+.story-episodes {
+    
+    h3 {
+        color: color(blue, 7);
+        text-transform: uppercase;
+    }
+
+}

@@ -1,0 +1,79 @@
+// ---------------------------------------------------------===
+// Featured In styles
+// ---------------------------------------------------------===
+
+.featured-in {
+    background: color(white,1);
+    text-align: center;
+    padding-top: 15%;
+
+    .inner {
+        padding: 111px 0;
+
+        @include media('<desktop') {
+            padding: 80px 0;
+        }
+
+        @include media('<tablet') {
+            padding: 50px 0;
+        }
+    }
+
+    h3 {
+        font: 700 32px/1.25 $korolev-compressed;
+        color: color(blue,6);
+        margin-bottom: 62px;
+
+        @include media('<tablet') {
+            margin-bottom: 30px;
+        }
+    }
+
+    .logos {
+        @extend %listreset;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        margin: -30px -41px;
+
+        @include media('<tablet') {
+            margin: -20px;
+        }
+
+        li {
+            padding: 30px 41px;
+
+            @include media('<tablet') {
+                padding: 20px;
+            }
+        }
+
+        .logo-wrap {
+
+            @include media('<desktop') {
+                max-width: 160px;
+            }
+
+            @include media('<tablet') {
+                max-width: 100px;
+            }
+
+        }
+
+        .logo-square {
+            width: 220px;
+
+            @include media('<tablet') {
+                max-width: 165px;
+            }
+        }
+        .logo-rect {
+            width: 311px;
+
+            @include media('<tablet') {
+                max-width: 233px;
+            }
+        }
+    }
+}

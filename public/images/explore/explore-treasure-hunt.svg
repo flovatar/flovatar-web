@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 623 669.66">
+  <g id="treasure_map" data-name="treasure map">
+    <g id="treasure_map_outer" data-name="treasure map outer">
+      <g id="treasure_map_inner_mask" data-name="treasure map inner mask">
+        <g id="treasure_map_inner" data-name="treasure map inner">
+          <g id="treasure_map_paper" data-name="treasure map paper">
+            <g>
+              <path d="M587.18,35.29l-16.93,17.7c6.59-.22,10.67-.46,11.57-.76,5.08-1.7,5.08,6.77,5.08,37.27s-3.39,30.49-3.39,30.49l5.09,61-16.95,3.39,11.86,16.94s-28.8,105-22,133.83,28.8,132.15,28.8,132.15l-22-6.78s22,44,23.71,57.6-18.63,11.89-18.63,11.89l22,27.1s-23.72,54.21-16.94,66.07-15.25,18.64-20.33,16.94-347.27-15.2-347.27-15.2l-171.11,15.24c11.86-10.16,5.08-128.75,5.08-128.75l22-25.41-20.33,1.69v-89.77s32.19-11.86,27.1-13.56-23.71-3.38-23.71-3.38c0,0,11.86-44.05,6.77-69.46s-18.63-120.29-18.63-120.29l18.63-3.38-20.33-13.56s8.47-91.48,5.09-101.64c-1.55-4.63,1.13-8.55,4.49-11.46l-5.34-2.1V20.92" style="fill: #e8c39c;"/>
+              <g>
+                <path d="M45.93,61.14c-3.36,2.91-6,6.83-4.49,11.46,3.38,10.16-5.09,101.64-5.09,101.64l20.33,13.56-18.63,3.38s13.55,94.88,18.63,120.29-6.77,69.46-6.77,69.46c0,0,18.63,1.69,23.71,3.38s-27.1,13.56-27.1,13.56v89.78l20.33-1.69-22,25.41s6.78,118.59-5.08,128.75l171.08-15.2s342.21,13.55,347.29,15.24,27.11-5.08,20.33-16.94,16.94-66.07,16.94-66.07l-22-27.1s20.33,1.69,18.63-11.86-23.71-57.6-23.71-57.6l22,6.78s-22-103.35-28.8-132.15,22-133.83,22-133.83l-11.86-16.94,16.95-3.39-5.09-61s3.39,0,3.39-30.49,0-39-5.08-37.27c-.9,.3-5,.54-11.57,.76" style="fill: none; stroke: #000; stroke-linecap: round; stroke-linejoin: round; stroke-width: 12px;"/>
+                <polyline points="40.59 21.92 40.59 59.04 45.93 61.14" style="fill: none; stroke: #000; stroke-linecap: round; stroke-linejoin: round; stroke-width: 12px;"/>
+                <line x1="570.29" y1="53.03" x2="587.22" y2="35.33" style="fill: none; stroke: #000; stroke-linecap: round; stroke-linejoin: round; stroke-width: 12px;"/>
+              </g>
+            </g>
+          </g>
+          <g id="treasure_map_details" data-name="treasure map details">
+            <path d="M151.84,491.59s-64.38-32.19-59.3-74.55,33.88-100.79,37.27-121.12-3-27.18,25.61-53.4c28.61-26.22,50.63-22.84,91.29-31.31s47.43-27.11,74.54-45.74,44-28.8,81.31-16.94,64.38,20.33,71.16,6.77,40.66-20.33,42.35,25.42c1.69,45.75,22,76.23-6.78,111.81s-52.51,23.72-84.7,28.8-49.13-3.39-39,39,40.66,59.3,3.39,77.93-64.37,15.25-74.54,49.13-10.16,60.14-42.35,73.69-91.48,5.93-98.26-12.7,19.48-14.4,24.56-34.73,4.24-37.27-14.4-30.49-18.6,13.51-32.15,8.43Z" style="fill: #d79c68;"/>
+            <path d="M438.14,365.37s-8.47,23.72,16.94,33.89,52.52,20.33,55.91,0,20.33-42.36-10.17-45.74-52.51-6.78-62.68,11.85Z" style="fill: #d39864;"/>
+            <path d="M226.55,392.01c-2-.19-3.25-.35-3.25-.35l-1.79-.22,.68-1.68c.2-.48,18.93-47.4,2.68-86.3-4.35,5.94-17.28,24.34-19.07,35l-.83,5-1.83-4.72c-4.03-12.91-1.74-26.96,6.18-37.92-6.36,1.62-19,5.29-24.92,10.17l-2.14-1.65c2.05-4.19,4.67-8.09,7.77-11.58,6.73-7.56,14.5-11.15,22.45-10.4l.52,.05-4.42-25.74,16,19c2.61-5.41,10.65-19.22,24.31-17.93,.31,0,.61,.06,.92,.11l3.17,.45-2.5,2c-5.48,4.37-13.44,12.42-13.83,17.17,5.87-1.62,11.97-2.23,18.05-1.83,6.78,.64,11.81,3.11,14.93,7.34l1.67,2.26-2.8-.05c-9.28-.14-19.59,.42-24.39,1.5,6.67,2.34,20.34,9.36,20.16,27.66v3.12l-2.3-2.12c-.17-.16-17.11-15.72-26.61-17.36,1.64,22.06,6.75,75.28,12.79,81.76,1.57,1.69,2,3.24,1.34,4.63-.63,1.18-2.26,4.54-22.94,2.63Z" style="fill: #89552e;"/>
+            <path d="M235.86,498.6c.81-.43,1.71-.67,2.63-.71,.71,0,2.6,0,3.21,4.43,1.42,10.26-1.95,39.46-1.36,55.37,3.83,.57,8.27,1.21,12.82,1.84-2-17.51,.12-50.26-1.37-62,3.17,.28,11.16,2.91,22.83,16.08l1.19-.1c-.38-.81-4.58-20.22-17.28-27.07,3.11-2.08,9.25-5.72,14.19-5.72l6-.61-5.12-3.45c-3.16-.32-7.81-2.43-15.23-2.43-4.92,0-8.72,1-11.32,3.07-3.75-3.44-14.13-11.57-28.59-11.57-1,0-2,0-3,.12l-1.86-.05c4.38,1.81,11.93,9.14,15.89,12.45-3.75-.65-7.54-.98-11.34-1-5.42,0-12.85,.72-17.46,4.11l-4.52,3.33,5.6,.42c8.28,.62,20.13,2.1,25.57,3.81-4.49,3.77-13.29,11.94-15.21,19.43l-1.69,6.57,5.08-4.5c3.42-3,13.58-11,19.49-11.56l.44-.05,.41-.21Z" style="fill: #89552e;"/>
+            <path d="M141.67,187.49s23.72,15.25,44,10.17,35.57-10.17,42.35-20.33-33-82.24-45.74-55.91c-23.72,49.13-33.88,3.39-52.52,5.08s-30.49,40.66-13.55,52.52,25.46,8.47,25.46,8.47Z" style="fill: #d39864;"/>
+            <g>
+              <path d="M491.79,205.56c-2.14-2.56-4.5-4.92-7.06-7.06" style="fill: none; stroke: #db0b0b; stroke-linecap: round; stroke-miterlimit: 10; stroke-width: 6px;"/>
+              <path d="M468.09,187.09c-21.24-11.61-57.57-22.07-112.23-8.64-96.56,23.71-83.49,93.42-76.23,106.73,23.6,43.21,90.6,46.74,76.23,106.74-13.15,54.83-62.7,84.33-114.27,55.62" style="fill: none; stroke: #db0b0b; stroke-dasharray: 0 0 20.21 20.21; stroke-linecap: round; stroke-miterlimit: 10; stroke-width: 6px;"/>
+              <path d="M232.99,442.21c-2.68-1.83-5.35-3.81-8-6" style="fill: none; stroke: #db0b0b; stroke-linecap: round; stroke-miterlimit: 10; stroke-width: 6px;"/>
+            </g>
+            <path d="M211.23,407.48s-44.91,23.13-54.43,46.27" style="fill: none; stroke: #cc0d0d; stroke-linecap: round; stroke-miterlimit: 10; stroke-width: 12.05px;"/>
+            <path d="M162.23,396.59s39.46,46.27,42.19,61.24" style="fill: none; stroke: #cc0d0d; stroke-linecap: round; stroke-miterlimit: 10; stroke-width: 12.05px;"/>
+            <path d="M335.42,362.15l3.74,.29-2.65-2.65c-5.34-5.34-17.36-7.24-26-7.24-1.25,0-2.63,0-3.92,.15,4.66-3.7,14-6.62,18-7.6v-2.69c-2.81-.66-5.68-1-8.56-1-8.71,.14-17.19,2.85-24.36,7.79-3.73-4.46-11.45-5.44-17.52-5.44-2.81,0-5.62,.19-8.41,.57v2.75c5.52,.69,11.83,6.14,14.41,8.58-9.52,6.72-21.16,23.73-21.68,24.49l2.18,1.71c11.79-13,19.42-15,22.93-15,.46,0,.92,.04,1.37,.12-3.3,11.55-13.83,49.89-18.11,65.49,3.6,.36,7.8,.74,11.8,1.09,2-13.63,11-49.84,14-59.92,.87-2.94,2.22-4.43,4-4.43,1.24,.09,2.42,.54,3.41,1.28l.23,.18,.29,.08c7.16,1.79,17.78,14.47,17.88,14.59l2.9,3.48-.45-4.5c-.81-8.08-9.28-18.18-12.75-22,3.73-.64,7.52-.9,11.3-.78,7.78-.01,15.89,.6,15.97,.61Z" style="fill: #89552e;"/>
+            <g>
+              <circle cx="474.05" cy="503.64" r="50.19" style="fill: none;"/>
+              <g>
+                <g>
+                  <polygon points="532.97 501.03 488.86 511.14 469.88 500 532.97 501.03" style="fill: #d79c68;"/>
+                  <path d="M488.86,511.14l18.64,22.94c-.79-.44-26.18-14.6-28.29-16.29l-10.18-17.81h.85l18.98,11.16Z" style="fill: #d79c68;"/>
+                  <path d="M480.49,479.61s27.89-10.29,26.6-9.44-20,19.09-20,19.09l-18,10.3,.76,.44h-.85l-.12-.21v-.43l11.61-19.75Z" style="fill: #d79c68;"/>
+                  <polygon points="470.03 434.07 480.49 479.61 468.91 499.35 469.76 434.13 470.03 434.07" style="fill: #d79c68;"/>
+                  <polygon points="469.03 499.98 479.21 517.79 468.22 565.45 468.04 565.41 468.89 499.98 469.03 499.98" style="fill: #d79c68;"/>
+                  <polygon points="468.91 499.35 468.91 499.77 468.89 499.78 468.79 499.98 467.97 499.97 468.7 499.56 448.96 487.98 440.16 466.31 458.61 481.33 468.91 499.35" style="fill: #d79c68;"/>
+                  <polygon points="468.79 499.98 457.33 519.51 433.73 533.67 450.68 509.86 467.97 499.97 468.79 499.98" style="fill: #d79c68;"/>
+                  <polygon points="467.97 499.97 450.68 509.86 403.25 498.95 403.27 498.92 467.97 499.97" style="fill: #d79c68;"/>
+                </g>
+                <g>
+                  <polyline points="458.61 481.33 469.76 432.85 470.03 434.07 480.49 479.61" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 3px;"/>
+                  <line x1="458.61" y1="481.32" x2="468.91" y2="499.34" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 3px;"/>
+                  <line x1="468.91" y1="499.34" x2="480.49" y2="479.61" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 3px;"/>
+                  <polyline points="457.33 519.51 468.04 566.28 468.22 565.45 479.21 517.79" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 3px;"/>
+                  <line x1="468.89" y1="499.79" x2="468.79" y2="499.98" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 3px;"/>
+                  <line x1="468.91" y1="499.77" x2="469.03" y2="499.98" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 3px;"/>
+                  <line x1="469.03" y1="499.98" x2="479.21" y2="517.79" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 3px;"/>
+                  <line x1="457.33" y1="519.51" x2="468.79" y2="499.98" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 3px;"/>
+                  <polyline points="448.96 487.98 468.7 499.56 467.97 499.97" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 3px;"/>
+                  <line x1="450.68" y1="509.86" x2="467.97" y2="499.97" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 3px;"/>
+                  <polyline points="448.96 487.98 403.16 498.48 402.19 498.71 403.25 498.95 450.68 509.86" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 3px;"/>
+                  <polyline points="487.14 489.26 469.12 499.56 469.88 500" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 3px;"/>
+                  <line x1="532.97" y1="501.03" x2="488.86" y2="511.14" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 3px;"/>
+                  <polyline points="487.14 489.26 535.61 500.42 532.97 501.03" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 3px;"/>
+                  <line x1="469.88" y1="500" x2="488.86" y2="511.14" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 3px;"/>
+                  <path d="M487.14,489.26s18.66-18.24,20-19.09-26.6,9.44-26.6,9.44" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 3px;"/>
+                  <polyline points="448.96 487.98 440.16 466.31 458.61 481.33" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 3px;"/>
+                  <line x1="488.86" y1="511.14" x2="507.5" y2="534.08" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 3px;"/>
+                  <line x1="507.52" y1="534.09" x2="507.5" y2="534.08" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 3px;"/>
+                  <path d="M479.23,517.79c2.11,1.69,27.5,15.85,28.29,16.29" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 3px;"/>
+                  <polyline points="450.68 509.86 433.73 533.67 457.33 519.51" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 3px;"/>
+                  <line x1="468.91" y1="499.34" x2="469.76" y2="434.13" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 3px;"/>
+                  <line x1="468.89" y1="499.79" x2="468.91" y2="499.77" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 3px;"/>
+                  <line x1="468.89" y1="499.79" x2="468.89" y2="499.98" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 3px;"/>
+                  <line x1="468.89" y1="499.98" x2="468.04" y2="565.41" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 3px;"/>
+                  <line x1="468.91" y1="499.34" x2="468.91" y2="499.77" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 3px;"/>
+                  <line x1="468.79" y1="499.98" x2="468.89" y2="499.98" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 3px;"/>
+                  <line x1="467.97" y1="499.97" x2="468.79" y2="499.98" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 3px;"/>
+                  <line x1="469.03" y1="499.98" x2="469.88" y2="500" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 3px;"/>
+                  <line x1="532.97" y1="501.03" x2="469.88" y2="500" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 3px;"/>
+                  <line x1="403.27" y1="498.92" x2="467.97" y2="499.97" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 3px;"/>
+                  <line x1="469.03" y1="499.98" x2="468.89" y2="499.98" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 3px;"/>
+                  <line x1="532.97" y1="501.03" x2="534.97" y2="501.06" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 3px;"/>
+                </g>
+              </g>
+              <circle cx="469.76" cy="499.77" r="49.34" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 4px;"/>
+              <circle cx="469.76" cy="499.77" r="60.74" style="fill: none; stroke: #d79c68; stroke-miterlimit: 10; stroke-width: 6px;"/>
+            </g>
+            <g>
+              <path d="M331.92,274.76c-16.4-28.33-25.35,7.45-25.35,7.45" style="fill: none; stroke: #89552e; stroke-linecap: round; stroke-miterlimit: 10; stroke-width: 6px;"/>
+              <path d="M443.75,250.92s-17.89-38.77-28.33-58.15-16.4,6-19.38,17.89-14.92,41.75-16.41,34.29-10.1-13.39-14.34,.16c-.38,1.23-4.23,8.47-11.85,14.4" style="fill: none; stroke: #89552e; stroke-linecap: round; stroke-miterlimit: 10; stroke-width: 6px;"/>
+              <path d="M314.02,241.92s11.44-38.27,18.89-32.31c3.61,2.89,6.89,10.15,9.18,16.32" style="fill: none; stroke: #89552e; stroke-linecap: round; stroke-miterlimit: 10; stroke-width: 6px;"/>
+              <path d="M342.09,225.92c2,5.44,3.25,10,3.25,10" style="fill: none; stroke: #89552e; stroke-linecap: round; stroke-miterlimit: 10; stroke-width: 6px;"/>
+              <path d="M358.52,234.08c-.61-1.57-1.95-9.35-6.22-16.48-1.88-3.13-6,1.7-10.21,8.36" style="fill: none; stroke: #89552e; stroke-linecap: round; stroke-miterlimit: 10; stroke-width: 6px;"/>
+              <path d="M469.1,235.99s-.13-.29-.37-.79" style="fill: none; stroke: #89552e; stroke-linecap: round; stroke-miterlimit: 10; stroke-width: 6px;"/>
+              <path d="M437.79,237.48s10.43-35.79,16.4-28.33c5.25,6.56,12.33,21.13,14.07,24.84" style="fill: none; stroke: #89552e; stroke-linecap: round; stroke-miterlimit: 10; stroke-width: 6px;"/>
+              <path d="M465.62,239.92c.56,0,1.65-2,3.11-4.76" style="fill: none; stroke: #89552e; stroke-linecap: round; stroke-miterlimit: 10; stroke-width: 6px;"/>
+              <path d="M468.73,235.2c3.76-7.11,9.91-19.14,15.28-14.12,7.46,7,13.42,27.83,13.42,27.83" style="fill: none; stroke: #89552e; stroke-linecap: round; stroke-miterlimit: 10; stroke-width: 6px;"/>
+              <path d="M478.54,274.76s-4-9.94-10.43-15.91c-8.17-7.54-16.9,14.42-16.9,14.42,0,0,.49,3.48-8.45-9.45s-17.9,11.93-17.9,13.42" style="fill: none; stroke: #89552e; stroke-linecap: round; stroke-miterlimit: 10; stroke-width: 6px;"/>
+            </g>
+            <path d="M135.11,397.47c-2.61-19.49-7.11-42.2-8.36-48.35-6.9,3.39-16.66,17.42-20,22.91l-1.63,2.64-.88-3c-4.86-16.5,5.62-26.53,11.26-30.56-7.4,.44-22.52,5-22.68,5.05l-2.71,.83,1-2.65c4.69-12.27,23.23-13.69,29.09-13.82-1.66-4.2-11-9.39-17.2-11.92l-3-1.23,3-1.32c2.28-1.02,4.75-1.55,7.25-1.56,9.59,0,17.58,7.62,20.75,11.14l9.88-21.77,2.6,24.85c2.62-1.08,5.43-1.64,8.27-1.64,14,0,25.41,13,25.89,13.6l-1.6,2.18c-5.31-2.29-14.31-2.77-20.94-2.77-1.72,0-3.29,0-4.6,.08,10.11,7.91,15.85,20.17,15.46,33l-.49,5-2.15-4.52c-4.4-9.25-21-22.58-26.66-26.91-1.82,14.74,.78,30.78,7.74,47.72l.55,1.35-9.54,3.34-.3-1.67Z" style="fill: #89552e;"/>
+          </g>
+          <g id="treasure_map_code_title" data-name="treasure map code title">
+            <path id="map_bottom" data-name="map bottom" d="M21.39,609.82s5.08,44,13.55,52.52,147.39-27.11,181.29-25.42,232.1,11.86,254.12,11.86,89.79,1.7,103.34,10.17,25.41-3.39,28.8-10.17,11.86-28.8,11.86-28.8c0,0-206.68-5.08-237.18-5.08s-355.78-5.08-355.78-5.08Z" style="fill: #fbe3a6; stroke: #020202; stroke-miterlimit: 10; stroke-width: 12px;"/>
+            <path d="M48.49,562.83s76.24,15.25,262.59,16.94,274.45-10.16,274.45-10.16l-11.86,50.82-530.26-15.25,5.08-42.35Z" style="fill: #60412c; isolation: isolate; opacity: .2;"/>
+          </g>
+        </g>
+      </g>
+      <g id="treasure_map_top" data-name="treasure map top">
+        <path id="treasure_map_top-2" data-name="treasure map top-2" d="M15.05,11.37c9.73-6.1,224.88-6.1,316.36-4.41s249-1.69,266,1.7c0,0,18.63,8.47,15.25,42.35s-25.42,35.58-45.75,37.27S29.91,84.89,29.91,84.89c0,0-22-6.78-23.72-39S15.05,11.37,15.05,11.37Z" style="fill: #fbe3a6; stroke: #020202; stroke-miterlimit: 10; stroke-width: 12px;"/>
+      </g>
+      <path d="M43.81,80.13l-6.63,53.04s127.04-25.43,284.61-27.1,266,20.33,266,20.33l-2.7-37.77c-86.24-1.14-401.98-5.42-541.28-8.5Z" style="fill: #60412c; isolation: isolate; opacity: .2;"/>
+    </g>
+  </g>
+</svg>

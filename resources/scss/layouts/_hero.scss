@@ -1,0 +1,188 @@
+// ---------------------------------------------------------===
+// Hero styles
+// ---------------------------------------------------------===
+
+.hero {
+    width: 100%;
+    padding-top: 67.98%;
+    position: relative;
+    z-index: 1;
+
+    .midground-building,
+    .distant-building,
+    .midground-building,
+    .distant-building,
+    .sky {
+        position: absolute;
+        top: 0;
+        left: 0;
+
+        img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+    }
+
+    .sky {
+        position: absolute;
+        width: 105%;
+        top: 0;
+        z-index: 1;
+    }
+
+    .skyline {
+        position: absolute;
+        z-index: 2;
+        top: 0;
+        width: 100%;
+    }
+
+    .distant-building {
+        z-index: 3;
+        position: absolute;
+        width: 100%;
+        top: 0;
+    }
+
+    .far-building {
+        position: absolute;
+        top: 0;
+        z-index: 4;
+        width: 100%;
+    }
+
+    .midground-building {
+        z-index: 5;
+    }
+
+    .distant-building {
+        z-index: 6;
+    }
+
+    .midground-building {
+        z-index: 7;
+        bottom: 0%;
+    }
+
+    .side-building {
+        position: absolute;
+        right: -11.8%;
+        bottom: 8.4%;
+        left: -4.5%;
+        z-index: 7;
+
+        img {
+            width: 100%;
+        }
+    }
+
+    .platform {
+        width: 29.23%;
+        @include box-align(hc);
+        bottom: 5.1%;
+        z-index: 8;
+    }
+
+    .portal {
+        z-index: 8;
+        position: absolute;
+        width: 100%;
+        top: 0;
+        margin-left: 0;
+        margin-top: 0;
+
+        @include media('>1400px') {
+            padding-top: 2%;
+            margin-left: 1%;
+        }
+
+        @include media('>1900px') {
+            padding-top: 5%;
+            margin-left: 5%;
+        }
+
+        @include media('>2400px') {
+            padding-top: 7%;
+            margin-left: 7%;
+        }
+        @include media('<800px') {
+            width: 100%;
+            margin-left: 0;
+        }
+        @include media('<325px') {
+            width: 100%;
+            margin-left: calc((325px - 100vw)/2);
+        }
+    }
+
+    .foreground-rooftop {
+        position: absolute;
+        right: -20%;
+        bottom: 0%;
+        left: -4.5%;
+        z-index: 10;
+
+        img {
+            width: 100%;
+        }
+    }
+
+}
+
+.hero-wrapper{
+
+    @include media('<1000px') {
+        min-width: 1000px;
+        left: calc(50vw - 500px);
+        position: relative;
+    }
+}
+
+
+.sales-hero {
+    padding-top: 50%;
+    width: 100%;
+    position: relative;
+    z-index: 1;
+
+    .sky,
+    .island-very-far,
+    .island-far,
+    .island-city,
+    .island-desert {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+
+        img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+    }
+
+    .sky {
+        z-index: 1;
+        width: 105%;
+    }
+
+    .island-very-far {
+        z-index: 2;
+    }
+
+    .island-far {
+        z-index: 3;
+    }
+
+
+    .island-city {
+        z-index: 4;
+    }
+
+    .island-desert {
+        z-index: 5;
+    }
+}
+
