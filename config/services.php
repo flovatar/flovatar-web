@@ -44,7 +44,7 @@ return [
             'start_height' => env('FLOW_INDEXER_START_HEIGHT'),
             'rps' => env('FLOW_INDEXER_RPS', 20),
             'max_blocks_per_run' => env('FLOW_INDEXER_MAX_BLOCKS', 25000),
-            'process_batch' => env('FLOW_INDEXER_PROCESS_BATCH', 500),
+            'process_batch' => env('FLOW_INDEXER_PROCESS_BATCH', 200),
             'max_attempts' => env('FLOW_INDEXER_MAX_ATTEMPTS', 3),
         ],
     ],

@@ -20,7 +20,7 @@ class ProcessPendingFlowEvents implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable;
 
-    public $timeout = 3500;
+    public $timeout = 1800;
 
     public $tries = 1;
 
@@ -33,11 +33,12 @@ class ProcessPendingFlowEvents implements ShouldQueue, ShouldBeUnique
 
     public function handle(): void
     {
-        $result = static::processBatch($this->limit ?? (int) config('services.flow.indexer.process_batch', 500));
-        if ($result['remaining'] > 0 && $result['processed'] > 0) {
-            // More work left: queue another run after this unique lock is released.
-            static::dispatch($this->limit)->delay(now()->addSeconds(2));
-        }
+        // Work through the backlog in batches; stop well before the job timeout. Anything left
+        // is picked up by the next run (scheduler: flow:process --queue every minute).
+        $deadline = time() + 1200;
+        do {
+            $result = static::processBatch($this->limit ?? (int) config('services.flow.indexer.process_batch', 500));
+        } while ($result['remaining'] > 0 && $result['processed'] > 0 && time() < $deadline);
     }
 
     public static function pendingQuery()
