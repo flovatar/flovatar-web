@@ -62,6 +62,9 @@ return [
 
     'treasureEnabled' => env('FLOVATAR_TREASURE_ENABLED', false),
     'contractAddress' => env('MIX_CONTRACT_FLOW', ''),
+
+    // Comma separated origins accepted as FCL account-proof appIdentifier (defaults to APP_URL's origin)
+    'accountProofOrigins' => env('FLOVATAR_ACCOUNT_PROOF_ORIGINS', ''),
     'dapperEnabled' => env('DAPPER_ENABLED', false),
     'flobitSaleEnabled' => env('FLOBIT_SALE_ENABLED', false),
     'dustEnabled' => env('DUST_ENABLED', false),

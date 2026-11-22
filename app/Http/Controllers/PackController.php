@@ -114,55 +114,34 @@ class PackController extends AuthController
     public function reserve(Request $request)
     {
         $packType = $request->get('type');
-        $address = $request->get('address');
         $pack = null;
 
+        // Reservations require a wallet session that was verified at login
+        // (the posted address is no longer trusted).
+        $address = $this->authenticatedFlowAddress();
+        if(!$address){
+            return response()->json(['packId' => null, 'signature' => null, 'processing' => false, 'loginRequired' => true], 401);
+        }
 
-        if($address && $packType && ($packType == 'deluxe' || $packType == 'standard' || $packType == 'flobit' || $packType == 'terrakit' || $packType == 'dustpack')){
+        if($packType && ($packType == 'deluxe' || $packType == 'standard' || $packType == 'flobit' || $packType == 'terrakit' || $packType == 'dustpack')){
             $packName = ($packType == 'deluxe') ? 'Genesis Deluxe Pack' : 'Genesis Standard Pack';
             $packName = ($packType == 'flobit') ? 'Flobit Pack' : $packName;
             $packName = ($packType == 'terrakit') ? 'TerraKit Pack' : $packName;
             $packName = ($packType == 'dustpack') ? 'Dust Flobit Pack' : $packName;
 
+            $userId = auth()->id();
 
-            if(!Auth::check()){
+            $pack = Pack::readyToSell()->whereName($packName)->where('user_id', $userId)->where('assigned_at', '>', Carbon::now()->subtract('minutes', 1))->first();
 
-                $user = User::firstOrCreate([
-                    'email' => $address
-                ],
-                    [
-                        'password' => Hash::make(Str::random(16)),
-                        'name' => $address
-                    ]);
-                Auth::login($user);
-            }
+            if(!$pack || true){
 
-
-            $userId = auth()->check() ? auth()->id() : 1;
-
-            if(auth()->check()){
-
-                $pack = Pack::readyToSell()->whereName($packName)->where('user_id', $userId)->where('assigned_at', '>', Carbon::now()->subtract('minutes', 1))->first();
-
-                if(!$pack || true){
-
-                    Pack::readyToSell()->whereNull('user_id')->whereNull('assigned_at')->whereName($packName)->limit(1)->update([
-                        'user_id' => $userId,
-                        'assigned_at' => Carbon::now()
-                    ]);
-                    $pack = Pack::readyToSell()->whereName($packName)->where('user_id', $userId)->orderBy('assigned_at', 'desc')->first();
-
-                }
-
-            } else {
-                $randomUser = User::inRandomOrder()->first();
                 Pack::readyToSell()->whereNull('user_id')->whereNull('assigned_at')->whereName($packName)->limit(1)->update([
-                    'user_id' => $randomUser->id,
+                    'user_id' => $userId,
                     'assigned_at' => Carbon::now()
                 ]);
-                $pack = Pack::readyToSell()->whereName($packName)->where('user_id', $randomUser->id)->orderBy('assigned_at', 'desc')->first();
-            }
+                $pack = Pack::readyToSell()->whereName($packName)->where('user_id', $userId)->orderBy('assigned_at', 'desc')->first();
 
+            }
 
         }
 
