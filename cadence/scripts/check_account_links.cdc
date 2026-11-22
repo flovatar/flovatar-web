@@ -1,6 +1,6 @@
-import FungibleToken from "../contracts/FungibleToken.cdc"
-import NonFungibleToken from "../contracts/NonFungibleToken.cdc"
-import FlowToken from "../contracts/FlowToken.cdc"
+import FungibleToken from "../contracts/core/FungibleToken.cdc"
+import NonFungibleToken from "../contracts/core/NonFungibleToken.cdc"
+import FlowToken from "../contracts/core/FlowToken.cdc"
 
 
 access(all) fun main(address: Address): Bool {

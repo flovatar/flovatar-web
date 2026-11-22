@@ -656,7 +656,8 @@ class ProcessGraffleEvents extends BaseJob
             if(!$collectible || !$saleOffer){
                 info('NOT FOUND COMPONENT FROM EVENT');
             } else {
-                $nftAddress = ($isDapper && $saleOffer) ? $saleOffer->flow_address : $event->flow_metadata['from'];
+                // NFTStorefrontV2 events carry no from/to; the seller is the listing owner.
+                $nftAddress = $saleOffer->flow_address;
                 if (!$collectible) {
                     $collectible = $this->syncCollectibleFromFlowAddress($nftId, $nftAddress);
                 }
@@ -675,7 +676,7 @@ class ProcessGraffleEvents extends BaseJob
                             'item_id' => $collectible->id,
                             'item_type' => 'App\Models\DustCollectible',
                             'price' => $price,
-                            'flow_buyer_address' => ($isDapper) ? $event->flow_metadata['storefrontAddress'] : $event->flow_metadata['to'],
+                            'flow_buyer_address' => $event->flow_metadata['to'] ?? $event->flow_metadata['storefrontAddress'],
                             'flow_seller_address' => $nftAddress,
                             'transaction_id' => $event->transaction_id,
                             'is_dapper' => $isDapper
@@ -756,7 +757,8 @@ class ProcessGraffleEvents extends BaseJob
             if(!$collectible || !$saleOffer){
                 info('NOT FOUND COMPONENT FROM EVENT');
             } else {
-                $nftAddress = ($isDapper && $saleOffer) ? $saleOffer->flow_address : $event->flow_metadata['from'];
+                // NFTStorefrontV2 events carry no from/to; the seller is the listing owner.
+                $nftAddress = $saleOffer->flow_address;
                 if (!$collectible) {
                     $collectible = $this->syncFlobotFromFlowAddress($nftId, $nftAddress);
                 }
@@ -775,7 +777,7 @@ class ProcessGraffleEvents extends BaseJob
                             'item_id' => $collectible->id,
                             'item_type' => 'App\Models\Flobot',
                             'price' => $price,
-                            'flow_buyer_address' => ($isDapper) ? $event->flow_metadata['storefrontAddress'] : $event->flow_metadata['to'],
+                            'flow_buyer_address' => $event->flow_metadata['to'] ?? $event->flow_metadata['storefrontAddress'],
                             'flow_seller_address' => $nftAddress,
                             'transaction_id' => $event->transaction_id,
                             'is_dapper' => $isDapper
