@@ -1,4 +1,7 @@
 <x-guest-layout>
+    @if(\App\Support\Blocklist::isBlocked($address ?? null))
+        <div class="container">@include('partials.incident-notice')</div>
+    @endif
     <script>
         @if(isset($templates))
             window.templates = @json($templates);

@@ -32,6 +32,10 @@ class ExportAllImages extends BaseJob
      */
     public function handle()
     {
+        if(!config('flovatar.imageExportEnabled')){
+            info('Image export disabled (FLOVATAR_IMAGE_EXPORT_ENABLED=false), skipping '.static::class);
+            return true;
+        }
 
         ExportImage::dispatch($this->flovatarId, true, 'svg', $this->model);
         ExportImage::dispatch($this->flovatarId,true, 'gif', $this->model);

@@ -16,6 +16,22 @@ class Sale extends Model
 
     protected $guarded = [];
 
+    /**
+     * Hide sales where a blocklisted address (2026-11-16 incident) is buyer or seller.
+     */
+    public function scopeNotBlocked($query)
+    {
+        $addresses = \App\Support\Blocklist::addresses();
+        if (count($addresses) > 0) {
+            $query->where(function ($q) use ($addresses) {
+                $q->whereNull('sales.flow_buyer_address')->orWhereNotIn('sales.flow_buyer_address', $addresses);
+            })->where(function ($q) use ($addresses) {
+                $q->whereNull('sales.flow_seller_address')->orWhereNotIn('sales.flow_seller_address', $addresses);
+            });
+        }
+        return $query;
+    }
+
     public function item()
     {
         return $this->morphTo();

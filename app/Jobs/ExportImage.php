@@ -45,6 +45,10 @@ class ExportImage extends BaseJob
      */
     public function handle()
     {
+        if(!config('flovatar.imageExportEnabled')){
+            info('Image export disabled (FLOVATAR_IMAGE_EXPORT_ENABLED=false), skipping '.static::class);
+            return true;
+        }
 
         info('CREATING IMAGE FOR '.$this->model.' '.$this->flovatarId);
         $nobg = $this->useBackground ? '' : 'nobg/';

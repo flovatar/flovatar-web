@@ -21,7 +21,7 @@ use Cache;
 class FilteredController extends Controller
 {
     protected function getFilteredSales(Request $req){
-        $salesQuery = SaleOffer::query();
+        $salesQuery = SaleOffer::query()->notBlocked();
 
         if(!$req->get('nosvg')){
             $salesQuery->with('item' );
@@ -37,7 +37,7 @@ class FilteredController extends Controller
 
 
     protected function getFilteredTransactions(Request $req){
-        $salesQuery = Sale::query();
+        $salesQuery = Sale::query()->notBlocked();
 
         if($req->get('nosvg')){
             $salesQuery->with(['item' => function($query) {
@@ -299,7 +299,7 @@ class FilteredController extends Controller
 
     protected function getSalesByTemplateId($templateId, $quantity = 1){
 
-        $salesQuery = SaleOffer::with('item');
+        $salesQuery = SaleOffer::with('item')->notBlocked();
         $salesQuery->whereItemType(FlovatarComponent::class)->where('is_dapper', false);
 
         $templates = FlovatarTemplate::select('id')->whereFlowId($templateId)->get()->flatten();

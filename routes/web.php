@@ -77,7 +77,10 @@ Route::post('builder/search', BuilderSalesController::class)->name('builder.sear
 Route::post('flobot/builder/search', FlobotBuilderSalesController::class)->name('flobot.builder.search');
 Route::post('subscribe', [SubscriberController::class,'store'])->name('subscribe')->middleware('throttle:5,1');
 Route::post('moonpay/sign', [MoonpayController::class,'sign'])->name('moonpay.sign');
-Route::post('graffle', GraffleController::class)->name('grafflepost');
+// Legacy Graffle webhook: replaced by the built-in indexer (flow:catchup / flow:stream).
+if(config('services.graffle.enabled')){
+    Route::post('graffle', GraffleController::class)->name('grafflepost');
+}
 Route::get('search', SearchController::class)->name('search');
 Route::post('search', SearchController::class)->name('searchpost');
 Route::get('marketplace', MarketplaceController::class)->name('marketplace');
@@ -172,6 +175,9 @@ Route::view('privacy', 'privacy')->name('privacy');
 
 Route::get('pack/login', [PackController::class,'login'])->name('pack.login');
 
+// Pack sales and reservations are disabled until the pack-signing tool is restored
+// (FLOVATAR_PACK_SALES_ENABLED); the 'packsales' middleware answers with a notice.
+Route::middleware('packsales')->group(function () {
 if(config('flovatar.isTest')){
     Route::get('pack', [PackController::class,'buyAll'])->name('pack.buy');
     Route::post('pack/reserve', [PackController::class,'reserve'])->name('pack.reserve')->middleware(['auth:sanctum', 'throttle:20,1']);
@@ -187,6 +193,7 @@ if(config('flovatar.isTest')){
     Route::post('sportpacks', [PackController::class,'sport'])->name('pack.sport')->middleware(['auth:sanctum', 'verified']);
 
 }
+});
 
 
 Route::get('flovatars/json/{flovatarId}', [JsonController::class, 'flovatar']);

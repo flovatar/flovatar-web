@@ -2,34 +2,35 @@
     "name": "laravel/laravel",
     "type": "project",
     "description": "The Laravel Framework.",
-    "keywords": ["framework", "laravel"],
+    "keywords": [
+        "framework",
+        "laravel"
+    ],
     "license": "MIT",
     "require": {
-        "php": "^7.3|^8.0",
-        "ardagnsrn/elevenlabs-laravel": "dev-main",
-        "atymic/twitter": "^3.1",
-        "dedmytro/laravel-cloudflare-images": "^0.1.8",
-        "georgehadjisavva/elevenlabs-api-client": "^1.0",
-        "guzzlehttp/guzzle": "^7.0.1",
-        "laravel/cashier": "^13.4",
-        "laravel/framework": "^10.0",
-        "laravel/jetstream": "^2.3",
-        "laravel/sanctum": "^3.2",
-        "laravel/tinker": "^2.5",
+        "php": "^8.4",
+        "ardagnsrn/elevenlabs-laravel": "^1.0.1",
+        "atymic/twitter": "^3.4",
+        "flovatar/flow-php-sdk": "^0.4",
+        "georgehadjisavva/elevenlabs-api-client": "^1.0.2",
+        "guzzlehttp/guzzle": "^7.9",
+        "laravel/framework": "^12.0",
+        "laravel/sanctum": "^4.0",
+        "laravel/tinker": "^2.10",
         "league/flysystem-aws-s3-v3": "^3.0",
-        "livewire/livewire": "^2.5",
-        "mayvenstudios/flow-php-sdk": "^0.3.3",
-        "openai-php/laravel": "^0.10.2",
-        "predis/predis": "^1.1",
+        "openai-php/laravel": "^0.22",
+        "phrity/websocket": "^4.1",
+        "predis/predis": "^2.0",
         "queueit/knownuserv3": "^3.7"
     },
     "require-dev": {
-        "spatie/laravel-ignition": "^2.0",
-        "fakerphp/faker": "^1.9.1",
-        "laravel/sail": "^1.0.1",
-        "mockery/mockery": "^1.4.2",
-        "nunomaduro/collision": "^7.0",
-        "phpunit/phpunit": "^10.0"
+        "fakerphp/faker": "^1.23",
+        "laravel/boost": "^2.10",
+        "laravel/pail": "^1.2",
+        "laravel/pint": "^1.13",
+        "mockery/mockery": "^1.6",
+        "nunomaduro/collision": "^8.6",
+        "phpunit/phpunit": "^11.5"
     },
     "autoload": {
         "psr-4": {
@@ -49,7 +50,7 @@
             "@php artisan package:discover --ansi"
         ],
         "post-update-cmd": [
-            "@php artisan vendor:publish --tag=laravel-assets --ansi"
+            "@php artisan vendor:publish --tag=laravel-assets --ansi --force"
         ],
         "post-root-package-install": [
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
@@ -69,8 +70,20 @@
         "sort-packages": true,
         "allow-plugins": {
             "php-http/discovery": true
+        },
+        "audit": {
+            "block-insecure": true
         }
     },
-    "minimum-stability": "dev",
-    "prefer-stable": true
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "repositories": [
+        {
+            "type": "path",
+            "url": "packages/flow-php-sdk",
+            "options": {
+                "symlink": false
+            }
+        }
+    ]
 }

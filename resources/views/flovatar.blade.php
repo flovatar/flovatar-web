@@ -1,4 +1,7 @@
 <x-guest-layout>
+    @if(\App\Support\Blocklist::isBlocked($address ?? null) || \App\Support\Blocklist::isFlagged('App\Models\Flovatar', $flovatarId ?? null))
+        <div class="container">@include('partials.incident-notice')</div>
+    @endif
 
 
 

@@ -24,7 +24,9 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        $schedule->command('flovatar:process-graffle')->everyThirtyMinutes();
+        // Graffle webhook replaced by the built-in indexer (flow:stream daemon + REST catch-up).
+        $schedule->command('flow:catchup')->everyFiveMinutes()->withoutOverlapping(30)->runInBackground();
+        $schedule->command('flow:process --queue')->everyMinute()->withoutOverlapping();
         $schedule->command('flovatar:refresh-collectible-templates')->hourly();
     }
 

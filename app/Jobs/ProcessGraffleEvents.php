@@ -374,7 +374,7 @@ class ProcessGraffleEvents extends BaseJob
                             'is_dapper' => $isDapper
                         ],
                         [
-                            'completed_at' => Carbon::now()
+                            'completed_at' => $event->event_date ?? Carbon::now()
                         ]
                     );
                     $check = true;
@@ -570,7 +570,7 @@ class ProcessGraffleEvents extends BaseJob
                             'is_dapper' => $isDapper
                         ],
                         [
-                            'completed_at' => Carbon::now()
+                            'completed_at' => $event->event_date ?? Carbon::now()
                         ]
                     );
                     $check = true;
@@ -681,7 +681,7 @@ class ProcessGraffleEvents extends BaseJob
                             'is_dapper' => $isDapper
                         ],
                         [
-                            'completed_at' => Carbon::now()
+                            'completed_at' => $event->event_date ?? Carbon::now()
                         ]
                     );
                     $check = true;
@@ -781,7 +781,7 @@ class ProcessGraffleEvents extends BaseJob
                             'is_dapper' => $isDapper
                         ],
                         [
-                            'completed_at' => Carbon::now()
+                            'completed_at' => $event->event_date ?? Carbon::now()
                         ]
                     );
                     $check = true;
@@ -932,31 +932,36 @@ class ProcessGraffleEvents extends BaseJob
             $event->type == $this->getEventAddress('WalletWithdrawDust') ||
             $event->type == $this->getEventAddress('FlovatarClaimedCommunityDust')) {
 
-            $claimedDust = Storage::exists('claimed-dust.txt') ? Storage::get('claimed-dust.txt') : 0;
+            // Locked read-modify-write: the counter file is shared by all workers.
+            \Illuminate\Support\Facades\Cache::lock('dust-counter-claimed', 30)->block(30, function () use ($event) {
+                $claimedDust = Storage::exists('claimed-dust.txt') ? Storage::get('claimed-dust.txt') : 0;
 
-            if(!$claimedDust){
-                $claimedDust = 0.0;
-            } else {
-                $claimedDust = floatval($claimedDust);
-            }
+                if(!$claimedDust){
+                    $claimedDust = 0.0;
+                } else {
+                    $claimedDust = floatval($claimedDust);
+                }
 
-            $claimedDust += floatval($event->flow_metadata['amount']);
+                $claimedDust += floatval($event->flow_metadata['amount']);
 
-            Storage::put('claimed-dust.txt', $claimedDust);
+                Storage::put('claimed-dust.txt', $claimedDust);
+            });
             $check = true;
 
         } else if($event->type == $this->getEventAddress('DustTokensBurned')) {
-            $burnedDust = Storage::exists('burned-dust.txt') ? Storage::get('burned-dust.txt') : 0;
+            \Illuminate\Support\Facades\Cache::lock('dust-counter-burned', 30)->block(30, function () use ($event) {
+                $burnedDust = Storage::exists('burned-dust.txt') ? Storage::get('burned-dust.txt') : 0;
 
-            if(!$burnedDust){
-                $burnedDust = 0.0;
-            } else {
-                $burnedDust = floatval($burnedDust);
-            }
+                if(!$burnedDust){
+                    $burnedDust = 0.0;
+                } else {
+                    $burnedDust = floatval($burnedDust);
+                }
 
-            $burnedDust += floatval($event->flow_metadata['amount']);
+                $burnedDust += floatval($event->flow_metadata['amount']);
 
-            Storage::put('burned-dust.txt', $burnedDust);
+                Storage::put('burned-dust.txt', $burnedDust);
+            });
             $check = true;
         } else {
 

@@ -19,6 +19,19 @@ class Controller extends BaseController
 {
     use AuthorizesRequests, DispatchesJobs, ValidatesRequests;
 
+    /**
+     * Serve an exported image (gif/png/mp4). Default: redirect to the public CDN
+     * (images.flovatar.com), which needs no bucket credentials on the web server.
+     * FLOVATAR_IMAGE_PROXY=download restores the old behaviour (stream from the s3 disk).
+     */
+    protected function imageFromStorage(string $path){
+        if(config('flovatar.imageProxy') === 'download'){
+            return Storage::disk('s3')->download($path);
+        }
+        return redirect()->away(rtrim((string) config('flovatar.imagesUrl'), '/').'/'.ltrim($path, '/'), 302)
+            ->header('Cache-Control', 'public, max-age=300');
+    }
+
     protected function paramString(){
         return implode('--', request()->all());
     }
@@ -71,10 +84,10 @@ class Controller extends BaseController
             $dustClaimed = $dustClaimed ? round(floatval($dustClaimed)) : 0;
 
             return [
-                'total' => Sale::selectRaw('sum(price) as total')->first()->total,
-                'avg' => Sale::selectRaw('avg(price) as avg')->first()->avg,
-                'count' => Sale::selectRaw('count(price) as count')->first()->count,
-                'max' => Sale::selectRaw('max(price) as max')->first()->max,
+                'total' => Sale::notBlocked()->selectRaw('sum(price) as total')->first()->total,
+                'avg' => Sale::notBlocked()->selectRaw('avg(price) as avg')->first()->avg,
+                'count' => Sale::notBlocked()->selectRaw('count(price) as count')->first()->count,
+                'max' => Sale::notBlocked()->selectRaw('max(price) as max')->first()->max,
                 'dustBurned' => $dustBurned,
                 'dustClaimed' => $dustClaimed
             ];

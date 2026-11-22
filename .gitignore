@@ -15,8 +15,6 @@ npm-debug.log
 yarn-error.log
 .idea
 auth.json
-composer.lock
-package-lock.json
 .env
 .env.backup
 .env.prod
@@ -28,4 +26,4 @@ cadence/mainnet.key
 cadence/mainnet.pkey
 cadence/testnet.key
 cadence/testnet.pkey
-.claude
+.claude/.phpunit.cache

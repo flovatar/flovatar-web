@@ -43,6 +43,21 @@ class SaleOffer extends Model
     public function scopeIsComponent($query){
         return $query->whereItemType('App\Models\FlovatarComponent');
     }
+    /**
+     * Hide listings of blocklisted sellers and flagged NFTs (2026-11-16 incident).
+     */
+    public function scopeNotBlocked($query){
+        $addresses = \App\Support\Blocklist::addresses();
+        if(count($addresses) > 0){
+            $query->whereNotIn('sale_offers.flow_address', $addresses);
+        }
+        return $query->whereNotExists(function ($q) {
+            $q->selectRaw('1')->from('flagged_items')
+                ->whereColumn('flagged_items.item_type', 'sale_offers.item_type')
+                ->whereColumn('flagged_items.flow_id', 'sale_offers.flow_id');
+        });
+    }
+
     public function scopeIsDustCollectible($query){
         return $query->whereItemType('App\Models\DustCollectible');
     }

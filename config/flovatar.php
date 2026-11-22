@@ -68,5 +68,32 @@ return [
     'dapperEnabled' => env('DAPPER_ENABLED', false),
     'flobitSaleEnabled' => env('FLOBIT_SALE_ENABLED', false),
     'dustEnabled' => env('DUST_ENABLED', false),
-    'chatEnabled' => env('CHAT_ENABLED', false)
+    'chatEnabled' => env('CHAT_ENABLED', false),
+
+    /*
+    | Relaunch feature flags (2026-11).
+    | Pack sales and reservations need the pack-signing tool (/go), which is not in the
+    | repository yet. Keep them disabled until it is restored; routes answer with
+    | `packSalesNotice` instead.
+    */
+    // Exported images (gif/png/mp4/svg) live on the CDN bucket behind images.flovatar.com.
+    'imagesUrl' => env('FLOVATAR_IMAGES_URL', 'https://images.flovatar.com'),
+    'imageProxy' => env('FLOVATAR_IMAGE_PROXY', 'redirect'),
+    // Re-rendering images needs webgif + headless Chromium + ffmpeg and writes to the s3 disk.
+    // Off until that pipeline is restored on the new server (jobs return immediately).
+    'imageExportEnabled' => env('FLOVATAR_IMAGE_EXPORT_ENABLED', false),
+
+    'packSalesEnabled' => env('FLOVATAR_PACK_SALES_ENABLED', false),
+    'packSalesNotice' => env('FLOVATAR_PACK_SALES_NOTICE', 'Pack sales are paused while the shop is being moved to a new server. Packs you already own are safe on the blockchain.'),
+
+    /*
+    | Addresses involved in the 2026-11-16 incident. Listings and sales of these
+    | addresses (and NFTs recorded in flagged_items) are hidden from marketplace views,
+    | stats and search, and their pages show a warning. Comma separated.
+    */
+    'blockedAddresses' => array_values(array_filter(array_map(
+        fn ($a) => strtolower(trim($a)),
+        explode(',', (string) env('FLOVATAR_BLOCKED_ADDRESSES', '0x0c7deb7a0c9cb424'))
+    ))),
+    'blockedNotice' => env('FLOVATAR_BLOCKED_NOTICE', 'This wallet or item is linked to the 2026-11-16 security incident. It is hidden from the marketplace while the team reviews it.'),
 ];

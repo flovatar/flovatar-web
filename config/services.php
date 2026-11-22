@@ -34,7 +34,19 @@ return [
         'storefrontaddress' => env('MIX_CONTRACT_STOREFRONT2', '0x2d55b98eb200daef'),
         'path' => env('FLOW_PATH', '~/.local/bin'),
         'network' => env('FLOW_NETWORK', 'emulator'),
-        'minBlockHeight' => env('FLOW_MIN_BLOCK_HEIGHT', 0)
+        'minBlockHeight' => env('FLOW_MIN_BLOCK_HEIGHT', 0),
+
+        // Event indexer that replaces the Graffle webhook (flow:catchup / flow:stream / flow:process)
+        'rest' => env('FLOW_REST_URL', 'https://rest-mainnet.onflow.org'),
+        'ws' => env('FLOW_WS_URL', 'wss://rest-mainnet.onflow.org/v1/ws'),
+        'indexer' => [
+            'enabled' => env('FLOW_INDEXER_ENABLED', true),
+            'start_height' => env('FLOW_INDEXER_START_HEIGHT'),
+            'rps' => env('FLOW_INDEXER_RPS', 20),
+            'max_blocks_per_run' => env('FLOW_INDEXER_MAX_BLOCKS', 25000),
+            'process_batch' => env('FLOW_INDEXER_PROCESS_BATCH', 500),
+            'max_attempts' => env('FLOW_INDEXER_MAX_ATTEMPTS', 3),
+        ],
     ],
     'sender_mail' => [
         'token' => env('SENDER_MAIL_TOKEN'),
@@ -46,6 +58,9 @@ return [
     'graffle' => [
         // Shared secret required on POST /graffle (header X-Graffle-Secret, Bearer token or ?secret=)
         'secret' => env('GRAFFLE_WEBHOOK_SECRET'),
+        // Graffle stopped delivering events in Feb 2026 and was replaced by the built-in
+        // indexer. The /graffle route is only registered when this is true.
+        'enabled' => env('GRAFFLE_WEBHOOK_ENABLED', false),
     ]
 
 ];
