@@ -8,19 +8,19 @@ use Illuminate\Console\Command;
 
 /**
  * Packs v2: checks that the local pack-signer key (PACK_SIGNER_KEY_FILE) and epoch (FLOVATAR_PACK_EPOCH)
- * match FlovatarPackVerifier on-chain, and that the key is NOT a key of the contract account.
+ * match the pack verifier inside FlovatarPack on-chain, and that the key is NOT a key of the contract account.
  * Read-only; never prints the private key.
  */
 class PackSignerCheck extends Command
 {
     protected $signature = 'flovatar:pack-signer-check';
 
-    protected $description = 'Compare the local pack-signer key / epoch with FlovatarPackVerifier on-chain';
+    protected $description = 'Compare the local pack-signer key / epoch with the FlovatarPack verifier on-chain';
 
     public function handle(FlovatarPackAuthorizer $authorizer, FlowRestClient $flow): int
     {
         $contract = (string) config('services.flow.address');
-        $cfg = $flow->script("import FlovatarPackVerifier from $contract\naccess(all) fun main(): FlovatarPackVerifier.Config { return FlovatarPackVerifier.getConfig() }");
+        $cfg = $flow->script("import FlovatarPack from $contract\naccess(all) fun main(): FlovatarPack.VerifierConfig { return FlovatarPack.getVerifierConfig() }");
         $keys = $flow->script("access(all) fun main(a: Address): [String] {\n let out: [String] = []\n var i = 0\n while true {\n  if let k = getAccount(a).keys.get(keyIndex: i) { out.append(String.encodeHex(k.publicKey.publicKey)) } else { break }\n  i = i + 1\n }\n return out\n}", [['type' => 'Address', 'value' => $contract]]);
 
         $local = $authorizer->publicKeyHex();

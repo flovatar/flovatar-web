@@ -148,7 +148,7 @@ class PackController extends AuthController
 
         if($pack && config('flovatar.packsV2Enabled')) {
             // Packs v2: fresh authorisation bound to this wallet and payment kind, expiring
-            // (FlovatarPackVerifier on-chain). The signer key is not an account key.
+            // (pack verifier inside FlovatarPack, on-chain). The signer key is not an account key.
             $auth = app(FlovatarPackAuthorizer::class)->authorize(
                 FlovatarPackAuthorizer::kindFor((string) $pack->name, $request->get('wallet') === 'dapper' ? 'dapper' : null),
                 (int) $pack->flow_id,

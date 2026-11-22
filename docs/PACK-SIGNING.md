@@ -45,7 +45,8 @@ The tests therefore compare everything else:
   - The file must be **outside the site directory** and have **mode 600**. The signer refuses anything else.
   - The key is read on each call. It never appears in logs or exception messages.
 - **Never put a key of the mainnet contract account on the server.** Mainnet uses packs v2 with a dedicated signer
-  key whose public key is registered in the `FlovatarPackVerifier` contract. That key is not an account key: it
+  key whose public key is registered in the pack verifier inside `FlovatarPack` (no separate contract: Flow mainnet
+  does not accept new contract deployments, so the verifier was added to FlovatarPack in its in-place update). That key is not an account key: it
   can't sign transactions or move funds.
 - Suggested location: `/home/forge/secure/flovatar-pack-signer.pkey` (directory mode 700, owner `forge`).
 - `php artisan flovatar:pack-signer-check` compares the local key and `FLOVATAR_PACK_EPOCH` with the on-chain
@@ -53,7 +54,7 @@ The tests therefore compare everything else:
 
 ## Packs v2
 
-The message is signed with **no domain tag**, and must match `FlovatarPackVerifier.buildMessage` exactly:
+The message is signed with **no domain tag**, and must match `FlovatarPack.buildVerifierMessage` exactly:
 
 ```
 FLOVATAR-PACK-V2|<kind>|<packId>|<recipient 0x + 16 hex>|<expiry unix s>|<epoch>

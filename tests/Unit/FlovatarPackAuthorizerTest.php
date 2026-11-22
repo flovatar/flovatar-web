@@ -7,7 +7,7 @@ use App\Services\Flow\UserMessageSigner;
 use Tests\TestCase;
 use RuntimeException;
 
-/** Packs v2 authorisations (FlovatarPackVerifier message format, no domain tag). */
+/** Packs v2 authorisations (FlovatarPack verifier message format, no domain tag). */
 class FlovatarPackAuthorizerTest extends TestCase
 {
     private ?string $keyFile = null;
@@ -32,7 +32,7 @@ class FlovatarPackAuthorizerTest extends TestCase
 
     public function test_message_matches_the_on_chain_format(): void
     {
-        // Same string FlovatarPackVerifier.buildMessage returned on testnet (owner-kit packs_v2_checks).
+        // Same string FlovatarPack.buildVerifierMessage returned on testnet (owner-kit packs_v2_checks).
         $this->assertSame(
             'FLOVATAR-PACK-V2|dust|7|0x44210379c4d05363|1795000000|1',
             FlovatarPackAuthorizer::message('dust', 7, '44210379C4D05363', 1795000000, 1)

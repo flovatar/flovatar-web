@@ -2,7 +2,7 @@ import * as fcl from "@onflow/fcl"
 import * as t from "@onflow/types"
 
 // Packs v2 (Dapper wallet): buy a pack with FlowUtilityToken and an authorisation from POST /pack/reserve
-// (bound to this wallet, kind "dapper", expiring). Checked on-chain by FlovatarPackVerifier.
+// (bound to this wallet, kind "dapper", expiring). Checked on-chain by the verifier inside FlovatarPack.
 export async function packBuyDapperV2Tx(tokenId, expectedPrice, expiry, signature) {
     return await fcl
         .mutate({

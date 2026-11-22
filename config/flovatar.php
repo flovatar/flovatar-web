@@ -92,8 +92,8 @@ return [
     | packV1SigningEnabled: legacy v1 signing (signature over the pack randomString checked against
     |   ACCOUNT KEY 0 of the pack owner). v1 needs the contract account's own key on the server, so it
     |   must stay false on mainnet; it exists for testnet only.
-    | packsV2*: v2 authorisations checked by the FlovatarPackVerifier contract (recipient-bound,
-    |   expiring, epoch-revocable). packsV2Epoch must equal FlovatarPackVerifier.getEpoch().
+    | packsV2*: v2 authorisations checked by the pack verifier inside FlovatarPack (recipient-bound,
+    |   expiring, epoch-revocable). packsV2Epoch must equal FlovatarPack.getVerifierEpoch().
     */
     'packSignerKeyFile' => env('PACK_SIGNER_KEY_FILE'),
     'packV1SigningEnabled' => (bool) env('FLOVATAR_PACK_V1_SIGNING', false),

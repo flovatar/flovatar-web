@@ -2,7 +2,7 @@ import * as fcl from "@onflow/fcl"
 import * as t from "@onflow/types"
 
 // Packs v2: buy a DUST pack with an authorisation from POST /pack/reserve (bound to this wallet, expiring).
-// The authorisation is checked on-chain by FlovatarPackVerifier through FlovatarPack.purchasePack.
+// The authorisation is checked on-chain by the verifier inside FlovatarPack (FlovatarPack.purchasePack).
 export async function packBuyV2Tx(tokenId, amount, expiry, signature) {
     return await fcl
         .mutate({

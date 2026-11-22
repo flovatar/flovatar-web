@@ -5,18 +5,18 @@ namespace App\Services\Flow;
 use RuntimeException;
 
 /**
- * Flovatar packs v2: signs purchase authorisations checked on-chain by FlovatarPackVerifier
+ * Flovatar packs v2: signs purchase authorisations checked on-chain by the verifier inside FlovatarPack
  * (called from FlovatarPack.purchasePack). See docs/PACK-SIGNING.md.
  *
- * Message (UTF-8, signed with NO domain tag; must match FlovatarPackVerifier.buildMessage exactly):
+ * Message (UTF-8, signed with NO domain tag; must match FlovatarPack.buildVerifierMessage exactly):
  *   FLOVATAR-PACK-V2|<kind>|<packId>|<recipient>|<expiry>|<epoch>
  *     kind      "flow" | "dust" | "dapper"  (how the buyer pays; the contract derives it from the vault type)
  *     recipient "0x" + 16 lowercase hex digits (Cadence Address.toString())
  *     expiry    unix seconds
- *     epoch     FlovatarPackVerifier epoch (FLOVATAR_PACK_EPOCH; bump both together)
+ *     epoch     FlovatarPack.getVerifierEpoch() (FLOVATAR_PACK_EPOCH; bump both together)
  *
  * The key is the dedicated pack-signer key (PACK_SIGNER_KEY_FILE): its public key is registered in
- * FlovatarPackVerifier. It is not an account key, so it can't sign transactions or move funds.
+ * the pack verifier inside FlovatarPack. It is not an account key, so it can't sign transactions or move funds.
  */
 class FlovatarPackAuthorizer
 {

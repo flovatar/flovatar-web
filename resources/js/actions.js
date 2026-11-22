@@ -831,7 +831,7 @@ window.reservePack = function(packType, address){
                 price = (packType == 'flobit') ? 39.0 : price;
                 price = (packType == 'terrakit') ? 49.0 : price;
                 price = (packType == 'dustpack') ? 3000.0 : price;
-                // Packs v2: the authorisation also carries an expiry (FlovatarPackVerifier)
+                // Packs v2: the authorisation also carries an expiry (verifier inside FlovatarPack)
                 window.buyPack(response.data.packId, price, response.data.signature, response.data.version == 2 ? response.data.expiry : null)
             } else {
                 window.dispatch('reserve-failed');
