@@ -1,0 +1,1 @@
+{"version":2,"defects":[],"times":{"Tests\\Unit\\CadenceJsonTest::test_decodes_a_storefront_event_like_graffle":0.014,"Tests\\Unit\\CadenceJsonTest::test_dictionary_and_struct_values":0,"Tests\\Unit\\CadenceJsonTest::test_storefront_filter_keeps_only_our_nfts":0.001,"Tests\\Unit\\ExampleTest::test_example":0}}
