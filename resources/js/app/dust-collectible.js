@@ -28,7 +28,7 @@ Alpine.data('collectibleData', (address, collectibleId, templates, collectibleSa
             this.currentPrice = parseFloat(this.collectibleSaleOffer.price);
             this.currentPriceChange = this.currentPrice;
         }
-        if(google){
+        if(typeof google !== 'undefined' && google.maps){
             this.geocoder = new google.maps.Geocoder();
         }
     },

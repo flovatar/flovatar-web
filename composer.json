@@ -9,16 +9,13 @@
     "license": "MIT",
     "require": {
         "php": "^8.4",
-        "ardagnsrn/elevenlabs-laravel": "^1.0.1",
         "atymic/twitter": "^3.4",
         "flovatar/flow-php-sdk": "^0.4",
-        "georgehadjisavva/elevenlabs-api-client": "^1.0.2",
         "guzzlehttp/guzzle": "^7.9",
         "laravel/framework": "^12.0",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10",
         "league/flysystem-aws-s3-v3": "^3.0",
-        "openai-php/laravel": "^0.22",
         "phrity/websocket": "^4.1",
         "predis/predis": "^2.0",
         "queueit/knownuserv3": "^3.7"

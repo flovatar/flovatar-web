@@ -57,7 +57,6 @@
         var dustEnabled = {{ config('flovatar.dustEnabled') ? 'true' : 'false' }};
     </script>
     <script src="{{ mix('js/app.js') }}" defer></script>
-    <script defer data-domain="flovatar.com" src="https://plausible.io/js/plausible.js"></script>
 </head>
 <body class="{{request()->routeIs('home', 'builder', 'builder-psyche', 'flobot.builder', 'builder.flobot', 'pack', 'pack.buy', 'pack.login', 'fub', 'fub.sale', 'fub.test', 'land.sale') ? 'header-transparent' : ''}} {{request()->routeIs('fub.test') ? 'blueprint' : ''}}">
 <div id="wrapper"

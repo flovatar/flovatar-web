@@ -39,8 +39,6 @@
 
                 <li><a href="https://toucans.ecdao.org/p/FlovatarDAO/" target="_blank">DAO</a></li>
 
-                <li class="{{request()->routeIs('chat.index') ? 'active ' : ''}}"><a href="{{ route('chat.index') }}">Chat</a></li>
-
 
                 <li class="{{request()->routeIs('explore') ? 'active ' : ''}}"  id="nav-explore">
                     <a href="{{ route('explore') }}">Explore</a>

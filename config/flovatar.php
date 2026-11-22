@@ -68,7 +68,6 @@ return [
     'dapperEnabled' => env('DAPPER_ENABLED', false),
     'flobitSaleEnabled' => env('FLOBIT_SALE_ENABLED', false),
     'dustEnabled' => env('DUST_ENABLED', false),
-    'chatEnabled' => env('CHAT_ENABLED', false),
 
     /*
     | Relaunch feature flags (2026-11).

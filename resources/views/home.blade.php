@@ -42,13 +42,6 @@
             </div>
         </section>
     </div>
-        @if(config('flovatar.chatEnabled'))
-        <div class="promo-bottom-right">
-            <a href="/chat" class="pack-sale-promo">
-                <img src="/images/CTA-Homepage-FlovaChat.svg" alt="">
-            </a>
-        </div>
-        @endif
         <section class="features">
             <div class="container">
                 <div class="intro">
@@ -339,15 +332,6 @@
                             </div>
                         </li>
 
-                        @if(config('flovatar.chatEnabled'))
-                        <li>
-                            <div class="wrap">
-                                <span class="time">December 2023</span>
-                                <h4>FlovaChat release</h4>
-                                <p>Every Flovatar comes to life thanks to the AI-powered FlovaChat device. Customize your Flovatar by burning 5,000 ÐUST.</p>
-                            </div>
-                        </li>
-                        @endif
                         <li class="incomplete">
                             <div class="wrap">
                                 <span class="time">TBD</span>

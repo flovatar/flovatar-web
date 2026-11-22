@@ -17,7 +17,9 @@
         @endif
     </script>
 
-    <script src="https://maps.googleapis.com/maps/api/js?key={{ config('services.google_maps.api_key') }}"></script>
+    @if(config('services.google_maps.api_key'))
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ urlencode(config('services.google_maps.api_key')) }}"></script>
+    @endif
 
     <section class="flovatar-detail"
              x-data="flovatarData('{{$address}}', {{$flovatarId}}, window.templates, window.flovatarSales, window.flovatarSaleOffer, {{ config('flovatar.dustPerDayScore') }})"
@@ -98,18 +100,6 @@
                             <div class="btns-list-wrap">
                                 <ul class="btns-list">
 
-                                    @if(config('flovatar.chatEnabled'))
-                                    <li>
-                                        <a class="btn btn-sm btn-green" x-bind:href="'/chat/'+(name() ? name() : mint())">
-                                            <span class="inner">
-                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6" width="20" height="20" style="margin-right: 3px;">
-                                                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 011.037-.443 48.282 48.282 0 005.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
-                                                </svg>
-                                                Chat
-                                            </span>
-                                        </a>
-                                    </li>
-                                    @endif
                                     <li>
                                         <button x-bind:class="mode3dEnabled ? 'active' : ''" @click.prevent.stop="mode3dEnabled = !mode3dEnabled" class="btn btn-sm btn-lilac"><span class="inner"><span class="short-label">3D</span><span class="long-label">3D VIEW</span></span></button>
                                     </li>
@@ -144,6 +134,10 @@
                                 <button @click.prevent.stop="sendGift" x-bind:disabled="!loggedIn()" type="submit" class="btn btn-icon btn-green"><span class="inner"><i class="icon-check"></i></span></button>
                             </div>
                         </div>
+                        {{-- FlovaChat and its ÐUST-paid chat-editing unlock were retired in 2026-11 (no chat button any more). --}}
+                        <p class="feature-retired-notice" style="margin:12px 0 0;padding:8px 12px;border-radius:8px;background:rgba(127,127,127,.12);font-size:13px;line-height:1.4;opacity:.85;">
+                            FlovaChat, including the ÐUST chat-editing unlock, has been retired. Chat is no longer available for any Flovatar.
+                        </p>
                     </div>
 
                     <div class="content-box" x-show="isSale() || (isOwned() && showSale)">

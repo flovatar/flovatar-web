@@ -21,7 +21,6 @@ import {flovatarRemoveBackgroundTx} from './flow/flovatar-remove-background.tx';
 import {flovatarSetNameTx} from './flow/flovatar-set-name.tx';
 import {flovatarSetPositionTx} from './flow/flovatar-set-position.tx';
 import {flovatarUnlock3dTx} from './flow/flovatar-unlock-3d.tx';
-import {flovatarUnlockChatTx} from './flow/flovatar-unlock-chat.tx';
 import {flovatarAddStoryTx} from './flow/flovatar-add-story.tx';
 import {flobotAddBackgroundTx} from './flow/flobot-add-background.tx';
 import {flobotRemoveBackgroundTx} from './flow/flobot-remove-background.tx';
@@ -2125,31 +2124,6 @@ window.flovatarUnlock3d = async function(flovatarId){
     }
 }
 
-window.flovatarUnlockChat = async function(flovatarId){
-    console.log('flovatar unlock chat start');
-    window.dispatch('loading-start');
-    try{
-        let txId = await flovatarUnlockChatTx(flovatarId);
-        console.log('flovatar unlock chat finish');
-        window.dispatch('waiting-seal');
-        const unsub = await fcl.tx(txId).subscribe(transaction => {
-            if (fcl.tx.isSealed(transaction)) {
-                if(!window.transError(transaction)){
-                    console.log('flovatar unlock chat sealed');
-                    //console.log(transaction);
-                    window.dispatch('flovatar-chat-unlocked');
-                    window.dispatch('loading-completed');
-                    window.getFlovatar(window.user.addr, flovatarId);
-                } else {
-                    window.dispatch('transaction-error', {message: window.transError(transaction)});
-                }
-                unsub();
-            }
-        });
-    } catch(error){
-        window.dispatch('transaction-error', {message: error});
-    }
-}
 
 
 window.collectibleSetName = async function(collectibleId, name){
@@ -2558,39 +2532,4 @@ window.upgradeFlobits = async function(idArr){
 
 
 
-window.sendChatMessage = function(address, id, message) {
-    if(address && id && message) {
-        console.log('send chat message');
-        axios.post('/chat/send', {
-            address: address,
-            id: id,
-            message: message
-        })
-            .then(function (response) {
-                window.dispatch('chat-message-sent', {response: response});
-                //console.log(response);
-            })
-            .catch(function (error) {
-                console.log(error);
-            });
-    }
-}
-
-
-window.checkThreadStatus = function(threadId, runId) {
-    if(threadId && runId) {
-        console.log('check thread status');
-        axios.post('/chat/check', {
-            threadId: threadId,
-            runId: runId
-        })
-            .then(function (response) {
-                window.dispatch('chat-thread-checked', {response: response});
-                //console.log(response);
-            })
-            .catch(function (error) {
-                console.log(error);
-            });
-    }
-}
 

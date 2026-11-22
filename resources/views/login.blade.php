@@ -53,7 +53,6 @@
         var packPrice2 = {{ config('flovatar.price2') }};
     </script>
     <script src="{{ mix('js/app.js') }}" defer></script>
-    <script defer data-domain="flovatar.com" src="https://plausible.io/js/plausible.js"></script>
 
     <script>
         var userAgent = navigator.userAgent || navigator.vendor || window.opera;

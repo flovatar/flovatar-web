@@ -43,7 +43,7 @@ Alpine.data('flovatarData', (address, flovatarId, templates, flovatarSales, flov
             this.currentPriceChange = this.currentPrice;
         }
 
-        if(google) {
+        if(typeof google !== 'undefined' && google.maps) {
             self.geocoder = new google.maps.Geocoder();
         }
 

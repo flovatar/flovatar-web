@@ -49,7 +49,6 @@ use \App\Http\Controllers\AsteroidTemplateImageController;
 use \App\Http\Controllers\DustBuilderController;
 use \App\Http\Controllers\DustSeriesBuilderController;
 use \App\Http\Controllers\DustTokenController;
-use \App\Http\Controllers\GptController;
 
 /*
 |--------------------------------------------------------------------------
@@ -293,10 +292,8 @@ Route::view('dust', 'dust')->name('dust');
 Route::view('story', 'story')->name('story');
 
 
-Route::get('chat', [GptController::class,'index'])->name('chat.index');
-Route::get('chat/{flovatarId}', [GptController::class,'show'])->name('chat.show')->middleware('throttle:30,1');
-Route::post('chat/send', [GptController::class,'sendMessage'])->name('chat.send')->middleware('throttle:10,1');
-Route::post('chat/check', [GptController::class,'checkThread'])->name('chat.check')->middleware('throttle:60,1');
-Route::post('chat/checkaddress', [GptController::class,'checkThreadByAddress'])->name('chat.checkByAddress')->middleware('throttle:20,1');
-Route::post('chat/tts', [GptController::class,'tts'])->name('chat.tts')->middleware('throttle:6,1');
-Route::post('chat/update', [GptController::class,'update'])->name('chat.update')->middleware(['auth:sanctum', 'throttle:5,1']);
+// FlovaChat (OpenAI/ElevenLabs) was retired in 2026-11. Old shared chat links go to the
+// Flovatar page (which shows the retirement notice); the former chat API endpoints are gone (404).
+Route::redirect('chat', '/', 301);
+Route::get('chat/{flovatarId}', [RedirectController::class, 'retiredChat'])
+    ->where('flovatarId', '(?!(send|check|checkaddress|tts|update)$)[^/]+');

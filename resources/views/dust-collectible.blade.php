@@ -15,7 +15,9 @@
         @endif
     </script>
 
-    <script src="https://maps.googleapis.com/maps/api/js?key={{ config('services.google_maps.api_key') }}"></script>
+    @if(config('services.google_maps.api_key'))
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ urlencode(config('services.google_maps.api_key')) }}"></script>
+    @endif
 
     <section class="flovatar-detail"
              x-data="collectibleData('{{$address}}', {{$collectibleId}}, window.templates, window.collectibleSaleOffer)"
