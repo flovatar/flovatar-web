@@ -174,7 +174,7 @@ Route::view('privacy', 'privacy')->name('privacy');
 
 Route::get('pack/login', [PackController::class,'login'])->name('pack.login');
 
-// Pack sales and reservations are disabled until the pack-signing tool is restored
+// Pack sales and reservations are disabled until they reopen with packs v2 (docs/PACK-SIGNING.md)
 // (FLOVATAR_PACK_SALES_ENABLED); the 'packsales' middleware answers with a notice.
 Route::middleware('packsales')->group(function () {
 if(config('flovatar.isTest')){

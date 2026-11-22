@@ -11,7 +11,7 @@ Alpine.data('packData', () => ({
     purchasePack(){
         if(this.packData){
             window.dispatch('loading-started');
-            window.buyPack(this.packData.id, this.packData.price, this.packData.signature)
+            window.buyPack(this.packData.id, this.packData.price, this.packData.signature, this.packData.expiry || null)
         } else if(!this.reservingPack){
             this.reservingPack = true;
             window.reservePack('dustpack', this.address());
@@ -20,7 +20,7 @@ Alpine.data('packData', () => ({
     purchasePackAll(packType){
         if(this.packData){
             window.dispatch('loading-started');
-            window.buyPack(this.packData.id, this.packData.price, this.packData.signature)
+            window.buyPack(this.packData.id, this.packData.price, this.packData.signature, this.packData.expiry || null)
         } else if(!this.reservingPack){
             this.reservingPack = true;
             window.reservePack(packType, this.address());

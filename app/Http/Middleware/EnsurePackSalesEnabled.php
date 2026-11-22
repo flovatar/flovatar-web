@@ -6,7 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 
 /**
- * Pack sales/reservations stay off until the pack-signing tool is restored
+ * Pack sales/reservations stay off until they are reopened with packs v2 (docs/PACK-SIGNING.md)
  * (config flovatar.packSalesEnabled / FLOVATAR_PACK_SALES_ENABLED).
  */
 class EnsurePackSalesEnabled

@@ -10,6 +10,7 @@ use App\Models\SportvatarPack;
 use App\Models\User;
 use App\Models\Whitelist;
 use App\Jobs\ReservePack;
+use App\Services\Flow\FlovatarPackAuthorizer;
 use Auth;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -143,6 +144,24 @@ class PackController extends AuthController
 
             }
 
+        }
+
+        if($pack && config('flovatar.packsV2Enabled')) {
+            // Packs v2: fresh authorisation bound to this wallet and payment kind, expiring
+            // (FlovatarPackVerifier on-chain). The signer key is not an account key.
+            $auth = app(FlovatarPackAuthorizer::class)->authorize(
+                FlovatarPackAuthorizer::kindFor((string) $pack->name, $request->get('wallet') === 'dapper' ? 'dapper' : null),
+                (int) $pack->flow_id,
+                $address
+            );
+            return [
+                'version' => 2,
+                'packId' => $pack->flow_id,
+                'signature' => $auth['signature'],
+                'expiry' => $auth['expiry'],
+                'kind' => $auth['kind'],
+                'processing' => false
+            ];
         }
 
         if($pack) {

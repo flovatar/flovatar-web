@@ -85,6 +85,8 @@ import {initMetadataViewsTx} from './flow/init-metadata-views.tx';
 import {isMetadataInitializedScript} from './flow/is-metadata-initialized.script';
 import {packBuyTx} from './flow/pack-buy.tx';
 import {packBuyDapperTx} from './flow/pack-buy-dapper.tx';
+import {packBuyV2Tx} from './flow/pack-buy-v2.tx';
+import {packBuyDapperV2Tx} from './flow/pack-buy-dapper-v2.tx';
 import {packOpenTx} from './flow/pack-open.tx';
 import {flovatarSendGiftTx} from './flow/flovatar-send-gift.tx';
 import {flobotSendGiftTx} from './flow/flobot-send-gift.tx';
@@ -818,7 +820,8 @@ window.reservePack = function(packType, address){
     console.log('reserve pack');
     console.log(packType);
     axios.post('/pack/reserve', {
-        type: packType
+        type: packType,
+        wallet: window.currentWallet
     }).then(function (response) {
             //console.log(response);
             if(response.data && response.data.packId && response.data.signature){
@@ -828,7 +831,8 @@ window.reservePack = function(packType, address){
                 price = (packType == 'flobit') ? 39.0 : price;
                 price = (packType == 'terrakit') ? 49.0 : price;
                 price = (packType == 'dustpack') ? 3000.0 : price;
-                window.buyPack(response.data.packId, price, response.data.signature)
+                // Packs v2: the authorisation also carries an expiry (FlovatarPackVerifier)
+                window.buyPack(response.data.packId, price, response.data.signature, response.data.version == 2 ? response.data.expiry : null)
             } else {
                 window.dispatch('reserve-failed');
                 console.log(response);
@@ -850,14 +854,15 @@ window.preReservePack = function(packType){
     console.log('reserve pack');
     console.log(packType);
     axios.post('/pack/reserve', {
-        type: packType
+        type: packType,
+        wallet: window.currentWallet
     }).then(function (response) {
         //console.log(response);
         if(response.data && response.data.packId && response.data.signature){
             let price = (packType == 'deluxe') ? window.packPrice2 : window.packPrice;
             price = (packType == 'flobit') ? 39.0 : price;
             price = (packType == 'terrakit') ? 49.0 : price;
-            window.dispatch('pack-pre-reserved', {signature: response.data.signature, id: response.data.packId, price: price});
+            window.dispatch('pack-pre-reserved', {signature: response.data.signature, id: response.data.packId, price: price, expiry: response.data.version == 2 ? response.data.expiry : null});
         } else {
             window.dispatch('pre-reserve-failed');
             console.log(response);
@@ -870,13 +875,18 @@ window.preReservePack = function(packType){
 }
 
 
-window.buyPack = async function(packId, price, signature){
+window.buyPack = async function(packId, price, signature, expiry = null){
     //saleAddress, tokenId, amount, secret
     console.log('purchasing pack');
     window.dispatch('loading-start');
     try{
         let txId = null;
-        if(window.currentWallet == 'dapper') {
+        if(expiry) {
+            // Packs v2 (FlovatarPack.purchasePack): authorisation bound to this wallet, with expiry
+            txId = (window.currentWallet == 'dapper')
+                ? await packBuyDapperV2Tx(packId, price, expiry, signature)
+                : await packBuyV2Tx(packId, price, expiry, signature);
+        } else if(window.currentWallet == 'dapper') {
             txId = await packBuyDapperTx(process.env.MIX_DAPPER_MERCHANT, packId, price, signature, process.env.MIX_CONTRACT_FLOW);
         } else {
             txId = await packBuyTx(process.env.MIX_CONTRACT_FLOW, packId, price, signature);

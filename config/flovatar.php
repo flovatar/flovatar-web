@@ -71,9 +71,9 @@ return [
 
     /*
     | Relaunch feature flags (2026-11).
-    | Pack sales and reservations need the pack-signing tool (/go), which is not in the
-    | repository yet. Keep them disabled until it is restored; routes answer with
-    | `packSalesNotice` instead.
+    | Pack sales and reservations stay disabled (FLOVATAR_PACK_SALES_ENABLED=false); routes answer
+    | with `packSalesNotice` instead. The Go pack-signing tool (/go) was replaced by the pure-PHP
+    | App\Services\Flow\UserMessageSigner (see docs/PACK-SIGNING.md).
     */
     // Exported images (gif/png/mp4/svg) live on the CDN bucket behind images.flovatar.com.
     'imagesUrl' => env('FLOVATAR_IMAGES_URL', 'https://images.flovatar.com'),
@@ -84,6 +84,22 @@ return [
 
     'packSalesEnabled' => env('FLOVATAR_PACK_SALES_ENABLED', false),
     'packSalesNotice' => env('FLOVATAR_PACK_SALES_NOTICE', 'Pack sales are paused while the shop is being moved to a new server. Packs you already own are safe on the blockchain.'),
+
+    /*
+    | Pack signing (docs/PACK-SIGNING.md).
+    | packSignerKeyFile: dedicated signer private key (64 hex chars, `flow keys generate` format),
+    |   outside the repository, chmod 600. Never an account key of the mainnet contract account.
+    | packV1SigningEnabled: legacy v1 signing (signature over the pack randomString checked against
+    |   ACCOUNT KEY 0 of the pack owner). v1 needs the contract account's own key on the server, so it
+    |   must stay false on mainnet; it exists for testnet only.
+    | packsV2*: v2 authorisations checked by the FlovatarPackVerifier contract (recipient-bound,
+    |   expiring, epoch-revocable). packsV2Epoch must equal FlovatarPackVerifier.getEpoch().
+    */
+    'packSignerKeyFile' => env('PACK_SIGNER_KEY_FILE'),
+    'packV1SigningEnabled' => (bool) env('FLOVATAR_PACK_V1_SIGNING', false),
+    'packsV2Enabled' => (bool) env('FLOVATAR_PACKS_V2', false),
+    'packsV2Epoch' => (int) env('FLOVATAR_PACK_EPOCH', 1),
+    'packsV2Ttl' => (int) env('FLOVATAR_PACK_AUTH_TTL', 900),
 
     /*
     | Addresses involved in the 2026-11-16 incident. Listings and sales of these

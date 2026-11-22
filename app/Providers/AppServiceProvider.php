@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Services\Flow\UserMessageSigner;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -13,7 +14,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        //
+        // Pack signer: key file from PACK_SIGNER_KEY_FILE (read per call, never logged).
+        $this->app->bind(UserMessageSigner::class, fn () => UserMessageSigner::fromConfig());
     }
 
     /**

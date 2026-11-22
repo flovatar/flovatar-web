@@ -27,6 +27,24 @@ class FlowRestClient
             ->retry(6, fn ($attempt) => min(30000, 500 * (2 ** $attempt)) + random_int(0, 250), throw: true);
     }
 
+    /**
+     * Execute a read-only Cadence script at the sealed head. Returns the decoded JSON-Cadence value
+     * (CadenceJson::decode). $args are JSON-Cadence values, e.g. ['type' => 'Address', 'value' => '0x...'].
+     */
+    public function script(string $code, array $args = [])
+    {
+        $res = Http::baseUrl($this->base)->acceptJson()->timeout(30)->connectTimeout(10)
+            ->post('/v1/scripts?block_height=sealed', [
+                'script' => base64_encode($code),
+                'arguments' => array_map(fn ($a) => base64_encode(json_encode($a)), $args),
+            ]);
+        if (! $res->successful()) {
+            throw new RuntimeException('Flow script failed: '.substr((string) $res->body(), 0, 500));
+        }
+
+        return CadenceJson::decode(json_decode(base64_decode(trim((string) $res->body(), '"')), true));
+    }
+
     public function sealedHeight(): int
     {
         $res = $this->http()->get('/v1/blocks', ['height' => 'sealed'])->throw()->json();
