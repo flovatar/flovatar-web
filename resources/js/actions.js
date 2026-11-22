@@ -380,30 +380,53 @@ window.lookupAddress = async function(address){
 }
 
 
+window.findAccountProof = function(user){
+    if(!user || !user.services){
+        return null;
+    }
+    let service = user.services.find(function(item){ return item.type === 'account-proof'; });
+    return (service && service.data && service.data.nonce && service.data.signatures) ? service.data : null;
+}
+
+window.walletLogin = function(){
+    window.createSignature(window.loginMessage);
+}
+
 window.createSignature = async function(message){
     console.log('signature create start');
     window.dispatch('loading-start');
-    console.log(message);
-    const MSG = Buffer.from(message).toString("hex")
 
+    try{
+        const user = await fcl.currentUser().snapshot();
+        const proof = window.findAccountProof(user);
 
-    if(window.currentWallet == 'dapper'){
-        //window.sendLogin('dprsprt', data);
-        window.sendDapperLogin(message, window.user.addr)
-    } else {
-        try{
+        if(proof && window.accountProofNonce && proof.nonce === window.accountProofNonce){
+            // Account-proof returned by the wallet during authentication (Dapper Wallet and others)
+            window.dispatch('loading-completed');
+            window.sendAccountProofLogin(proof);
+        } else if(window.currentWallet == 'dapper' || proof){
+            // Missing or stale account-proof: re-authenticate to sign the current nonce
+            const freshUser = await fcl.reauthenticate();
+            const freshProof = window.findAccountProof(freshUser);
+            window.dispatch('loading-completed');
+            if(freshProof){
+                window.sendAccountProofLogin(freshProof);
+            } else {
+                window.dispatch('login-failed');
+            }
+        } else {
+            const MSG = Buffer.from(message || window.loginMessage || '').toString("hex");
             await fcl.currentUser().signUserMessage(MSG).then(function(data){
                 console.log('signature created');
-                console.log(data);
                 window.dispatch('signature-created', {signature: data});
                 window.dispatch('loading-completed');
                 window.sendLogin(MSG, data);
             });
-        } catch(error){
-            window.dispatch('transaction-error', {message: error});
-            console.log('error');
-            console.log(error);
         }
+    } catch(error){
+        window.dispatch('transaction-error', {message: error});
+        console.log('error');
+        console.log(error);
     }
 }
 
@@ -464,60 +487,53 @@ window.getSportvatarCodes = function() {
         });
 }
 
+window.handleLoginResponse = function(response){
+    if(response.data && response.data.result && response.data.result === true){
+        window.dispatch('logged-in');
+        window.location.reload(true);
+    } else {
+        window.loadLoginNonce();
+        window.dispatch('login-failed');
+    }
+}
+
 window.sendLogin = function(msg, compSigs) {
 
     console.log('send login pre');
-    console.log(compSigs);
-    console.log(msg);
-    let compSig = compSigs.length > 0 ? compSigs[0] : null;
+    let signatures = (compSigs || []).map(function(compSig){
+        return {keyId: compSig.keyId, signature: compSig.signature};
+    });
 
-    if(window.user && compSig) {
+    if(window.user && window.user.addr && signatures.length > 0) {
         console.log('send login ok');
         axios.post('/login', {
             message: msg,
-            address: compSig.addr,
-            signature: compSig.signature,
-            keyId: compSig.keyId,
-            isDapper: 'false'
+            address: window.user.addr,
+            signatures: signatures
         })
-            .then(function (response) {
-                //console.log(response);
-                if(response.data && response.data.result && response.data.result === true){
-                    window.dispatch('logged-in');
-                    window.location.reload(true);
-                } else {
-                    window.dispatch('login-failed');
-                }
-            })
+            .then(window.handleLoginResponse)
             .catch(function (error) {
                 console.log(error);
+                window.dispatch('login-failed');
             });
     }
 }
-window.sendDapperLogin = function(msg, address) {
 
+window.sendAccountProofLogin = function(proof) {
 
-    if(window.user) {
-        //console.log('send login');
-        //console.log(compSigs);
-        axios.post('/login', {
-            message: msg,
-            address: address,
-            isDapper: 'true'
+    axios.post('/login', {
+        proofType: 'account-proof',
+        address: proof.address,
+        nonce: proof.nonce,
+        signatures: proof.signatures.map(function(compSig){
+            return {keyId: compSig.keyId, signature: compSig.signature};
         })
-            .then(function (response) {
-                //console.log(response);
-                if(response.data && response.data.result && response.data.result === true){
-                    window.dispatch('logged-in');
-                    window.location.reload(true);
-                } else {
-                    window.dispatch('login-failed');
-                }
-            })
-            .catch(function (error) {
-                console.log(error);
-            });
-    }
+    })
+        .then(window.handleLoginResponse)
+        .catch(function (error) {
+            console.log(error);
+            window.dispatch('login-failed');
+        });
 }
 
 window.getClaimables = async function(address){
@@ -803,8 +819,7 @@ window.reservePack = function(packType, address){
     console.log('reserve pack');
     console.log(packType);
     axios.post('/pack/reserve', {
-        type: packType,
-        address: address
+        type: packType
     }).then(function (response) {
             //console.log(response);
             if(response.data && response.data.packId && response.data.signature){
@@ -822,6 +837,11 @@ window.reservePack = function(packType, address){
         })
         .catch(function (error) {
             console.log(error);
+            window.dispatch('reserve-failed');
+            if(error.response && error.response.status == 401){
+                // Reservations require a verified wallet login
+                window.walletLogin();
+            }
         });
 }
 
@@ -846,6 +866,7 @@ window.preReservePack = function(packType){
     })
         .catch(function (error) {
             console.log(error);
+            window.dispatch('pre-reserve-failed');
         });
 }
 
@@ -2494,7 +2515,7 @@ window.signDapperMessage = async function(message){
                     console.log(transaction);
                     window.dispatch('dapper-message-signed');
                     window.dispatch('loading-completed');
-                    window.sendDapperLogin(message, window.user.addr)
+                    window.walletLogin();
                 } else {
                     window.dispatch('transaction-error', {message: window.transError(transaction)});
                 }

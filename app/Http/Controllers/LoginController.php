@@ -25,98 +25,47 @@ class LoginController extends AuthController
     public function home() {
         return Auth::check() ? response()->redirectToRoute('home') : response()->redirectToRoute('pack'); //view('login')->withMessage($this->getMessage());
     }
+
+    /**
+     * Data needed by the front end to log in: the FCL account-proof nonce
+     * (fcl.accountProof.resolver) and the message for signUserMessage.
+     */
+    public function nonce() {
+        return response()
+            ->json([
+                'nonce' => $this->getAccountProofNonce(),
+                'message' => $this->getMessage(),
+            ])
+            ->header('Cache-Control', 'no-store, private');
+    }
+
+    /**
+     * Every login must be cryptographically verified against the account keys on chain:
+     *  - proofType=account-proof: FCL account-proof (Dapper Wallet and other wallets that support it)
+     *  - otherwise: FCL user signature of the session message (signUserMessage)
+     */
     public function submit(Request $request) {
 
-        $address = request()->get('address');
-        $message = request()->get('message');
-        $signature = request()->get('signature');
-        $keyId = request()->get('keyId');
-        $isDapper = request()->get('isDapper');
-
-        if($isDapper && $isDapper === 'true'){
-
-            $user = User::firstOrCreate([
-                'email' => $address
-            ],
-                [
-                    'password' => Hash::make(Str::random(16)),
-                    'name' => $address
-                ]);
-            Auth::login($user);
-
-            return ['result' => true];
+        $address = strtolower((string) $request->input('address'));
+        if(preg_match('/^[0-9a-f]{16}$/', $address)){
+            $address = '0x'.$address;
         }
-
         $result = false;
 
-        if($isDapper && $isDapper === 'true' && false){
-            $whitelistCheck = false;
-
-            if(config('flovatar.isWhitelist')){
-                $whitelist = Whitelist::whereFlowAddress($address)->first();
-                if($whitelist){
-                    $whitelistCheck = true;
-                }
-            } else {
-                $whitelistCheck = true;
-            }
-
-            if($whitelistCheck){
-                $user = User::firstOrCreate([
-                    'email' => $address
-                ],
-                    [
-                        'password' => Hash::make(Str::random(16)),
-                        'name' => $address
-                    ]);
-                Auth::login($user);
-
-                $result = true;
-            }
+        if($request->input('proofType') === 'account-proof'){
+            $verified = $this->verifyAccountProof($address, strtolower((string) $request->input('nonce')), $request->input('signatures'));
         } else {
-            if($message == bin2hex($this->getMessage())){
-                try {
-                    $results = Flow::script('./scripts/verify_signature.cdc')->argAddress($address)->argString($message)->argString($signature)->argInt($keyId)->run();
-                    info(print_r($results,true));
-
-                    $resJson = json_decode($results);
-                    info(print_r($resJson,true));
-
-                    if($resJson && isset($resJson->type) && $resJson->type == 'Bool' && isset($resJson->value) && $resJson->value === true){
-
-                        $whitelistCheck = false;
-
-                        if(config('flovatar.isWhitelist')){
-                            $whitelist = Whitelist::whereFlowAddress($address)->first();
-                            if($whitelist){
-                                $whitelistCheck = true;
-                            }
-                        } else {
-                            $whitelistCheck = true;
-                        }
-
-                        if($whitelistCheck){
-                            $user = User::firstOrCreate([
-                                'email' => $address
-                            ],
-                                [
-                                    'password' => Hash::make(Str::random(16)),
-                                    'name' => $address
-                                ]);
-                            Auth::login($user);
-
-                            $result = true;
-                        }
-                    }
-                } catch (ProcessFailedException $e) {
-                    info('Failed Verifying signature!!!');
-                    info(print_r($e,true));
-                }
-
+            $signatures = $request->input('signatures');
+            if(!$signatures && $request->has('signature')){
+                $signatures = [['keyId' => $request->input('keyId'), 'signature' => $request->input('signature')]];
             }
+            $verified = $this->verifyUserSignature($address, (string) $request->input('message'), $signatures);
         }
 
-
+        if($verified && $this->passesWhitelist($address)){
+            $this->loginFlowAddress($request, $address);
+            $result = true;
+        }
 
         return ['result' => $result];
     }

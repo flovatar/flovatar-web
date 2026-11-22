@@ -45,6 +45,35 @@ const fclConfigInfo = {
 
 const network = process.env.MIX_FLOW_NETWORK;
 
+/**
+ * FCL account-proof: the server issues a nonce (bound to the session) that the wallet signs
+ * during authentication; /login then verifies the proof on chain.
+ * The nonce is prefetched on page load because Dapper Wallet requires the resolver to
+ * resolve immediately (otherwise Safari/Firefox block the wallet popup).
+ */
+window.accountProofNonce = null;
+window.loginMessage = null;
+window.loadLoginNonce = function(){
+    return window.axios.get('/login/nonce').then(function(response){
+        if(response.data && response.data.nonce){
+            window.accountProofNonce = response.data.nonce;
+            window.loginMessage = response.data.message;
+        }
+        return response.data;
+    }).catch(function(error){
+        console.log(error);
+        return null;
+    });
+};
+window.loadLoginNonce();
+
+const accountProofResolver = async () => {
+    if(!window.accountProofNonce){
+        await window.loadLoginNonce();
+    }
+    return window.accountProofNonce ? {nonce: window.accountProofNonce} : null;
+};
+
 config()
     .put("app.detail.icon", "https://flovatar.com/images/logo-rounded.png") // Configure FCL's Access Node
     .put("app.detail.title", "Flovatar") // Configure FCL's Access Node
@@ -54,6 +83,7 @@ config()
     .put("discovery.authn.endpoint", fclConfigInfo[network].discoveryAuthnEndpoint) // Configure FCL's Wallet Discovery mechanism
     .put("discovery.authn.include", fclConfigInfo[network].discoveryAuthInclude) // Configure FCL's Wallet Discovery mechanism
     .put("fcl.limit", 9999) // Configure gas limit
+    .put("fcl.accountProof.resolver", accountProofResolver) // Server-issued nonce for wallet login (account-proof)
     .put("0xProfile", process.env.MIX_CONTRACT_PROFILE) // Will let us use `0xProfile` in our Cadence
     .put("0xFungible", process.env.MIX_CONTRACT_FUNGIBLE) // Will let us use `0xFungible` in our Cadence
     .put("0xNonFungible", process.env.MIX_CONTRACT_NON_FUNGIBLE) // Will let us use `0xFungible` in our Cadence

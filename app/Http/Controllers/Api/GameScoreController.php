@@ -19,6 +19,19 @@ class GameScoreController extends Controller
     }
 
     public function store(Request $request){
+        $request->validate([
+            'name' => 'nullable|string|max:50',
+            'flow_address' => 'required|string|regex:/^0x[0-9a-f]{16}$/',
+            'score' => 'required|integer|min:0|max:1000000000',
+            'game' => 'required|integer|min:0',
+        ]);
+
+        // Scores can only be submitted for the authenticated user's own wallet.
+        $user = $request->user();
+        if(!$user || strtolower($user->email) !== $request->get('flow_address')){
+            return abort(403);
+        }
+
         if($request->has('score') && $request->has('flow_address') && $request->has('game')){
             $gamescore = GameScore::create([
                 'name' => $request->get('name'),

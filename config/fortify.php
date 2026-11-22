@@ -132,11 +132,13 @@ return [
     */
 
     'features' => [
-        Features::registration(),
-        Features::resetPasswords(),
+        // Accounts are created only through verified wallet login (LoginController).
+        // Email registration, password reset and profile/password updates are disabled.
+        // Features::registration(),
+        // Features::resetPasswords(),
         // Features::emailVerification(),
-        Features::updateProfileInformation(),
-        Features::updatePasswords(),
+        // Features::updateProfileInformation(),
+        // Features::updatePasswords(),
         Features::twoFactorAuthentication([
             'confirmPassword' => true,
         ]),

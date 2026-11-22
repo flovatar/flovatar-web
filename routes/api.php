@@ -58,4 +58,4 @@ Route::get('leaderboard/address/{gameId}', [GameScoreController::class, 'byAddre
     ->where('address','0x([a-f0-9]{16})')
     ->name('api.leaderboard.address');
 
-Route::post('leaderboard', [GameScoreController::class, 'store'])->name('api.leaderboard.store');
+Route::post('leaderboard', [GameScoreController::class, 'store'])->name('api.leaderboard.store')->middleware(['auth:sanctum', 'throttle:10,1']);
