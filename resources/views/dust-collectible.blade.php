@@ -15,7 +15,7 @@
         @endif
     </script>
 
-    @if(config('services.google_maps.api_key'))
+    @if(config('services.google_maps.enabled') && config('services.google_maps.api_key'))
     <script src="https://maps.googleapis.com/maps/api/js?key={{ urlencode(config('services.google_maps.api_key')) }}"></script>
     @endif
 
@@ -213,6 +213,7 @@
                             </form>
                         </div>
                     </div>
+                    @if(config('services.google_maps.enabled'))
                     <div class="content-box" x-show="isOwned || position()">
                         <div class="title-row">
                             <h2>GEO Location</h2>
@@ -259,6 +260,18 @@
                             </form>
                         </div>
                     </div>
+                    @else
+                    {{-- Google Maps disabled (GOOGLE_MAPS_ENABLED=false): no location editor, only the stored on-chain position. --}}
+                    <div class="content-box" x-show="position()">
+                        <div class="title-row">
+                            <h2>GEO Location</h2>
+                        </div>
+                        <div class="box">
+                            <p class="text-entry" x-text="position()"></p>
+                            <p style="font-size:13px;opacity:.75;margin-top:6px;">Setting a location is not available right now.</p>
+                        </div>
+                    </div>
+                    @endif
                 </div>
                 <div class="col-r">
                     <div class="content-box">

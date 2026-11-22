@@ -53,6 +53,8 @@ return [
         'url' => env('SENDER_MAIL_URL', 'https://api.sender.net/v2/subscribers')
     ],
     'google_maps' => [
+        // Off until the owner provides a key: no Maps script is loaded and the GEO Location editor is hidden.
+        'enabled' => (bool) env('GOOGLE_MAPS_ENABLED', false),
         'api_key' => env('GOOGLE_MAPS_API_KEY'),
     ],
     'graffle' => [
