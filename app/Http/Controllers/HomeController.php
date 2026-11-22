@@ -33,7 +33,9 @@ class HomeController extends Controller
                 5518
             ];
             $flovatars = Flovatar::whereIn('flow_id', $fotw)->get()->makeHidden(['svg', 'full_svg', 'flow_metadata']);
-            $randFlovatars = Flovatar::inRandomOrder()->take(10)->get()->makeHidden(['svg', 'full_svg', 'flow_metadata']);
+            // Pick random ids first: ORDER BY RAND() over full rows (large svg/json columns) takes ~25 s.
+            $randomIds = Flovatar::inRandomOrder()->take(10)->pluck('id');
+            $randFlovatars = Flovatar::whereIn('id', $randomIds)->get()->makeHidden(['svg', 'full_svg', 'flow_metadata']);
             return $flovatars->concat($randFlovatars);
         });
 

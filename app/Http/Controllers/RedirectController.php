@@ -24,7 +24,7 @@ class RedirectController extends Controller
     }
     public function chat()
     {
-        $flovatar = Flovatar::inRandomOrder()->firstOrFail();
+        $flovatar = Flovatar::whereKey(Flovatar::inRandomOrder()->value('id'))->firstOrFail();
         return $flovatar->name ? redirect('/chat/'.$flovatar->name) : redirect('/chat/'.$flovatar->flow_id);
     }
     public function flobot($flobotId)
