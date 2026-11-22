@@ -89,6 +89,7 @@ Alpine.data('chatData', (flovatar, templates, assistant, voices) => ({
             self.scrollToBottom();
             axios.post('/chat/send', {
                 address: address,
+                guest_id: this.randomUserId,
                 id: this.flovatar.flow_id,
                 message: this.message
             })
@@ -119,7 +120,8 @@ Alpine.data('chatData', (flovatar, templates, assistant, voices) => ({
             setTimeout(() => {
                 axios.post('/chat/checkaddress', {
                     id: self.flovatar.flow_id,
-                    address: address
+                    address: address,
+                    guest_id: self.randomUserId
                 })
                     .then(function (response) {
                         //console.log('process thread init check!!!');
@@ -144,7 +146,8 @@ Alpine.data('chatData', (flovatar, templates, assistant, voices) => ({
             setTimeout(() => {
                 axios.post('/chat/check', {
                     threadId: self.run.thread_id,
-                    runId: self.run.id
+                    runId: self.run.id,
+                    guest_id: self.randomUserId
                 })
                     .then(function (response) {
                         //console.log('process thread check!!!');
@@ -275,6 +278,10 @@ Alpine.data('chatData', (flovatar, templates, assistant, voices) => ({
             })
             .catch(function (error) {
                 console.log(error);
+                if(error.response && error.response.status == 401 && window.walletLogin){
+                    // Editing requires a verified wallet login
+                    window.walletLogin();
+                }
             });
     },
     playVoice(){

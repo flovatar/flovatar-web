@@ -12,7 +12,7 @@ class SubscriberController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'email' => 'required|email|max:255',
+            'email' => 'required|email:rfc,filter|max:255',
         ]);
 
 
