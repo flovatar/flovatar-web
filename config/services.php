@@ -42,6 +42,10 @@ return [
     ],
     'google_maps' => [
         'api_key' => env('GOOGLE_MAPS_API_KEY'),
+    ],
+    'graffle' => [
+        // Shared secret required on POST /graffle (header X-Graffle-Secret, Bearer token or ?secret=)
+        'secret' => env('GRAFFLE_WEBHOOK_SECRET'),
     ]
 
 ];

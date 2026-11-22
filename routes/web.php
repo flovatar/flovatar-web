@@ -75,10 +75,9 @@ Route::get('fub', FubController::class)->name('fub');
 Route::get('fub-test', FubTestController::class)->name('fub.test');
 Route::post('builder/search', BuilderSalesController::class)->name('builder.search');
 Route::post('flobot/builder/search', FlobotBuilderSalesController::class)->name('flobot.builder.search');
-Route::post('subscribe', [SubscriberController::class,'store'])->name('subscribe');
+Route::post('subscribe', [SubscriberController::class,'store'])->name('subscribe')->middleware('throttle:5,1');
 Route::post('moonpay/sign', [MoonpayController::class,'sign'])->name('moonpay.sign');
 Route::post('graffle', GraffleController::class)->name('grafflepost');
-Route::get('graffle', GraffleController::class)->name('graffle');
 Route::get('search', SearchController::class)->name('search');
 Route::post('search', SearchController::class)->name('searchpost');
 Route::get('marketplace', MarketplaceController::class)->name('marketplace');
@@ -175,7 +174,7 @@ Route::get('pack/login', [PackController::class,'login'])->name('pack.login');
 
 if(config('flovatar.isTest')){
     Route::get('pack', [PackController::class,'buyAll'])->name('pack.buy');
-    Route::post('pack/reserve', [PackController::class,'reserve'])->name('pack.reserve');
+    Route::post('pack/reserve', [PackController::class,'reserve'])->name('pack.reserve')->middleware(['auth:sanctum', 'throttle:20,1']);
     Route::post('pack/purchased', [PackController::class,'purchased'])->name('pack.purchased');
     Route::get('pack/dust/buy', [PackController::class,'dustBuy'])->name('pack.dustbuy');
 
@@ -183,7 +182,7 @@ if(config('flovatar.isTest')){
     Route::get('pack', [PackController::class,'home'])->name('pack');
     Route::get('pack/buy', [PackController::class,'buy'])->name('pack.buy')->middleware(['auth:sanctum', 'verified', 'queueit']);
     Route::get('pack/dust/buy', [PackController::class,'dustBuy'])->name('pack.dustbuy');
-    Route::post('pack/reserve', [PackController::class,'reserve'])->name('pack.reserve');
+    Route::post('pack/reserve', [PackController::class,'reserve'])->name('pack.reserve')->middleware(['auth:sanctum', 'throttle:20,1']);
     Route::post('pack/purchased', [PackController::class,'purchased'])->name('pack.purchased')->middleware(['auth:sanctum', 'verified', 'queueit']);
     Route::post('sportpacks', [PackController::class,'sport'])->name('pack.sport')->middleware(['auth:sanctum', 'verified']);
 
@@ -259,7 +258,8 @@ Route::get('api/dust/total-available', DustTokenController::class)
 
 
 Route::get('/login', [LoginController::class,'login'])->name('login');
-Route::post('/login', [LoginController::class,'submit'])->name('login.submit');
+Route::get('/login/nonce', [LoginController::class,'nonce'])->name('login.nonce')->middleware('throttle:60,1');
+Route::post('/login', [LoginController::class,'submit'])->name('login.submit')->middleware('throttle:10,1');
 Route::get('/logout', [LoginController::class,'logout'])->name('logout-get');
 
 
@@ -287,9 +287,9 @@ Route::view('story', 'story')->name('story');
 
 
 Route::get('chat', [GptController::class,'index'])->name('chat.index');
-Route::get('chat/{flovatarId}', [GptController::class,'show'])->name('chat.show');
-Route::post('chat/send', [GptController::class,'sendMessage'])->name('chat.send');
-Route::post('chat/check', [GptController::class,'checkThread'])->name('chat.check');
-Route::post('chat/checkaddress', [GptController::class,'checkThreadByAddress'])->name('chat.checkByAddress');
-Route::post('chat/tts', [GptController::class,'tts'])->name('chat.tts');
-Route::post('chat/update', [GptController::class,'update'])->name('chat.update');
+Route::get('chat/{flovatarId}', [GptController::class,'show'])->name('chat.show')->middleware('throttle:30,1');
+Route::post('chat/send', [GptController::class,'sendMessage'])->name('chat.send')->middleware('throttle:10,1');
+Route::post('chat/check', [GptController::class,'checkThread'])->name('chat.check')->middleware('throttle:60,1');
+Route::post('chat/checkaddress', [GptController::class,'checkThreadByAddress'])->name('chat.checkByAddress')->middleware('throttle:20,1');
+Route::post('chat/tts', [GptController::class,'tts'])->name('chat.tts')->middleware('throttle:6,1');
+Route::post('chat/update', [GptController::class,'update'])->name('chat.update')->middleware(['auth:sanctum', 'throttle:5,1']);
