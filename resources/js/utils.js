@@ -29,7 +29,12 @@ window.logout = function(){
     window.profile = null;
     window.dispatch('logged-out');
 
-    //window.location = '/logout';
+    // Also end the server (Laravel) session, without leaving the page.
+    fetch('/logout', {credentials: 'same-origin', redirect: 'manual', cache: 'no-store'}).catch(function(){});
+    window.serverAuth = {authenticated: false, address: null};
+    window.dispatchEvent(new CustomEvent('server-auth', {detail: window.serverAuth}));
+    window.accountProofNonce = null;
+    if(window.loadLoginNonce){ setTimeout(window.loadLoginNonce, 500); }
 }
 
 window.getDiffString = function(start, end){
