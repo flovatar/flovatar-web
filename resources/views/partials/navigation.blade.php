@@ -78,7 +78,7 @@
                         @if(config('flovatar.isTest'))
                             <li><a href="https://testnet-faucet.onflow.org/fund-account" target="_blank" data-modal >Top up wallet</a></li>
                         @endif
-                        <li><a href="#" @click.prevent.default="logoutAccount()" class="link-logout">Logout <i class="icon-arrow-circle"></i></a></li>
+                        <li><a href="#" @click.prevent="logoutAccount()" class="link-logout">Logout <i class="icon-arrow-circle"></i></a></li>
                     </ul>
                 </div>
 
