@@ -55,15 +55,9 @@ Alpine.data('appData', () => ({
     },
     loadLoggedUser(user){
         this.user = user;
-        if(user && user.addr && user.services && user.services.length > 0){
-            let provider = user.services[0].uid;
-            if(provider.search('dapper') >= 0){
-                this.currentWallet = 'dapper';
-                window.currentWallet = 'dapper';
-            } else {
-                this.currentWallet = 'flow';
-                window.currentWallet = 'flow';
-            }
+        if(user && user.addr){
+            this.currentWallet = window.detectWallet(user);
+            window.currentWallet = this.currentWallet;
         }
 
     },

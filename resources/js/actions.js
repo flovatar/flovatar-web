@@ -143,6 +143,22 @@ window.profile = null;
 window.dispatch = null;
 window.currentWallet = null;
 
+/**
+ * Which wallet is connected: 'dapper' or 'flow'. Looks at every FCL service (FCL >= 1.10 no longer guarantees
+ * that services[0] is the authn service), the authn endpoint and the provider address.
+ */
+window.detectWallet = function(user){
+    const services = (user && user.services) ? user.services : [];
+    const isDapper = services.some(function(s){
+        const uid = (s.uid || '').toLowerCase();
+        const endpoint = (s.endpoint || '').toLowerCase();
+        const provider = (s.provider && s.provider.address) ? s.provider.address.toLowerCase() : '';
+        return uid.indexOf('dapper') >= 0 || endpoint.indexOf('meetdapper.com') >= 0
+            || provider === '0xead892083b3e2c6c' || provider === '0x82ec283f88a62e65';
+    });
+    return isDapper ? 'dapper' : 'flow';
+}
+
 window.blacklistedAddresses = [
     '0x2b3733faa486deb3',
     '0x34f8fd310486de0f',
@@ -177,6 +193,9 @@ async function updateUser(user){
     window.user = user;
 
     if(user.addr) {
+        // Decide the wallet here, before choosing which init check / transactions to use
+        window.currentWallet = window.detectWallet(user);
+        console.log('wallet: ' + window.currentWallet);
 
         let isBlacklisted = _.find(window.blacklistedAddresses, (item) => {
             return item == user.addr;
