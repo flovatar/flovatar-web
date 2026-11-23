@@ -9,7 +9,7 @@
                 <ul class="tabset">
                     <li><a x-bind:class="getActiveClass('about')" href="#about">ABOUT FLOVATAR</a></li>
                     <li><a x-bind:class="getActiveClass('builder')" href="#builder">BUILDING A FLOVATAR</a></li>
-                    <li><a x-bind:class="getActiveClass('blocto')" href="#blocto">SETUP A BLOCTO WALLET</a></li>
+                    <li><a x-bind:class="getActiveClass('blocto')" href="#blocto">SET UP A FLOW WALLET</a></li>
                     <li><a x-bind:class="getActiveClass('flow')" href="#flow">GET FLOW CURRENCY</a></li>
                 </ul>
                 <div class="tab-content">
@@ -107,96 +107,41 @@
                             </div>
                         </div>
                     </div>
-                    <div class="tab" x-bind:class="getTabClass('blocto')" id="setup-blocto-wallet">
+                    <div class="tab" x-bind:class="getTabClass('blocto')" id="setup-flow-wallet">
                         <div class="heading">
-                            <h1>GETTING STARTED WITH THE <span class="highlight-txt">BLOCTO WALLET</span></h1>
-                            <p>If you’re new to trading on the Flow blockchain then here's your step-by-step guide to setting up a Blocto Wallet and adding Flow currency to it.</p>
+                            <h1>GETTING STARTED WITH THE <span class="highlight-txt">FLOW WALLET</span></h1>
+                            <p>Flovatar works with two wallets: <b>Flow Wallet</b> (the official Flow wallet, non-custodial) and <b>Dapper Wallet</b>.</p>
                         </div>
                         <section class="timeline-section">
-                            <strong class="timeline-title">Registering with Blocto Wallet</strong>
+                            <strong class="timeline-title">Setting up Flow Wallet</strong>
                             <div class="timeline">
                                 <div class="timeline-heading">
                                     <span class="no">1</span>
-                                    <h2>Connect a <span class="highlight-txt">Blocto <br> Wallet</span> to flovatar</h2>
-                                    <p>The Blocto wallet is the wallet of choice in the Flow blockchain ecosystem – it’s easy to set up and create an account - all you need is an email address to get started.
-                                    </p>
+                                    <h2>Install <span class="highlight-txt">Flow Wallet</span></h2>
+                                    <p>Get the browser extension (Chrome, Brave, Edge) or the iOS / Android app from <a href="https://wallet.flow.com" target="_blank" rel="noopener">wallet.flow.com</a>, create your account and back up your recovery phrase somewhere safe. Nobody from Flovatar will ever ask you for it.</p>
                                 </div>
-                                <div class="media-a alt sm">
-                                    <div class="img">
-                                        <img src="/images/a-img04.png" alt="">
-                                    </div>
-                                    <div class="desc">
-                                        <div class="inner">
-                                            <h3>Start connecting a wallet</h3>
-                                            <p>Click the <b>Connect Wallet</b> button to open the <b>Blocto</b> sign in popup.</p>
-                                        </div>
-                                    </div>
+                                <div class="timeline-heading">
+                                    <span class="no">2</span>
+                                    <h2>Connect it to <span class="highlight-txt">Flovatar</span></h2>
+                                    <p>Click <b>Connect Wallet</b>, choose <b>Flow Wallet</b> and approve the connection. The wallet also asks you to sign a login proof: it only proves you own the address and never moves funds.</p>
                                 </div>
-                                <div class="media-a alt sm">
-                                    <div class="img">
-                                        <img src="/images/a-img05.png" alt="">
-                                    </div>
-                                    <div class="desc">
-                                        <div class="inner">
-                                            <h3>Enter your email address</h3>
-                                            <p>When prompted enter your email address and click the <b>Sign in / Register</b> button.</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="media-a alt sm">
-                                    <div class="img">
-                                        <img src="/images/a-img06.png" alt="">
-                                    </div>
-                                    <div class="desc">
-                                        <div class="inner">
-                                            <h3>Enter verification code</h3>
-                                            <p>Check your inbox for an email from Blocto then enter the six digit number from the email into the confirmation boxes.</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="media-a alt sm">
-                                    <div class="img">
-                                        <img src="/images/a-img07.png" alt="">
-                                    </div>
-                                    <div class="desc">
-                                        <div class="inner">
-                                            <h3>Confirm your account</h3>
-                                            <p>You will then need to login and confirm your account - just click the <b>Confirm</b> button when prompted.</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="media-a alt sm">
-                                    <div class="img xl">
-                                        <img src="/images/a-img08.png" alt="">
-                                    </div>
-                                    <div class="desc">
-                                        <div class="inner">
-                                            <h3>Initialize your account</h3>
-                                            <p>If this is your first time connecting your wallet to Flovatar you’ll be asked to initialize your account - just click the <b>Initialize Account</b> button when prompted.</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="media-a alt sm">
-                                    <div class="img">
-                                        <img src="/images/a-img09.png" alt="">
-                                    </div>
-                                    <div class="desc">
-                                        <div class="inner">
-                                            <h3>Approve transaction</h3>
-                                            <p>Blocto will then need you to confirm the transaction to execute the Flovatar initialization.</p>
-                                            <p>Just click the <b>Approve</b> button and wait a few seconds for the loader to disappear and then you’re good to go!</p>
-                                        </div>
-                                    </div>
+                                <div class="timeline-heading">
+                                    <span class="no">3</span>
+                                    <h2>Add some <span class="highlight-txt">FLOW</span></h2>
+                                    <p>You need a little FLOW for storage and purchases. See <a href="#flow">Get FLOW currency</a>.</p>
                                 </div>
                             </div>
                         </section>
-                        <div class="blocto-cta">
-                            <h2>You’re now ready to buy and deposit some FLOW token to your Blocto Wallet</h2>
-                            <div class="btn-wrap">
-                                <a href="#flow" class="btn-plain">Add FLOW to your wallet</a>
+                        <section class="timeline-section">
+                            <strong class="timeline-title">Using Dapper Wallet</strong>
+                            <div class="timeline">
+                                <div class="timeline-heading">
+                                    <p>Already on Dapper (NBA Top Shot, NFL All Day…)? Choose <b>Dapper</b> in the Connect Wallet window and sign in with your Dapper account. Purchases with Dapper are paid in USD.</p>
+                                </div>
                             </div>
-                        </div>
+                        </section>
                     </div>
+
                     <div class="tab" x-bind:class="getTabClass('flow')" id="get-flow-currency">
                         <div class="heading">
                             <h1>First let's find out what your <span class="highlight-txt">level of experience</span> is with using crypto</h1>

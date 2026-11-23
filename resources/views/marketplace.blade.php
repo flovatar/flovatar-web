@@ -22,17 +22,14 @@
                         @if(config('flovatar.dapperEnabled') === true)
                         <div class="icons">
                             <span class="ico-wrap" x-show="!showDapper">
-                                <img src="/images/ico-blocto.png" width="36" alt="">
-                            </span>
-                            <span class="ico-wrap" x-show="!showDapper">
-                                <img src="/images/ico-lilico.png" width="36" alt="">
+                                <img src="/images/icon-flow.svg" width="36" alt="">
                             </span>
                             <span class="ico-wrap" x-show="showDapper">
                                 <img src="/images/ico-dapper.png" width="36" alt="">
                             </span>
                         </div>
                         <select class="select-outline" x-model="selectedMarketplace" value="showDapper ? 'dapper' : 'blocto'">
-                            <option value="blocto">Blocto / Lilico</option>
+                            <option value="blocto">Flow Wallet</option>
                             <option value="dapper">Dapper</option>
                         </select>
                         @endif

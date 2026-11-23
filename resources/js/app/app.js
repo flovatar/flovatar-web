@@ -30,7 +30,7 @@ Alpine.data('appData', () => ({
     userCheckLoading: true,
     showWalletModal: false,
     showBlacklistModal: false,
-    currentWallet: Alpine.$persist('blocto'),
+    currentWallet: Alpine.$persist('flow'),
     isVipUser: false,
     remainingMinutesToSale: 0,
     fubPreviewMode: false,
@@ -61,8 +61,8 @@ Alpine.data('appData', () => ({
                 this.currentWallet = 'dapper';
                 window.currentWallet = 'dapper';
             } else {
-                this.currentWallet = 'blocto';
-                window.currentWallet = 'blocto';
+                this.currentWallet = 'flow';
+                window.currentWallet = 'flow';
             }
         }
 

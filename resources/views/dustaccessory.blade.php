@@ -89,13 +89,10 @@
                                 <div class="mp-label"  x-show="!isDapperSale()">
                                     <div class="icons">
                                         <span class="ico-wrap">
-                                            <img src="/images/ico-blocto.png" width="40" alt="">
-                                        </span>
-                                        <span class="ico-wrap">
-                                            <img src="/images/ico-lilico.png" width="40" alt="">
+                                            <img src="/images/icon-flow.svg" width="40" alt="">
                                         </span>
                                     </div>
-                                    <span>Blocto / Lilico</span>
+                                    <span>Flow Wallet</span>
                                 </div>
                             </dd>
                         </dl>

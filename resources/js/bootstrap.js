@@ -71,7 +71,7 @@ const accountProofResolver = async () => {
     if(!window.accountProofNonce){
         await window.loadLoginNonce();
     }
-    return window.accountProofNonce ? {nonce: window.accountProofNonce} : null;
+    return window.accountProofNonce ? {appIdentifier: window.location.origin, nonce: window.accountProofNonce} : null;
 };
 
 config()

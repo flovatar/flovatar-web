@@ -25,8 +25,8 @@
                     <li x-bind:class="loggedIn() ? 'completed' : 'active'">
                         <div class="txt-wrap">
                             <span class="checkbox"><i class="icon-tick02"></i></span>
-                            <h2>Connect your Dapper or Blocto Wallet</h2>
-                            <p>Please choose the Dapper, Blocto or Lilico option to connect or create your Flow wallet with your email address.</p>
+                            <h2>Connect your Flow Wallet or Dapper Wallet</h2>
+                            <p>Choose Flow Wallet (browser extension or mobile app) or Dapper Wallet to connect.</p>
                             <p>If it's the first time you visit the site, you will be asked to initialize your account before you can use the Flovatar smart contract.</p>
                         </div>
                         <a x-show="!loggedIn()" @click.prevent.stop="if(!loggedIn()){fcl.authenticate();}" href="#" class="btn-o">Connect Wallet</a>

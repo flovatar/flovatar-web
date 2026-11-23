@@ -175,12 +175,9 @@
                                         </div>
                                         <div class="logo-wrap" x-show="!isDapperSale()">
                                             <div class="logo">
-                                                <img src="/images/ico-blocto.png" width="40" alt="">
+                                                <img src="/images/icon-flow.svg" width="40" alt="">
                                             </div>
-                                            <div class="logo">
-                                                <img src="/images/ico-lilico.png" width="40" alt="">
-                                            </div>
-                                            <span>Blocto / Lilico</span>
+                                            <span>Flow Wallet</span>
                                         </div>
                                     </div>
                                 </li>
