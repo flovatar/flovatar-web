@@ -14,7 +14,8 @@ use PDO;
  */
 class FlowImportBackfill extends Command
 {
-    protected $signature = 'flow:import-backfill {path : SQLite file} {--end-height= : last fully scanned height; sets the REST/stream cursors if they are behind}';
+    protected $signature = 'flow:import-backfill {path : SQLite file} {--end-height= : last fully scanned height; sets the REST/stream cursors if they are behind}
+        {--force : also import rows at/below the events archive watermark (would re-insert pruned events)}';
 
     protected $description = 'Import backfilled Flow events from the indexer prototype SQLite file';
 
@@ -24,11 +25,13 @@ class FlowImportBackfill extends Command
         $stmt = $pdo->query('select block_id, transaction_id, type, "index", transaction_index, flow_metadata, event_date from events order by block_id, "index"');
 
         $batch = [];
-        $inserted = $dropped = $read = 0;
-        $flush = function () use (&$batch, &$inserted, &$dropped, $ingestor) {
-            [$i, $d] = $ingestor->store($batch, 'backfill');
+        $inserted = $dropped = $read = $below = 0;
+        $force = (bool) $this->option('force');
+        $flush = function () use (&$batch, &$inserted, &$dropped, &$below, $ingestor, $force) {
+            [$i, $d, $w] = $ingestor->store($batch, 'backfill', $force);
             $inserted += $i;
             $dropped += $d;
+            $below += $w;
             $batch = [];
         };
 
@@ -53,6 +56,9 @@ class FlowImportBackfill extends Command
         }
 
         $this->info("read $read, inserted $inserted, skipped (other projects / not our NFTs) $dropped");
+        if ($below > 0) {
+            $this->warn("skipped $below rows at/below the events archive watermark ".\App\Support\EventsArchiveState::watermark().' (archived + pruned; use --force to import them anyway)');
+        }
 
         if ($end = $this->option('end-height')) {
             foreach ([IndexerCursor::REST, IndexerCursor::STREAM] as $name) {

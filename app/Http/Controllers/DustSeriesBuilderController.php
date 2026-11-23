@@ -14,8 +14,10 @@ class DustSeriesBuilderController extends Controller
     public function __invoke()
     {
 
-        $templates = $this->getDustTemplates(2);
+        // Template SVGs come from a separate cacheable script (TemplateDataController).
+        // Same rows/order/svg strings as before; only flow_metadata (unused by dust-builder.js) is left out.
+        $templatesScript = $this->templatesScriptUrl('dust2');
         $series = $this->getDustSeries(2);
-        return view('builder-dust')->with(['templates' => $templates, 'series' => $series]);
+        return view('builder-dust')->with(['templatesScript' => $templatesScript, 'series' => $series]);
     }
 }

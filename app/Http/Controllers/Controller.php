@@ -40,7 +40,19 @@ class Controller extends BaseController
     // flovatar_templates columns without the svg / flow_metadata blobs (~32 MB for series 1)
     public const TEMPLATE_LEAN_COLUMNS = ['id', 'name', 'category', 'color', 'series', 'rarity', 'description', 'max_mintable', 'burned', 'flow_id', 'flow_address', 'created_at', 'updated_at'];
 
-    protected static function templateQuery(string $set){
+    /** Template sets served as /templates/data/{set}.js (route constraint in routes/web.php). */
+    public const TEMPLATE_DATA_SETS = ['series1', 'flobot', 'dust', 'dust2'];
+
+    /** dust => DUST series 1, dust2 => DUST series 2; null for Flovatar/Flobot sets. */
+    public static function dustSeriesOfSet(string $set){
+        return $set === 'dust' ? 1 : ($set === 'dust2' ? 2 : null);
+    }
+
+    public static function templateQuery(string $set){
+        if(($dustSeries = static::dustSeriesOfSet($set)) !== null){
+            // same rows and order as getDustTemplates() (the old inline window.templates of /builder/dust)
+            return DustTemplate::query()->whereNotNull('flow_id')->whereDustSeriesId($dustSeries)->orderBy('id', 'asc');
+        }
         $query = FlovatarTemplate::query()->orderBy('id', 'asc');
         if($set === 'series1'){
             $query->whereSeries(1);
@@ -64,9 +76,11 @@ class Controller extends BaseController
     /** Version of a template set (changes when templates are added/updated/burned). */
     public static function templatesVersion(string $set){
         return Cache::flexible('tpl-version-v1-'.$set, [60, 600], function() use ($set) {
-            $row = static::templateQuery($set)->reorder()
-                ->selectRaw('count(*) c, max(id) i, max(updated_at) u, coalesce(sum(burned),0) b, coalesce(sum(max_mintable),0) m')
-                ->toBase()->first();
+            $columns = static::dustSeriesOfSet($set) !== null
+                // dust templates: minted/prices change while a series is live; crc32 catches svg edits
+                ? 'count(*) c, max(id) i, max(updated_at) u, coalesce(sum(minted),0) mi, coalesce(sum(max_mintable),0) m, coalesce(sum(current_price),0) p, coalesce(sum(base_price),0) bp, coalesce(sum(crc32(svg)),0) s'
+                : 'count(*) c, max(id) i, max(updated_at) u, coalesce(sum(burned),0) b, coalesce(sum(max_mintable),0) m';
+            $row = static::templateQuery($set)->reorder()->selectRaw($columns)->toBase()->first();
             return substr(md5(json_encode($row)), 0, 12);
         });
     }
@@ -100,7 +114,7 @@ class Controller extends BaseController
         });
     }
 
-    /** Dust templates without svg/flow_metadata for list pages (collection, showroom). */
+    /** Dust templates without svg/flow_metadata for list pages (collection, showroom, collectible page). */
     protected function getDustTemplatesLean($series = 1){
         return Cache::flexible('db-dust-templates-lean-v1-'.$series, [10, 120], function() use ($series) {
             return DustTemplate::whereNotNull('flow_id')->whereDustSeriesId($series)->orderBy('id', 'asc')->get()->makeHidden(['flow_metadata', 'svg'])->toArray();

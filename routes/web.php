@@ -101,9 +101,9 @@ Route::get('templates/svg/{templateId}.svg', [DownloadController::class,'templat
     ->whereNumber('templateId')
     ->name('templatesvg');
 
-// Template list with SVGs as a versioned, long-cacheable script (builder, Flovatar/Flobot pages)
+// Template list with SVGs as a versioned, long-cacheable script (builders, Flovatar/Flobot pages)
 Route::get('templates/data/{set}.js', \App\Http\Controllers\TemplateDataController::class)
-    ->where('set', 'series1|flobot')
+    ->where('set', 'series1|flobot|dust|dust2')
     ->name('templates.data');
 
 

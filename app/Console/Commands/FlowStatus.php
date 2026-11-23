@@ -30,6 +30,9 @@ class FlowStatus extends Command
                 ->where('attempts', '>=', (int) config('services.flow.indexer.max_attempts', 3))->count(),
             'last_event' => DB::table('events')->whereNotNull('source')->orderByDesc('block_id')->value('event_date'),
             'events_by_source' => DB::table('events')->selectRaw('coalesce(source, if(graffle, "graffle", "legacy")) s, count(*) n')->groupBy('s')->pluck('n', 's'),
+            // rows archived to R2 and pruned (flovatar:events-archive); the indexer ignores blocks <= watermark
+            'archived_pruned' => \Illuminate\Support\Facades\Schema::hasTable('events_archive_baselines') ? (int) DB::table('events_archive_baselines')->sum('pruned_rows') : 0,
+            'archive_watermark' => \App\Support\EventsArchiveState::watermark(),
         ];
 
         if ($this->option('json')) {

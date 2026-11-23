@@ -2,6 +2,7 @@
 
 namespace App\Services\Flow;
 
+use App\Support\EventsArchiveState;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -9,21 +10,31 @@ use Illuminate\Support\Facades\DB;
  * Stores raw Flow events in the `events` table with the same shape the Graffle webhook used,
  * so ProcessGraffleEvents can process them unchanged. Duplicate deliveries (REST + stream +
  * backfill) are ignored through the unique key (transaction_id, event_index).
+ * Events at or below the archive watermark (blocks whose processed events were archived to
+ * R2 and pruned, see EventsArchiveState) are skipped unless $force, so a re-scan of an old
+ * range can never re-insert and re-apply pruned events.
  */
 class EventIngestor
 {
     /**
      * @param  array  $rows  block_height, block_timestamp, type, transaction_id, transaction_index, event_index,
      *                       payload (base64 JSON-Cadence) or flow_metadata (already decoded)
-     * @return array [inserted, dropped]
+     * @return array [inserted, dropped, belowWatermark]
      */
-    public function store(array $rows, string $source): array
+    public function store(array $rows, string $source, bool $force = false): array
     {
         $now = now();
         $insert = [];
         $dropped = 0;
+        $belowWatermark = 0;
+        $watermark = $force ? 0 : EventsArchiveState::watermark();
 
         foreach ($rows as $r) {
+            if ($watermark > 0 && (int) $r['block_height'] <= $watermark) {
+                $belowWatermark++;
+
+                continue;
+            }
             $payload = array_key_exists('flow_metadata', $r) ? $r['flow_metadata'] : CadenceJson::decodePayload($r['payload']);
             if (! FlowEventTypes::keep($r['type'], $payload)) {
                 $dropped++;
@@ -55,6 +66,6 @@ class EventIngestor
             $inserted += DB::table('events')->insertOrIgnore($chunk);
         }
 
-        return [$inserted, $dropped];
+        return [$inserted, $dropped, $belowWatermark];
     }
 }

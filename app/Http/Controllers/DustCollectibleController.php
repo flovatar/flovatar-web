@@ -10,7 +10,8 @@ class DustCollectibleController extends Controller
     public function __invoke($collectibleId, $address)
     {
 
-        $templates = $this->getDustTemplates();
+        // only rarity/flow_id are used (rarity text); the collectible svg comes from the collectible itself
+        $templates = $this->getDustTemplatesLean();
         $sales = Cache::remember('dust-collectible-sales-'.$collectibleId, now()->addMinutes(10), function() use ($collectibleId) {
             $collectible = DustCollectible::where('flow_id', $collectibleId)->first();
             return $collectible ? $collectible->sales()->orderBy('created_at', 'asc')->get() : [];

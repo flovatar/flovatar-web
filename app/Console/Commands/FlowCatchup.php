@@ -7,6 +7,7 @@ use App\Services\Flow\EventIngestor;
 use App\Services\Flow\FlowEventTypes;
 use App\Services\Flow\FlowRestClient;
 use App\Services\Flow\IndexerCursor;
+use App\Support\EventsArchiveState;
 use Illuminate\Console\Command;
 
 /**
@@ -21,7 +22,8 @@ class FlowCatchup extends Command
         {--from= : first block height (overrides the cursor)}
         {--to= : last block height (default: sealed head)}
         {--max-blocks= : stop after this many blocks (default config services.flow.indexer.max_blocks_per_run)}
-        {--no-process : do not dispatch processing of new events}';
+        {--no-process : do not dispatch processing of new events}
+        {--force : allow --from at/below the events archive watermark (pruned blocks would be re-inserted and re-applied)}';
 
     protected $description = 'Fetch Flovatar events from the Flow REST API up to the sealed height';
 
@@ -34,6 +36,16 @@ class FlowCatchup extends Command
         }
 
         $cursor = $this->option('from') !== null ? (int) $this->option('from') - 1 : (IndexerCursor::get(IndexerCursor::REST) ?? IndexerCursor::initial());
+        $watermark = EventsArchiveState::watermark();
+        if ($watermark > 0 && $cursor < $watermark && ! $this->option('force')) {
+            if ($this->option('from') !== null) {
+                $this->error("--from {$this->option('from')} is at/below the events archive watermark $watermark (archived + pruned blocks). Use --from=".($watermark + 1).' or --force.');
+
+                return self::FAILURE;
+            }
+            $this->warn("cursor $cursor is below the events archive watermark $watermark; starting at ".($watermark + 1));
+            $cursor = $watermark;
+        }
         $sealed = $flow->sealedHeight();
         $to = min($this->option('to') !== null ? (int) $this->option('to') : $sealed, $sealed);
         $maxBlocks = (int) ($this->option('max-blocks') ?? config('services.flow.indexer.max_blocks_per_run'));
@@ -52,7 +64,7 @@ class FlowCatchup extends Command
         while ($start <= $to) {
             $end = min($start + FlowRestClient::MAX_RANGE - 1, $to);
             $rows = $flow->eventsForTypes($types, $start, $end);
-            [$inserted] = $ingestor->store($rows, 'rest');
+            [$inserted] = $ingestor->store($rows, 'rest', (bool) $this->option('force'));
             $total += $inserted;
             if ($this->option('from') === null) {
                 IndexerCursor::set(IndexerCursor::REST, $end);
