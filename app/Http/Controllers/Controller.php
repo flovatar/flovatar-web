@@ -37,6 +37,57 @@ class Controller extends BaseController
     }
 
 
+    // flovatar_templates columns without the svg / flow_metadata blobs (~32 MB for series 1)
+    public const TEMPLATE_LEAN_COLUMNS = ['id', 'name', 'category', 'color', 'series', 'rarity', 'description', 'max_mintable', 'burned', 'flow_id', 'flow_address', 'created_at', 'updated_at'];
+
+    protected static function templateQuery(string $set){
+        $query = FlovatarTemplate::query()->orderBy('id', 'asc');
+        if($set === 'series1'){
+            $query->whereSeries(1);
+        } else if($set === 'flobot'){
+            $query->whereSeries(2)->whereNotNull('flow_address')->whereNotNull('flow_id');
+        }
+        return $query;
+    }
+
+    /**
+     * Template list without svg/flow_metadata (pages that only need names, categories,
+     * rarities). Plain arrays, cached 60 s (served stale up to 1 h while refreshing).
+     * Sets: all | series1 | flobot.
+     */
+    protected function templatesLean(string $set){
+        return Cache::flexible('tpl-lean-v1-'.$set, [60, 3600], function() use ($set) {
+            return static::templateQuery($set)->select(self::TEMPLATE_LEAN_COLUMNS)->get()->toArray();
+        });
+    }
+
+    /** Version of a template set (changes when templates are added/updated/burned). */
+    public static function templatesVersion(string $set){
+        return Cache::flexible('tpl-version-v1-'.$set, [60, 600], function() use ($set) {
+            $row = static::templateQuery($set)->reorder()
+                ->selectRaw('count(*) c, max(id) i, max(updated_at) u, coalesce(sum(burned),0) b, coalesce(sum(max_mintable),0) m')
+                ->toBase()->first();
+            return substr(md5(json_encode($row)), 0, 12);
+        });
+    }
+
+    /**
+     * JS that sets window.templates (with svg, without flow_metadata) for pages that draw
+     * Flovatars client side. Served by TemplateDataController as a separate, versioned,
+     * long-cacheable script instead of being inlined in every page (was ~37 MB per page).
+     */
+    public static function templatesScript(string $set){
+        $version = static::templatesVersion($set);
+        return Cache::flexible('tpl-script-v1-'.$set.'-'.$version, [3600, 86400], function() use ($set) {
+            $templates = static::templateQuery($set)->get()->makeHidden(['flow_metadata'])->toArray();
+            return 'window.templates = '.json_encode($templates, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT).';';
+        });
+    }
+
+    protected function templatesScriptUrl(string $set){
+        return route('templates.data', ['set' => $set, 'v' => static::templatesVersion($set)], false);
+    }
+
     protected function getTemplates(){
         return Cache::remember('db-templates', now()->addMinutes(60), function() {
             return FlovatarTemplate::whereSeries(1)->orderBy('id', 'asc')->get();
@@ -46,6 +97,13 @@ class Controller extends BaseController
     protected function getDustTemplates($series = 1){
         return Cache::remember('db-dust-templates-'.$series, now()->addSeconds(10), function() use ($series) {
             return DustTemplate::whereNotNull('flow_id')->whereDustSeriesId($series)->orderBy('id', 'asc')->get();
+        });
+    }
+
+    /** Dust templates without svg/flow_metadata for list pages (collection, showroom). */
+    protected function getDustTemplatesLean($series = 1){
+        return Cache::flexible('db-dust-templates-lean-v1-'.$series, [10, 120], function() use ($series) {
+            return DustTemplate::whereNotNull('flow_id')->whereDustSeriesId($series)->orderBy('id', 'asc')->get()->makeHidden(['flow_metadata', 'svg'])->toArray();
         });
     }
 
@@ -75,7 +133,9 @@ class Controller extends BaseController
 
 
     protected function getStats(){
-        return Cache::remember('db-sales-stats', now()->addMinutes(1), function() {
+        // One aggregate scan instead of four; refreshed in the background (flexible) so no
+        // visitor waits for it: fresh for 60 s, served stale up to 10 min while refreshing.
+        return Cache::flexible('db-sales-stats', [60, 600], function() {
 
             $dustBurned = Storage::exists('burned-dust.txt') ? Storage::get('burned-dust.txt') : 0;
             $dustBurned = $dustBurned ? round(floatval($dustBurned)) : 0;
@@ -83,11 +143,13 @@ class Controller extends BaseController
             $dustClaimed = Storage::exists('claimed-dust.txt') ? Storage::get('claimed-dust.txt') : 0;
             $dustClaimed = $dustClaimed ? round(floatval($dustClaimed)) : 0;
 
+            $agg = Sale::notBlocked()->selectRaw('sum(price) as total, avg(price) as avg, count(price) as count, max(price) as max')->first();
+
             return [
-                'total' => Sale::notBlocked()->selectRaw('sum(price) as total')->first()->total,
-                'avg' => Sale::notBlocked()->selectRaw('avg(price) as avg')->first()->avg,
-                'count' => Sale::notBlocked()->selectRaw('count(price) as count')->first()->count,
-                'max' => Sale::notBlocked()->selectRaw('max(price) as max')->first()->max,
+                'total' => $agg->total,
+                'avg' => $agg->avg,
+                'count' => $agg->count,
+                'max' => $agg->max,
                 'dustBurned' => $dustBurned,
                 'dustClaimed' => $dustClaimed
             ];

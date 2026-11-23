@@ -101,6 +101,11 @@ Route::get('templates/svg/{templateId}.svg', [DownloadController::class,'templat
     ->whereNumber('templateId')
     ->name('templatesvg');
 
+// Template list with SVGs as a versioned, long-cacheable script (builder, Flovatar/Flobot pages)
+Route::get('templates/data/{set}.js', \App\Http\Controllers\TemplateDataController::class)
+    ->where('set', 'series1|flobot')
+    ->name('templates.data');
+
 
 Route::get('api/image/{flovatarId}', [FlovatarImageController::class,'svg'])
     ->whereNumber('flovatarId')
@@ -265,6 +270,7 @@ Route::get('api/dust/total-available', DustTokenController::class)
 
 Route::get('/login', [LoginController::class,'login'])->name('login');
 Route::get('/login/nonce', [LoginController::class,'nonce'])->name('login.nonce')->middleware('throttle:60,1');
+Route::get('/csrf-token', [LoginController::class,'csrfToken'])->name('csrf.token')->middleware('throttle:60,1');
 Route::post('/login', [LoginController::class,'submit'])->name('login.submit')->middleware('throttle:10,1');
 Route::get('/logout', [LoginController::class,'logout'])->name('logout-get');
 

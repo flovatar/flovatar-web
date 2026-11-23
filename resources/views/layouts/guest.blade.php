@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {{-- No CSRF token here: pages are edge-cached. JS fetches one from /csrf-token (resources/js/bootstrap.js). --}}
 
     <title>{{ config('app.name', 'Flovatar') }}</title>
 
@@ -53,7 +53,7 @@
         var moonpayPublicKey = '{!! config('flovatar.moonpayPublicKey') !!}';
         var packPrice = {{ config('flovatar.price') }};
         var packPrice2 = {{ config('flovatar.price2') }};
-        var vipCookieVal = '{{ session('vipcookie', '') }}';
+        var vipCookieVal = '{{ \App\Support\PublicCache::isStateless(request()) ? '' : session('vipcookie', '') }}';
         var dustEnabled = {{ config('flovatar.dustEnabled') ? 'true' : 'false' }};
     </script>
     <script src="{{ mix('js/app.js') }}" defer></script>

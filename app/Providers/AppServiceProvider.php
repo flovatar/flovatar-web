@@ -16,6 +16,9 @@ class AppServiceProvider extends ServiceProvider
     {
         // Pack signer: key file from PACK_SIGNER_KEY_FILE (read per call, never logged).
         $this->app->bind(UserMessageSigner::class, fn () => UserMessageSigner::fromConfig());
+
+        // Template SVG memo for the full_svg accessors; reset per request and per queued job.
+        $this->app->scoped(\App\Support\TemplateSvgs::class);
     }
 
     /**

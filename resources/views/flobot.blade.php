@@ -3,6 +3,10 @@
         <div class="container">@include('partials.incident-notice')</div>
     @endif
 
+    @isset($templatesScript)
+    {{-- window.templates (with SVGs) from a versioned, long-cacheable script --}}
+    <script src="{{ $templatesScript }}"></script>
+    @endisset
     <script>
         @if(isset($templates))
             window.templates = @json($templates);

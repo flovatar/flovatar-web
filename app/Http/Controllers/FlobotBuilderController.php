@@ -14,7 +14,8 @@ class FlobotBuilderController extends Controller
     public function __invoke()
     {
 
-        $templates = $this->getFlobotTemplates();
-        return view('flobot-builder')->with(['templates' => $templates]);
+        // Template SVGs come from a separate cacheable script (TemplateDataController)
+        $templatesScript = $this->templatesScriptUrl('flobot');
+        return view('flobot-builder')->with(['templatesScript' => $templatesScript]);
     }
 }

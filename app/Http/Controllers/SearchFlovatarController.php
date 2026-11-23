@@ -17,8 +17,8 @@ class SearchFlovatarController extends FilteredController
     public function __invoke()
     {
 
-        $flovatars = Cache::remember('db-flovatar-search-'.$this->paramString(), now()->addSeconds(30), function() {
-            return $this->getFilteredFlovatars(request());
+        $flovatars = Cache::remember('db-flovatar-search-lean-'.$this->paramString(), now()->addSeconds(30), function() {
+            return $this->getFilteredFlovatars(request(), true);
         });
 
         return $flovatars;

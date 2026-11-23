@@ -17,8 +17,8 @@ class SearchTransactionController extends FilteredController
     public function __invoke()
     {
 
-        $sales = Cache::remember('db-transactions-search-'.$this->paramString(), now()->addSeconds(10), function() {
-            return $this->getFilteredTransactions(request());
+        $sales = Cache::remember('db-transactions-search-lean-'.$this->paramString(), now()->addSeconds(10), function() {
+            return $this->getFilteredTransactions(request(), true);
         });
 
         return $sales;

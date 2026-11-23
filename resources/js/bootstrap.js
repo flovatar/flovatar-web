@@ -12,6 +12,65 @@ window.axios = require('axios');
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
 /**
+ * CSRF for edge-cached pages: the HTML carries no token and no session. Before the first
+ * state-changing request (login, subscribe, pack reserve, ...) we fetch one from
+ * /csrf-token (this starts the session) and send it as X-CSRF-TOKEN. On 419 (expired or
+ * rotated after login) the token is refetched and the request retried once.
+ * Read-only search POSTs are CSRF-exempt server side (App\Support\PublicCache) and skip
+ * this, so browsing never creates a session.
+ */
+const csrfExemptPaths = [
+    /^\/api\//,
+    /^\/(search|showroom\/search|showroom\/flobot\/search|showroom\/dust-collectible\/search|transactions\/search|builder\/search|flobot\/builder\/search)\/?$/
+];
+let csrfTokenPromise = null;
+window.fetchCsrfToken = function(force){
+    if(force || !csrfTokenPromise){
+        csrfTokenPromise = window.axios.get('/csrf-token', {params: {t: Date.now()}}).then(function(response){
+            return response.data.token;
+        }).catch(function(error){
+            csrfTokenPromise = null;
+            throw error;
+        });
+    }
+    return csrfTokenPromise;
+};
+function needsCsrfToken(config){
+    const method = (config.method || 'get').toLowerCase();
+    if(['get', 'head', 'options'].indexOf(method) >= 0){
+        return false;
+    }
+    let url;
+    try {
+        url = new URL(config.url, window.location.origin);
+    } catch(e){
+        return false;
+    }
+    if(url.origin !== window.location.origin){
+        return false;
+    }
+    return !csrfExemptPaths.some(function(re){ return re.test(url.pathname); });
+}
+window.axios.interceptors.request.use(async function(config){
+    if(needsCsrfToken(config)){
+        const token = await window.fetchCsrfToken(false);
+        if(token){
+            config.headers['X-CSRF-TOKEN'] = token;
+        }
+    }
+    return config;
+});
+window.axios.interceptors.response.use(function(response){ return response; }, async function(error){
+    const config = error.config;
+    if(error.response && error.response.status === 419 && config && !config.__csrfRetried && needsCsrfToken(config)){
+        config.__csrfRetried = true;
+        await window.fetchCsrfToken(true);
+        return window.axios(config);
+    }
+    return Promise.reject(error);
+});
+
+/**
  * Echo exposes an expressive API for subscribing to channels and listening
  * for events that are broadcast by Laravel. Echo and event broadcasting
  * allows your team to easily build robust real-time web applications.
@@ -55,11 +114,18 @@ const network = process.env.MIX_FLOW_NETWORK;
  */
 window.accountProofNonce = null;
 window.loginMessage = null;
+// Server-side (Laravel session) login state: {authenticated, address}. Pages are edge-cached,
+// so it is read from /login/nonce instead of being rendered into the HTML.
+window.serverAuth = {authenticated: false, address: null};
 window.loadLoginNonce = function(){
     return window.axios.get('/login/nonce').then(function(response){
         if(response.data && response.data.nonce){
             window.accountProofNonce = response.data.nonce;
             window.loginMessage = response.data.message;
+        }
+        if(response.data){
+            window.serverAuth = {authenticated: !!response.data.authenticated, address: response.data.address || null};
+            window.dispatchEvent(new CustomEvent('server-auth', {detail: window.serverAuth}));
         }
         return response.data;
     }).catch(function(error){

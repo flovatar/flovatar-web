@@ -15,6 +15,7 @@
     <div
         x-data="collectionData('{{$address}}', '{{$addressName}}', window.templates, {{ config('flovatar.dustEnabled') ? 'true' : 'false' }}, {{ config('flovatar.dustPerDayScore') }})"
         x-init="initCollection($dispatch, '{{$address}}', '{{$addressName}}', {{ config('flovatar.dustEnabled') }})"
+        @server-auth.window="serverAuthenticated = !!$event.detail.authenticated"
         @collections-loaded.window="loadCollections($event.detail.collections)"
         @collections-pack-loaded.window="loadCollectionsPack($event.detail.collections)"
         @collections-flovatar-loaded.window="loadCollectionsFlovatar($event.detail.collections)"
@@ -404,12 +405,9 @@
                 <div x-show="activeTab == 'sportvatar'" x-show="loggedIn()">
                     <div class="flovatar-card-list">
 
-                        @if(!Auth::check())
-                            <button x-show="loggedIn()" @click.prevent.stop="if(loggedIn()){window.createSignature('{{ $signature }}')}" class="btn-o">Verify Account to Redeem the Packs</button>
-                        @endif
-                        @if(Auth::check())
-                            <button @click.prevent.stop="getSportvatarCodes()" x-show="!sportpacks || !sportpacks.length" class="btn-o btn-show-pack-code">Show my Sportvatar packs</button>
-                        @endif
+                        {{-- Server login state comes from /login/nonce (serverAuthenticated): this page is edge-cached. --}}
+                        <button x-show="loggedIn() && !serverAuthenticated" @click.prevent.stop="if(loggedIn()){window.createSignature(window.loginMessage)}" class="btn-o">Verify Account to Redeem the Packs</button>
+                        <button @click.prevent.stop="getSportvatarCodes()" x-show="serverAuthenticated && (!sportpacks || !sportpacks.length)" class="btn-o btn-show-pack-code">Show my Sportvatar packs</button>
                         <div x-show="sportpacks && sportpacks.length" class="pack-code">
                             <p x-text="'You have ' + sportpacks.length + ' free Sportvatar pack' + (sportpacks.length == 1 ? '' : 's') + ' to claim. Old pack codes no longer work: connect this same wallet on Sportvatar to claim, no code needed.'"></p>
                             <a target="_blank" rel="noopener" href="{{ rtrim(config('flovatar.sportvatarUrl'), '/') }}/pack/claim" class="btn-o">Claim on Sportvatar</a>

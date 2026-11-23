@@ -10,7 +10,7 @@ class TemplatesController extends FilteredController
 {
     public function __invoke()
     {
-        return $this->getTemplates()->makeHidden(['flow_metadata', 'svg']);
+        return $this->templatesLean('series1');
 
     }
 }

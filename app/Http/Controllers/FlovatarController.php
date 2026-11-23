@@ -15,7 +15,8 @@ class FlovatarController extends Controller
     public function __invoke($flovatarId, $address)
     {
 
-        $templates = $this->getTemplates();
+        // Template SVGs come from a separate cacheable script (TemplateDataController)
+        $templatesScript = $this->templatesScriptUrl('series1');
         $sales = Cache::remember('flovatar-sales-'.$flovatarId, now()->addMinutes(10), function() use ($flovatarId) {
             $flovatar = Flovatar::where('flow_id', $flovatarId)->first();
             return $flovatar ? $flovatar->sales()->orderBy('created_at', 'asc')->get() : [];
@@ -24,6 +25,6 @@ class FlovatarController extends Controller
             $flovatar = Flovatar::where('flow_id', $flovatarId)->first();
             return $flovatar ? $flovatar->saleOffers()->where('is_completed', false)->where('is_dapper', true)->orderBy('created_at', 'desc')->first() : null;
         });
-        return view('flovatar')->with(['templates' => $templates, 'address' => $address, 'flovatarId' => $flovatarId, 'flovatarSales' => $sales, 'flovatarSaleOffer' => $saleOffer]);
+        return view('flovatar')->with(['templatesScript' => $templatesScript, 'address' => $address, 'flovatarId' => $flovatarId, 'flovatarSales' => $sales, 'flovatarSaleOffer' => $saleOffer]);
     }
 }

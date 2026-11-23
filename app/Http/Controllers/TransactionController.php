@@ -15,7 +15,7 @@ class TransactionController extends Controller
     public function __invoke($address = null)
     {
 
-        $templates = $this->getAllTemplates()->makeHidden(['flow_metadata', 'svg']);
+        $templates = $this->templatesLean('all');
 
 
         $stats = $this->getStats();

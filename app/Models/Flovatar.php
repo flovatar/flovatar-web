@@ -34,14 +34,10 @@ class Flovatar extends Model
         }
 
         $flowMeta = $this->flow_metadata;
-        $tempBackground = isset($flowMeta['backgroundId']) ? FlovatarTemplate::whereFlowId($flowMeta['backgroundId'])->first() : '';
-        $tempBackground = $tempBackground ? $tempBackground->svg : '';
-        $tempAccessory = isset($flowMeta['accessoryId']) ? FlovatarTemplate::whereFlowId($flowMeta['accessoryId'])->first() : '';
-        $tempAccessory = $tempAccessory ? $tempAccessory->svg : '';
-        $tempHat = isset($flowMeta['hatId']) ? FlovatarTemplate::whereFlowId($flowMeta['hatId'])->first() : '';
-        $tempHat = $tempHat ? $tempHat->svg : '';
-        $tempEyeglasses = isset($flowMeta['eyeglassesId']) ? FlovatarTemplate::whereFlowId($flowMeta['eyeglassesId'])->first() : '';
-        $tempEyeglasses = $tempEyeglasses ? $tempEyeglasses->svg : '';
+        $tempBackground = isset($flowMeta['backgroundId']) ? \App\Support\TemplateSvgs::get($flowMeta['backgroundId']) : '';
+        $tempAccessory = isset($flowMeta['accessoryId']) ? \App\Support\TemplateSvgs::get($flowMeta['accessoryId']) : '';
+        $tempHat = isset($flowMeta['hatId']) ? \App\Support\TemplateSvgs::get($flowMeta['hatId']) : '';
+        $tempEyeglasses = isset($flowMeta['eyeglassesId']) ? \App\Support\TemplateSvgs::get($flowMeta['eyeglassesId']) : '';
 
         return config('flovatar.svgOpen').$tempBackground.$this->svg.$tempAccessory.$tempEyeglasses.$tempHat.config('flovatar.svgClose');
     }
@@ -54,12 +50,9 @@ class Flovatar extends Model
         }
 
         $flowMeta = $this->flow_metadata;
-        $tempAccessory = isset($flowMeta['accessoryId']) ? FlovatarTemplate::whereFlowId($flowMeta['accessoryId'])->first() : '';
-        $tempAccessory = $tempAccessory ? $tempAccessory->svg : '';
-        $tempHat = isset($flowMeta['hatId']) ? FlovatarTemplate::whereFlowId($flowMeta['hatId'])->first() : '';
-        $tempHat = $tempHat ? $tempHat->svg : '';
-        $tempEyeglasses = isset($flowMeta['eyeglassesId']) ? FlovatarTemplate::whereFlowId($flowMeta['eyeglassesId'])->first() : '';
-        $tempEyeglasses = $tempEyeglasses ? $tempEyeglasses->svg : '';
+        $tempAccessory = isset($flowMeta['accessoryId']) ? \App\Support\TemplateSvgs::get($flowMeta['accessoryId']) : '';
+        $tempHat = isset($flowMeta['hatId']) ? \App\Support\TemplateSvgs::get($flowMeta['hatId']) : '';
+        $tempEyeglasses = isset($flowMeta['eyeglassesId']) ? \App\Support\TemplateSvgs::get($flowMeta['eyeglassesId']) : '';
 
         return config('flovatar.svgOpen').$this->svg.$tempAccessory.$tempEyeglasses.$tempHat.config('flovatar.svgClose');
     }

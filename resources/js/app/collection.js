@@ -6,6 +6,8 @@ Alpine.data('collectionData', (address, addressName, templates, dustEnabled, dus
     addressName: addressName,
     dustEnabled: dustEnabled,
     dustPerDayScore: dustPerDayScore,
+    // Laravel session login (needed for Sportvatar pack codes); set from /login/nonce
+    serverAuthenticated: !!(window.serverAuth && window.serverAuth.authenticated),
     flovatars: [],
     flovatarIds: [],
     components: [],
