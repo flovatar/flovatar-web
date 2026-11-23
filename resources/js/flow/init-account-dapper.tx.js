@@ -21,6 +21,9 @@ transaction {
     self.address = account.address
 
 
+    if account.storage.borrow<&Flovatar.Collection>(from: Flovatar.CollectionStoragePath) == nil {
+        account.storage.save<@{NonFungibleToken.Collection}>(<- Flovatar.createEmptyCollection(nftType: Type<@Flovatar.Collection>()), to: Flovatar.CollectionStoragePath)
+    }
     let flovatarCap = account.capabilities.get<&Flovatar.Collection>(Flovatar.CollectionPublicPath)
     if(!flovatarCap.check()) {
         account.capabilities.unpublish(Flovatar.CollectionPublicPath)
@@ -30,6 +33,10 @@ transaction {
         )
     }
 
+
+    if account.storage.borrow<&Flobot.Collection>(from: Flobot.CollectionStoragePath) == nil {
+        account.storage.save<@{NonFungibleToken.Collection}>(<- Flobot.createEmptyCollection(nftType: Type<@Flobot.Collection>()), to: Flobot.CollectionStoragePath)
+    }
     let flobotCap = account.capabilities.get<&Flobot.Collection>(Flobot.CollectionPublicPath)
     if(!flobotCap.check()) {
         account.capabilities.unpublish(Flobot.CollectionPublicPath)
@@ -39,6 +46,10 @@ transaction {
         )
     }
 
+
+    if account.storage.borrow<&FlovatarComponent.Collection>(from: FlovatarComponent.CollectionStoragePath) == nil {
+        account.storage.save<@{NonFungibleToken.Collection}>(<- FlovatarComponent.createEmptyCollection(nftType: Type<@FlovatarComponent.Collection>()), to: FlovatarComponent.CollectionStoragePath)
+    }
     let flovatarComponentCap = account.capabilities.get<&FlovatarComponent.Collection>(FlovatarComponent.CollectionPublicPath)
     if(!flovatarComponentCap.check()) {
         account.capabilities.unpublish(FlovatarComponent.CollectionPublicPath)
@@ -47,6 +58,8 @@ transaction {
             at: FlovatarComponent.CollectionPublicPath
         )
     }
+
+
 
     let flovatarPackCap = account.capabilities.get<&FlovatarPack.Collection>(FlovatarPack.CollectionPublicPath)
     if(!flovatarPackCap.check()) {

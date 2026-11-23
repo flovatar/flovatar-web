@@ -221,11 +221,7 @@ async function updateUser(user){
                 }
                 //window.getMoonpaySignature(user.addr);
             } else {
-                if(window.dustEnabled){
-                    await isInitializedDapperDustScript(user.addr).then(checkInitUser);
-                } else {
-                    await isInitializedDapperScript(user.addr).then(checkInitUser);
-                }
+                await isInitializedDapperScript(user.addr).then(checkInitUser);
             }
 
         }
@@ -275,12 +271,8 @@ window.loadInitUser = async function(){
         window.dispatch('loading-start');
         let txId = null;
         if(window.currentWallet == 'dapper'){
-            if(window.dustEnabled){
-                //txId = await initAccountDapperTx();
-                txId = await initAccountDapperDustTx();
-            } else {
-                txId = await initAccountDapperTx();
-            }
+            // Dapper: no DUST collections (DUST is not supported on Dapper)
+            txId = await initAccountDapperTx();
         } else {
             if(window.dustEnabled){
                 txId = await initAccountDustTx();
