@@ -106,7 +106,9 @@ class PackController extends AuthController
     {
 
         if(auth()->check()){
-            return SportvatarPack::select('flow_id', 'signature')->whereName('Genesis Free Pack')->whereFlowAddress(auth()->user()->email)->orderBy('flow_id', 'desc')->get();
+            // Pack codes v1 are dead on-chain since the 2026-11-22 SportvatarPack update and must never be served again.
+            // Holders now claim on Sportvatar with a wallet-bound voucher (no code needed); only list the pack ids.
+            return SportvatarPack::select('flow_id')->whereName('Genesis Free Pack')->whereFlowAddress(auth()->user()->email)->orderBy('flow_id', 'desc')->get();
         } else {
             return [];
         }

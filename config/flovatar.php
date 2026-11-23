@@ -98,6 +98,8 @@ return [
     'packSignerKeyFile' => env('PACK_SIGNER_KEY_FILE'),
     'packV1SigningEnabled' => (bool) env('FLOVATAR_PACK_V1_SIGNING', false),
     'packsV2Enabled' => (bool) env('FLOVATAR_PACKS_V2', false),
+    // Where Flovatar holders claim their free Sportvatar packs (reboot.sportvatar.com until the DNS switch)
+    'sportvatarUrl' => env('SPORTVATAR_URL', 'https://sportvatar.com'),
     'packsV2Epoch' => (int) env('FLOVATAR_PACK_EPOCH', 1),
     'packsV2Ttl' => (int) env('FLOVATAR_PACK_AUTH_TTL', 900),
 

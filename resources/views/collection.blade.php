@@ -408,13 +408,12 @@
                             <button x-show="loggedIn()" @click.prevent.stop="if(loggedIn()){window.createSignature('{{ $signature }}')}" class="btn-o">Verify Account to Redeem the Packs</button>
                         @endif
                         @if(Auth::check())
-                            <button @click.prevent.stop="getSportvatarCodes()" x-show="!sportpacks || !sportpacks.length" class="btn-o btn-show-pack-code">Show Pack codes</button>
+                            <button @click.prevent.stop="getSportvatarCodes()" x-show="!sportpacks || !sportpacks.length" class="btn-o btn-show-pack-code">Show my Sportvatar packs</button>
                         @endif
-                        <template x-for="sportpack in sportpacks" :key="sportpack.flow_id">
-                            <div class="pack-code">
-                                <a target="_blank" x-bind:href="'https://sportvatar.com/pack/claim/'+sportpack.flow_id+'-'+sportpack.signature" x-text="'Sportvatar Pack #'+sportpack.flow_id"></a>
-                            </div>
-                        </template>
+                        <div x-show="sportpacks && sportpacks.length" class="pack-code">
+                            <p x-text="'You have ' + sportpacks.length + ' free Sportvatar pack' + (sportpacks.length == 1 ? '' : 's') + ' to claim. Old pack codes no longer work: connect this same wallet on Sportvatar to claim, no code needed.'"></p>
+                            <a target="_blank" rel="noopener" href="{{ rtrim(config('flovatar.sportvatarUrl'), '/') }}/pack/claim" class="btn-o">Claim on Sportvatar</a>
+                        </div>
                     </div>
                 </div>
 
