@@ -7,6 +7,7 @@ use App\Models\DustTemplate;
 use App\Models\Sale;
 use App\Models\SaleOffer;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class DustAccessoryController extends Controller
@@ -20,7 +21,9 @@ class DustAccessoryController extends Controller
             })->orderBy('id', 'asc')->get();
         });
 
-        $templateId = $templates ? $templates->first()->id : 0;
+        // unknown accessory (dust_accessories is empty on the relaunch DB): 404 instead of a 500 on null->id
+        abort_if($templates->isEmpty(), 404);
+        $templateId = $templates->first()->id;
 
         $sales = Cache::remember('flovatar-dust-accessory-sales-'.$templateId, now()->addMinutes(60), function() use ($templateId) {
             $components = DustAccessory::select('id')->whereDustTemplateId($templateId)->get()->flatten();
