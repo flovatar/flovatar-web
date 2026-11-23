@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use Illuminate\Routing\Middleware\ThrottleRequestsWithRedis;
+use App\Http\Middleware\ThrottleRequestsPerRoute;
 use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
@@ -17,7 +17,7 @@ class PublicCacheTest extends TestCase
     {
         parent::setUp();
         config(['session.driver' => 'array', 'cache.default' => 'array']);
-        $this->withoutMiddleware(ThrottleRequestsWithRedis::class);
+        $this->withoutMiddleware(ThrottleRequestsPerRoute::class);
         Route::middleware('web')->get('explore', fn () => response('public page'));
         Route::middleware('web')->post('showroom/search', fn () => response()->json(['data' => []]));
     }
