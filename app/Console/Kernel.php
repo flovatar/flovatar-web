@@ -25,8 +25,16 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
         // Graffle webhook replaced by the built-in indexer (flow:stream daemon + REST catch-up).
-        $schedule->command('flow:catchup')->everyFiveMinutes()->withoutOverlapping(30)->runInBackground();
-        $schedule->command('flow:process --queue')->everyMinute()->withoutOverlapping();
+        if (config('flovatar.indexerMode') === 'scheduled') {
+            // No Supervisor daemons: poll the chain, process inline and drain the job queues every minute.
+            $schedule->command('flow:catchup')->everyMinute()->withoutOverlapping(10)->runInBackground();
+            $schedule->command('flow:process')->everyMinute()->withoutOverlapping(10)->runInBackground();
+            $schedule->command('queue:work redis --queue=flow-events,default,images --stop-when-empty --max-time=50 --tries=3 --memory=192')
+                ->everyMinute()->withoutOverlapping(10)->runInBackground();
+        } else {
+            $schedule->command('flow:catchup')->everyFiveMinutes()->withoutOverlapping(30)->runInBackground();
+            $schedule->command('flow:process --queue')->everyMinute()->withoutOverlapping();
+        }
         $schedule->command('flovatar:refresh-collectible-templates')->hourly();
     }
 

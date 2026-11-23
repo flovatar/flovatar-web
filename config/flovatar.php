@@ -68,6 +68,9 @@ return [
     'dapperEnabled' => env('DAPPER_ENABLED', false),
     'flobitSaleEnabled' => env('FLOBIT_SALE_ENABLED', false),
     'dustEnabled' => env('DUST_ENABLED', false),
+    // 'daemon' (default): flow:stream + queue workers run under Supervisor.
+    // 'scheduled': no daemons; the scheduler polls the chain and drains the queues every minute (testnet / low-RAM).
+    'indexerMode' => env('FLOW_INDEXER_MODE', 'daemon'),
 
     /*
     | Relaunch feature flags (2026-11).
