@@ -122,7 +122,7 @@
             "aliases": {
                 "emulator": "f8d6e0586b0a20c7",
                 "testing": "0000000000000007",
-                "testnet": "631e88ae7f1d7c20",
+                "testnet": "2d55b98eb200daef",
                 "mainnet": "1d7e57aa55817448"
             }
         },
@@ -149,7 +149,7 @@
             "aliases": {
                 "emulator": "f8d6e0586b0a20c7",
                 "mainnet": "577a3c409c5dcb5e",
-                "testnet": "918c2008c16da416"
+                "testnet": "2c6a4c4342aeca55"
             }
         },
         "NFTForwarding": {
@@ -192,7 +192,7 @@
             }
         },
         "testnet-account": {
-            "address": "9392a4a7c3f49a0b",
+            "address": "2c6a4c4342aeca55",
             "key": {
                 "type": "file",
                 "location": "testnet.pkey"

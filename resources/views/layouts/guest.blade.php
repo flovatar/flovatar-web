@@ -59,6 +59,7 @@
     <script src="{{ mix('js/app.js') }}" defer></script>
 </head>
 <body class="{{request()->routeIs('home', 'builder', 'builder-psyche', 'flobot.builder', 'builder.flobot', 'pack', 'pack.buy', 'pack.login', 'fub', 'fub.sale', 'fub.test', 'land.sale') ? 'header-transparent' : ''}} {{request()->routeIs('fub.test') ? 'blueprint' : ''}}">
+@include('partials.env-banner')
 <div id="wrapper"
      x-bind:class="currentSkinClass()"
      x-data="appData"
