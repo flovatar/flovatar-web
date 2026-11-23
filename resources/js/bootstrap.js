@@ -32,14 +32,16 @@ const fclConfigInfo = {
         discoveryWallet: 'https://fcl-discovery.onflow.org/testnet/authn',
         discoveryAuthnEndpoint: 'https://fcl-discovery.onflow.org/api/testnet/authn',
         // Adds in Dapper
-        discoveryAuthInclude: ["0x82ec283f88a62e65"]
+        discoveryAuthInclude: ["0x82ec283f88a62e65"],
+        discoveryAuthExclude: ["0x55ad22f01ef568a1"]
     },
     mainnet: {
         accessNode: 'https://rest-mainnet.onflow.org',
         discoveryWallet: 'https://fcl-discovery.onflow.org/authn',
         discoveryAuthnEndpoint: 'https://fcl-discovery.onflow.org/api/authn',
-        // Adds in Dapper
-        discoveryAuthInclude: ["0xead892083b3e2c6c"]
+        // Flow Wallet + Dapper only (Blocto shut down)
+        discoveryAuthInclude: ["0x33f75ff0b830dcec", "0xead892083b3e2c6c"],
+        discoveryAuthExclude: ["0x55ad22f01ef568a1"]
     }
 };
 
@@ -67,6 +69,11 @@ window.loadLoginNonce = function(){
 };
 window.loadLoginNonce();
 
+// WalletConnect (Flow Wallet mobile app and wallets without a browser extension). Free project id from cloud.reown.com.
+if (process.env.MIX_WALLETCONNECT_PROJECT_ID) {
+    config().put("walletconnect.projectId", process.env.MIX_WALLETCONNECT_PROJECT_ID);
+}
+
 const accountProofResolver = async () => {
     if(!window.accountProofNonce){
         await window.loadLoginNonce();
@@ -82,6 +89,7 @@ config()
     .put("discovery.wallet", fclConfigInfo[network].discoveryWallet) // Configure FCL's Wallet Discovery mechanism
     .put("discovery.authn.endpoint", fclConfigInfo[network].discoveryAuthnEndpoint) // Configure FCL's Wallet Discovery mechanism
     .put("discovery.authn.include", fclConfigInfo[network].discoveryAuthInclude) // Configure FCL's Wallet Discovery mechanism
+    .put("discovery.authn.exclude", fclConfigInfo[network].discoveryAuthExclude || [])
     .put("fcl.limit", 9999) // Configure gas limit
     .put("fcl.accountProof.resolver", accountProofResolver) // Server-issued nonce for wallet login (account-proof)
     .put("0xProfile", process.env.MIX_CONTRACT_PROFILE) // Will let us use `0xProfile` in our Cadence
