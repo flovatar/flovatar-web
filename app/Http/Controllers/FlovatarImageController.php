@@ -36,11 +36,15 @@ class FlovatarImageController extends Controller
     public function gifNoBg($flovatarId){
         return $this->imageFromStorage('/flovatar/gif/'.$flovatarId.'-nobg.gif');
     }
+    // PNG/JPG: the new static render on R2 (RenderedImageController), legacy export as fallback (prod only)
     public function png($flovatarId){
-        return $this->imageFromStorage('/flovatar/png/'.$flovatarId.'.png');
+        return RenderedImageController::respond('flovatar', (int) $flovatarId, 'full.png');
     }
     public function pngNoBg($flovatarId){
-        return $this->imageFromStorage('/flovatar/png/'.$flovatarId.'-nobg.png');
+        return RenderedImageController::respond('flovatar', (int) $flovatarId, 'nobg.png');
+    }
+    public function jpg($flovatarId){
+        return RenderedImageController::respond('flovatar', (int) $flovatarId, 'full.jpg');
     }
     public function mp4($flovatarId){
         return $this->imageFromStorage('/flovatar/mp4/'.$flovatarId.'.mp4');

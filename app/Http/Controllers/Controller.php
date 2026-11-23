@@ -25,6 +25,10 @@ class Controller extends BaseController
      * FLOVATAR_IMAGE_PROXY=download restores the old behaviour (stream from the s3 disk).
      */
     protected function imageFromStorage(string $path){
+        // testnet: legacy exports on the prod CDN belong to other (mainnet) items with the same id
+        if(!config('render.legacy_fallback')){
+            abort(404);
+        }
         if(config('flovatar.imageProxy') === 'download'){
             return Storage::disk('s3')->download($path);
         }

@@ -1,4 +1,7 @@
 <x-guest-layout>
+    @push('og')
+        @include('partials.og-item', ['ogType' => 'flobot', 'ogId' => $flobotId, 'ogTitle' => 'Flobot #'.$flobotId, 'ogUrl' => url('flobots/'.$flobotId)])
+    @endpush
     @if(\App\Support\Blocklist::isBlocked($address ?? null) || \App\Support\Blocklist::isFlagged('App\Models\Flobot', $flobotId ?? null))
         <div class="container">@include('partials.incident-notice')</div>
     @endif

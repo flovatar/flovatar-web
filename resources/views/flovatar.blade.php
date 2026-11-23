@@ -1,4 +1,8 @@
 <x-guest-layout>
+    @push('og')
+        @php($ogName = \App\Models\Flovatar::where('flow_id', $flovatarId)->value('name'))
+        @include('partials.og-item', ['ogType' => 'flovatar', 'ogId' => $flovatarId, 'ogTitle' => 'Flovatar #'.$flovatarId.($ogName ? ' - '.$ogName : ''), 'ogUrl' => url('flovatars/'.$flovatarId)])
+    @endpush
     @if(\App\Support\Blocklist::isBlocked($address ?? null) || \App\Support\Blocklist::isFlagged('App\Models\Flovatar', $flovatarId ?? null))
         <div class="container">@include('partials.incident-notice')</div>
     @endif
@@ -446,9 +450,10 @@
 
                                         <div class="input-panel download-panel">
                                             <button @click.prevent.stop="saveSvg()" class="btn btn-sm btn-lilac"><span class="inner">SVG</span></button>
-                                            <a x-bind:download="'Flovatar-'+mint()+'.png'" target="_blank" x-bind:href="'https://images.flovatar.com/flovatar/png/'+mint()+'.png'" class="btn btn-sm btn-lilac"><span class="inner">PNG</span></a>
-                                            <a x-bind:download="'Flovatar-'+mint()+'.mp4'"  target="_blank" x-bind:href="'https://images.flovatar.com/flovatar/mp4/'+mint()+'.mp4'" class="btn btn-sm btn-lilac"><span class="inner">MP4</span></a>
-                                            <a x-bind:download="'Flovatar-'+mint()+'.gif'"  target="_blank" x-bind:href="'https://images.flovatar.com/flovatar/gif/'+mint()+'.gif'" class="btn btn-sm btn-lilac"><span class="inner">GIF</span></a>
+                                            <a x-bind:download="'Flovatar-'+mint()+'.png'" target="_blank" x-bind:href="'/api/image/png/'+mint()" class="btn btn-sm btn-lilac"><span class="inner">PNG</span></a>
+                                            <a x-bind:download="'Flovatar-'+mint()+'.jpg'" target="_blank" x-bind:href="'/api/image/jpg/'+mint()" class="btn btn-sm btn-lilac"><span class="inner">JPG</span></a>
+                                            <a x-bind:download="'Flovatar-'+mint()+'.mp4'"  target="_blank" x-bind:href="'/api/image/mp4/'+mint()" class="btn btn-sm btn-lilac"><span class="inner">MP4</span></a>
+                                            <a x-bind:download="'Flovatar-'+mint()+'.gif'"  target="_blank" x-bind:href="'/api/image/gif/'+mint()" class="btn btn-sm btn-lilac"><span class="inner">GIF</span></a>
                                         </div>
                                     </div>
                                 </li>
@@ -463,7 +468,9 @@
                                                 <span class="inner"><i class="icon-lock"></i></span>
                                                 <div class="price-tag button-tag">Ð150</div>
                                             </button>
+                                            @if(config('render.legacy_fallback'))
                                             <a x-show="unlocked3d()" x-bind:download="'Flovatar-'+mint()+'.stl'"  target="_blank" x-bind:href="'https://images.flovatar.com/flovatar/stl/'+mint()+'.stl'" class="btn btn-sm btn-lilac"><span class="inner">STL</span></a>
+                                            @endif
                                         </div>
                                         <div class="input-hold unlock-3d" x-show="!unlocked3d()">
                                             <span class="help">

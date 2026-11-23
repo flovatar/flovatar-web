@@ -36,6 +36,11 @@ class Kernel extends ConsoleKernel
             $schedule->command('flow:process --queue')->everyMinute()->withoutOverlapping();
         }
         $schedule->command('flovatar:refresh-collectible-templates')->hourly();
+        if (config('render.enabled')) {
+            // safety net for the event hook: render items that have no image at all (throttled, resumable)
+            $schedule->command('render:images all --missing --limit=60 --sleep=500')
+                ->hourlyAt(23)->withoutOverlapping(60)->runInBackground();
+        }
     }
 
     /**

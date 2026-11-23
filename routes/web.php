@@ -158,6 +158,16 @@ Route::get('api/image/png/nobg/{flovatarId}', [FlovatarImageController::class,'p
     ->whereNumber('flovatarId')
     ->name('flovatarimageapipngnobg');
 
+Route::get('api/image/jpg/{flovatarId}', [FlovatarImageController::class,'jpg'])
+    ->whereNumber('flovatarId')
+    ->name('flovatarimageapijpg');
+// Static renders (resvg -> R2): full.png | full.jpg | nobg.png | thumb.jpg | og.jpg
+Route::get('api/image/r/{type}/{flowId}/{variant}', \App\Http\Controllers\RenderedImageController::class)
+    ->where('type', 'flovatar|flobot|collectible|template')
+    ->whereNumber('flowId')
+    ->where('variant', 'full\.png|full\.jpg|nobg\.png|thumb\.jpg|og\.jpg')
+    ->name('renderedimage');
+
 Route::get('api/image/mp4/{flovatarId}', [FlovatarImageController::class,'mp4'])
     ->whereNumber('flovatarId')
     ->name('flovatarimageapimp4');

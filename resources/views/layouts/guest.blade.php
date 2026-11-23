@@ -19,6 +19,11 @@
     <link rel="canonical" href="https://flovatar.com/" />
     <meta property="og:locale" content="en_US" />
     <meta property="og:type" content="website" />
+    @php($ogItem = trim($__env->yieldPushContent('og')))
+    @if($ogItem !== '')
+    {{-- item page: per-item title/url/image (static render on R2, see App\Support\ItemImages) --}}
+    {!! $ogItem !!}
+    @else
     <meta property="og:title" content="Flovatar" />
     <meta property="og:description" content="Flovatar is a next generation NFT creativity platform where people can become creator and make their characters with any combination they like." />
     <meta property="og:url" content="https://flovatar.com/" />
@@ -29,6 +34,7 @@
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content="https://flovatar.com/images/share.png" />
+    @endif
     <meta name="twitter:site" content="@flovatar" />
 
     <!-- Styles -->
