@@ -38,7 +38,7 @@ const PROXY = [
   /^\/templates\//, /^\/storage\//, /^\/(flovatars|flobots|components|collectibles)\/json\//,
   /^\/(flovatars|flobots|collectibles)\/\d+\/0x[a-f0-9]{16}\/.+/, // downloads, twitter, ...
   /^\/components\//, /^\/dust\/accessories\//,                        // Flobit item pages: not static yet
-  /^\/pack(\/|$)/, /^\/sportpacks\/?$/, /^\/subscribe\/?$/, /^\/moonpay\//, /^\/treasure-hunting/,
+  /^\/pack(\/|$)/, /^\/sportpacks\/?$/, /^\/subscribe\/?$/, /^\/treasure-hunting/,
   /^\/meme-maker\/?$/, /^\/fub(-sale|-test)?\/?$/, /^\/land-sale\/?$/, /^\/twitter\//, /^\/chat(\/|$)/,
   /^\/admin(\/|$)/, /^\/sanctum\//, /^\/livewire\//, /^\/filament\//, /^\/css\/filament\//, /^\/js\/filament\//,
   /^\/transactions\/0x[a-f0-9]{16}\/?$/, /^\/collection\/api\//,

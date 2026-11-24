@@ -209,7 +209,6 @@ async function updateUser(user){
             window.dispatch('user-blacklisted', {});
             window.logout();
         } else {
-            jQuery('#moonpay-modal').removeClass('hidden');
             window.dispatch('user-loaded', {user: user});
 
             //TODO CADENCE 1.0 !!!
@@ -223,7 +222,6 @@ async function updateUser(user){
                 } else {
                     await isInitializedScript(user.addr).then(checkInitUser);
                 }
-                //window.getMoonpaySignature(user.addr);
             } else {
                 await isInitializedDapperScript(user.addr).then(checkInitUser);
             }
@@ -477,21 +475,6 @@ window.sendSubscription = function(email) {
 
 
 
-window.getMoonpaySignature = function(address) {
-    if(address) {
-        //console.log('request moonpay signature');
-        axios.post('/moonpay/sign', {
-            address: address
-        })
-            .then(function (response) {
-                window.dispatch('moonpay-signed', {signature: response.data});
-                //console.log(response);
-            })
-            .catch(function (error) {
-                console.log(error);
-            });
-    }
-}
 
 window.getSportvatarCodes = function() {
     axios.post('/sportpacks', { })

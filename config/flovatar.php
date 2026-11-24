@@ -9,15 +9,9 @@ return [
     'dustPackLive' => env('FLOVATAR_DUST_PACK_LIVE', false),
     'price' => env('FLOVATAR_PRICE', 9.00),
     'price2' => env('FLOVATAR_PRICE_2', 35.00),
-    'moonpayUrl' => env('MOONPAY_URL', ''),
 
 
     'signer' => env('FLOW_SIGNER', 'testnet-account'),
-
-    'moonpayDomain' => env('MOONPAY_DOMAIN', 'https://buy-staging.moonpay.com'),
-    'moonpayParams' => env('MOONPAY_PARAMS', '?baseCurrencyCode=usd&currencyCode=FLOW'),
-    'moonpayPublicKey' => env('MOONPAY_PUBLIC_KEY', ''),
-    'moonpaySecretKey' => env('MOONPAY_SECRET_KEY', ''),
 
     'dustPerDayScore' => env('DUST_PER_DAY_SCORE', 0.91447),
 

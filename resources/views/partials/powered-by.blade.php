@@ -13,11 +13,6 @@
                 </a>
             </li>
             <li>
-                <a href="https://moonpay.com" target="_blank" class="max-w-200 mx-auto sm:max-w-none">
-                    <img src="/images/logo-moonpay.svg" width="176" alt="flow">
-                </a>
-            </li>
-            <li>
                 <a href="https://find.xyz" target="_blank" class="max-w-200 mx-auto sm:max-w-none">
                     <img src="/images/logo-find.svg" width="75" alt="flow">
                 </a>

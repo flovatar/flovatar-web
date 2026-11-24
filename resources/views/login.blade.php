@@ -46,9 +46,6 @@
     <script>
         var svgOpen = '{!! config('flovatar.svgOpen') !!}';
         var svgClose = '{!! config('flovatar.svgClose') !!}';
-        var moonpayDomain = '{!! config('flovatar.moonpayDomain') !!}';
-        var moonpayParams = '{!! config('flovatar.moonpayParams') !!}';
-        var moonpayPublicKey = '{!! config('flovatar.moonpayPublicKey') !!}';
         var packPrice = {{ config('flovatar.price') }};
         var packPrice2 = {{ config('flovatar.price2') }};
     </script>
@@ -110,7 +107,6 @@
      @waiting-seal.window="loading = false; waitingSeal = true;"
      @loading-completed.window="loading = false; waitingSeal = false; sealCompleted = true; setTimeout(()=>sealCompleted=false,3000);"
      @subscribed-email.window="showSubscription = false"
-     @moonpay-signed.window="moonpaySignature = $event.detail.signature"
      @pack-sealing.window="sealingPack = true"
      @pack-purchased.window="packPurchased = true"
      @user-not-initialized.window="showInitPopup = true;"

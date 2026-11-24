@@ -11,7 +11,6 @@ Alpine.data('appData', () => ({
     waitingSeal: false,
     sealCompleted: false,
     open: false,
-    showMoonpay: false,
     showSubscription: true,
     sealingPack: false,
     packPurchased: false,
@@ -134,10 +133,6 @@ Alpine.data('appData', () => ({
     },
     submitSubscription() {
         window.sendSubscription(this.emailSubscription);
-    },
-    moonpaySignature: '',
-    moonpayUrl(){
-        return window.moonpayDomain + window.moonpayParams + '&apiKey=' + window.moonpayPublicKey + '&walletAddress=' + this.address() + '&signature=' + this.moonpaySignature;
     },
     startAccountInit(){
         this.showInitPopup = false;

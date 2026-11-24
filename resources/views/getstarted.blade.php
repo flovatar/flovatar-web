@@ -150,7 +150,7 @@
                             <strong class="title">Have you ever bought any crypto currency?</strong>
                             <ul class="btn-list">
                                 <li><button @click.prevent.stop="hasCrypto = 'yes'; cryptoWallet = null;" class="btn-o" x-bind:class="hasCrypto == 'yes' ? 'active' : ''">Yes</button></li>
-                                <li><button @click.prevent.stop="hasCrypto = 'no'; cryptoWallet = 'moonpay';" class="btn-o" x-bind:class="hasCrypto == 'no' ? 'active' : ''">No</button></li>
+                                <li><button @click.prevent.stop="hasCrypto = 'no'; cryptoWallet = 'newcomer';" class="btn-o" x-bind:class="hasCrypto == 'no' ? 'active' : ''">No</button></li>
                             </ul>
                         </div>
                         <div class="option-row"  x-show="hasCrypto == 'yes'">
@@ -745,126 +745,28 @@
 
 
 
-                        <section class="timeline-section" x-show="cryptoWallet == 'moonpay'">
-                            <strong class="timeline-title">Credit Card / Bank Account Instructions</strong>
+                        <section class="timeline-section" x-show="cryptoWallet == 'newcomer'">
+                            <strong class="timeline-title">New to crypto? Getting your first FLOW</strong>
                             <div class="timeline">
                                 <div class="timeline-heading">
                                     <span class="no">1</span>
-                                    <h2>TRY <span class="highlight-txt">MOONPAY</span></h2>
+                                    <h2>Top up inside <span class="highlight-txt">Flow Wallet</span></h2>
+                                    <p>Open Flow Wallet and use its <b>Buy</b> option to purchase FLOW with a card or bank transfer. Availability and payment methods depend on your country; the FLOW arrives directly in the wallet you connect to Flovatar.</p>
                                 </div>
-                                <div class="media-a alt sm">
-                                    <div class="img">
-                                        <img src="/images/a-img17.png" alt="">
-                                    </div>
-                                    <div class="desc">
-                                        <div class="inner">
-                                            <h3>By far the simplest way is with MoonPay but it’s not available to everyone</h3>
-                                            <p>MoonPay only works in the <b>EU, UK</b> and <b>USA</b> (except New York, Louisiana, and Texas). Also, not all banks allow purchase of crypto currencies.</p>
-                                            <p>If you're in a country that isn't on that list then we recommend using either:</p>
-                                            <div class="btn-wrap">
-                                                <button @click.prevent.stop="cryptoWallet = 'kraken'" class="btn-o"><img src="/images/icon-kraken.svg" alt="" width="40">Kraken</button>
-                                                <button @click.prevent.stop="cryptoWallet = 'crypto'" class="btn-o"><img src="/images/icon-crypto.svg" alt="" width="38">Crypto.com</button>
-                                                <button @click.prevent.stop="cryptoWallet = 'binance'" class="btn-o"><img src="/images/icon-binance.svg" alt="" width="38">Binance</button>
-                                            </div>
-                                        </div>
-                                    </div>
+                                <div class="timeline-heading">
+                                    <span class="no">2</span>
+                                    <h2>Or use <span class="highlight-txt">Dapper</span></h2>
+                                    <p>With Dapper Wallet, marketplace purchases are paid in USD from your Dapper balance, so you don't need FLOW for them.</p>
                                 </div>
-                                <div class="media-a alt sm">
-                                    <div class="img">
-                                        <img src="/images/a-img18.png" alt="">
-                                    </div>
-                                    <div class="desc">
-                                        <div class="inner">
-                                            <h3>Enter the amount of FLOW you’d like to purchase</h3>
-                                            <p>You will automatically see the $USD equivalent so you know how much money you’re spending.</p>
-                                            <p>Then click <b>Continue</b></p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="media-a alt sm">
-                                    <div class="img">
-                                        <img src="/images/a-img19.png" alt="">
-                                    </div>
-                                    <div class="desc">
-                                        <div class="inner">
-                                            <h3>Register for an account</h3>
-                                            <p>Enter your email address to setup a new account with Moonpay.</p>
-                                            <p>Then click <b>Continue</b></p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="media-a alt sm">
-                                    <div class="img">
-                                        <img src="/images/a-img20.png" alt="">
-                                    </div>
-                                    <div class="desc">
-                                        <div class="inner">
-                                            <h3>Enter your details</h3>
-                                            <p>Enter your <b>Name</b>, <b>DOB</b> and <b>Country</b> of residence.</p>
-                                            <p>Then click <b>Continue</b></p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="media-a alt sm">
-                                    <div class="img">
-                                        <img src="/images/a-img21.png" alt="">
-                                    </div>
-                                    <div class="desc">
-                                        <div class="inner">
-                                            <h3>Continue with verification on your smartphone</h3>
-                                            <p>If you’re not already using your phone you’ll be prompted to finish verifying yourself on there so just scan the QR code with your phone’s camera then open the link.
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="media-a alt sm">
-                                    <div class="img">
-                                        <img src="/images/a-img22.png" alt="">
-                                    </div>
-                                    <div class="desc">
-                                        <div class="inner">
-                                            <h3>Add a payment method</h3>
-                                            <p>Next you’ll be asked how you’d like to pay for your FLOW, either by bank transfer or Credit/Debit Card.</p>
-                                            <p>Select an option then enter all the details.</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="media-a alt sm">
-                                    <div class="img">
-                                        <img src="/images/a-img23.png" alt="">
-                                    </div>
-                                    <div class="desc">
-                                        <div class="inner">
-                                            <h3>Confirm the payment</h3>
-                                            <p>Make sure to check all the details are correct before clicking the <b>Buy now</b> button.</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="media-a alt sm">
-                                    <div class="img">
-                                        <img src="/images/a-img24.png" alt="">
-                                    </div>
-                                    <div class="desc">
-                                        <div class="inner">
-                                            <h3>Processing the transfer</h3>
-                                            <p>It will take a few seconds to process the bank transfer, once it’s complete you will see a <b>Crypto Delivered</b> confimation. </p>
-                                            <p>You’ll receive an email from MoonPay informing you your FLOW is on its way. </p>
-                                            <p>The actual transfer of the monies may take up to 30 mins but when it’s completed you will recieve another email. Then if you refresh the Flovatar website you will see the funds in your account.</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="media-a info-row">
-                                <div class="desc">
-                                    <div class="inner">
-                                        <h3>Card not accepted?</h3>
-                                        <p>If you’re having issues getting your card accepted with MoonPay then we recommend using either of these alternative methods:</p>
-                                        <div class="btn-wrap">
-                                            <button @click.prevent.stop="cryptoWallet = 'kraken'; window.scrollTo({top: 0, behavior: 'smooth'});" class="btn-o"><img src="/images/icon-kraken.svg" alt="" width="40">Kraken</button>
-                                            <button @click.prevent.stop="cryptoWallet = 'crypto'; window.scrollTo({top: 0, behavior: 'smooth'});" class="btn-o"><img src="/images/icon-crypto.svg" alt="" width="38">Crypto.com</button>
-                                            <button @click.prevent.stop="cryptoWallet = 'binance'; window.scrollTo({top: 0, behavior: 'smooth'});" class="btn-o"><img src="/images/icon-binance.svg" alt="" width="38">Binance</button>
-                                        </div>
+                                <div class="timeline-heading">
+                                    <span class="no">3</span>
+                                    <h2>Or buy <span class="highlight-txt">FLOW</span> on an exchange</h2>
+                                    <p>Buy FLOW on an exchange and withdraw it to your Flow Wallet address (shown in the user menu on Flovatar once connected). Step-by-step guides:</p>
+                                    <div class="btn-wrap">
+                                        <button @click.prevent.stop="hasCrypto = 'yes'; cryptoWallet = 'kraken'" class="btn-o"><img src="/images/icon-kraken.svg" alt="" width="40">Kraken</button>
+                                        <button @click.prevent.stop="hasCrypto = 'yes'; cryptoWallet = 'crypto'" class="btn-o"><img src="/images/icon-crypto.svg" alt="" width="38">Crypto.com</button>
+                                        <button @click.prevent.stop="hasCrypto = 'yes'; cryptoWallet = 'binance'" class="btn-o"><img src="/images/icon-binance.svg" alt="" width="38">Binance</button>
+                                        <button @click.prevent.stop="hasCrypto = 'yes'; cryptoWallet = 'other'" class="btn-o">Other</button>
                                     </div>
                                 </div>
                             </div>
