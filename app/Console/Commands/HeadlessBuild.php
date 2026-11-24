@@ -53,7 +53,7 @@ class HeadlessBuild extends Command
             $builder->loadEtags();
         }
         if ($all || $this->option('assets')) {
-            $builder->syncAssets();
+            $builder->syncAssets('bundle');
         }
         if ($all || $this->option('shells')) {
             $builder->buildShells($this->option('page') ?: null);
@@ -63,6 +63,9 @@ class HeadlessBuild extends Command
         }
         if ($all || $this->option('sitemap')) {
             $builder->buildSitemap();
+        }
+        if ($all || $this->option('assets')) {
+            $builder->syncAssets('rest'); // images etc. last: slow first upload, rarely change
         }
         $s = $builder->stats;
         $this->info(sprintf('done in %.1f s: %d uploaded (%.1f MB), %d unchanged, %d failed', microtime(true) - $t0, $s['uploaded'], $s['bytes'] / 1048576, $s['unchanged'], $s['failed']));

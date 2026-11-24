@@ -144,7 +144,11 @@ class StaticSiteBuilder
 
     // ---------------------------------------------------------------- assets + sitemap
 
-    public function syncAssets(): void
+    /** Bundle first (js/css/manifest/fonts, small), so pages never reference a bundle that isn't uploaded yet. */
+    public const PRIORITY_ASSET_DIRS = ['js', 'css', 'fonts', 'mix-manifest.json'];
+
+    /** $scope: 'all' | 'bundle' (js/css/fonts) | 'rest' (everything else, e.g. images) */
+    public function syncAssets(string $scope = 'all'): void
     {
         $public = public_path();
         $exclude = (array) config('headless.asset_exclude');
@@ -157,6 +161,10 @@ class StaticSiteBuilder
             $rel = ltrim(str_replace('\\', '/', substr($file->getPathname(), strlen($public))), '/');
             $top = explode('/', $rel)[0];
             if (in_array($top, $exclude, true) || in_array($rel, $exclude, true) || str_starts_with(basename($rel), '.')) {
+                continue;
+            }
+            $priority = in_array($top, self::PRIORITY_ASSET_DIRS, true);
+            if (($scope === 'bundle' && ! $priority) || ($scope === 'rest' && $priority)) {
                 continue;
             }
             $this->guard("asset {$rel}", fn () => $this->putFile($rel, $file->getPathname()));
