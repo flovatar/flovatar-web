@@ -286,4 +286,19 @@ class HeadlessTest extends TestCase
         Flovatar::where('flow_id', 3)->first()->update(['flow_address' => '0x27407eda8e2bb47c']);
         Queue::assertNothingPushed();
     }
+
+    public function test_indexer_events_map_to_item_pages(): void
+    {
+        config(['headless.enabled' => true]);
+        Queue::fake();
+        \App\Support\HeadlessRegen::fromEvent('A.2c6a4c4342aeca55.FlovatarMarketplace.FlovatarSaleWithdrawn', ['address' => '0x27407eda8e2bb47c', 'tokenId' => 7]);
+        \App\Support\HeadlessRegen::fromEvent('A.2d55b98eb200daef.NFTStorefrontV2.ListingAvailable', ['nftType' => ['typeID' => 'A.2c6a4c4342aeca55.Flobot.NFT'], 'nftID' => 9]);
+        \App\Support\HeadlessRegen::fromEvent('A.2c6a4c4342aeca55.FlovatarDustCollectible.Deposit', ['id' => 11, 'to' => '0x1']);
+        \App\Support\HeadlessRegen::fromEvent('A.2c6a4c4342aeca55.FlovatarMarketplace.FlovatarComponentForSale', ['id' => 5]);
+        \App\Support\HeadlessRegen::fromEvent('A.2c6a4c4342aeca55.FlovatarComponent.Deposit', ['id' => 5]);
+        Queue::assertPushed(RegenerateStaticItem::class, 3);
+        Queue::assertPushed(RegenerateStaticItem::class, fn ($j) => $j->type === 'flovatar' && $j->flowId === 7);
+        Queue::assertPushed(RegenerateStaticItem::class, fn ($j) => $j->type === 'flobot' && $j->flowId === 9);
+        Queue::assertPushed(RegenerateStaticItem::class, fn ($j) => $j->type === 'collectible' && $j->flowId === 11);
+    }
 }

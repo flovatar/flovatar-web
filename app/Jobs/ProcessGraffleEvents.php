@@ -974,6 +974,9 @@ class ProcessGraffleEvents extends BaseJob
 
         if($check){
             $this->event->update(['synced' => true]);
+            // headless static site: re-render the affected item page (also covers query-builder deletes/updates
+            // of listings, which fire no model events)
+            \App\Support\HeadlessRegen::fromEvent($event->type, $event->flow_metadata);
         }
 
 
