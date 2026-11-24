@@ -20,10 +20,10 @@ class HeadlessBuild extends Command
     protected $signature = 'headless:build
         {--assets : public/ assets (css/js/images/fonts)}
         {--shells : shell pages (home, marketplace, showroom, ..., collection shell, 404)}
-        {--items : per-item pages (Flovatars, Flobots, collectibles)}
+        {--items : per-item pages (Flovatars, Flobots, collectibles, Flobit TYPE pages)}
         {--sitemap : sitemap.xml}
         {--page=* : only these shell page ids}
-        {--type= : flovatar|flobot|collectible (with --items)}
+        {--type= : flovatar|flobot|collectible|flobit-type (with --items)}
         {--ids= : comma list / ranges of flow ids (with --items)}
         {--limit= : max items per type}
         {--out= : write to this local directory instead of the disk}

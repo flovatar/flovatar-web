@@ -113,6 +113,12 @@
                         </div>
                         <div class="box">
                             <ul class="stat-list">
+                                @if(($templates ?? null) && $templates->first() && $templates->first()->flow_id)
+                                <li>
+                                    <strong>Type</strong>
+                                    <span><a href="/flobits/{{ $templates->first()->flow_id }}">{{ $templates->first()->name }}</a></span>
+                                </li>
+                                @endif
                                 <li>
                                     <strong>Mint</strong>
                                     <span x-text="'#'+mint()"></span>

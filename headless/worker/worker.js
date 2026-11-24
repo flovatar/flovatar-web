@@ -49,6 +49,7 @@ const EDGE_CACHEABLE = [/^\/api\/v2\/(?!auth\/)/, /^\/api\/image\//, /^\/templat
 
 const ITEM_OWNER_URL = /^\/(flovatars|flobots|collectibles)\/(\d+)\/(0x[a-f0-9]{16})\/?$/;
 const ITEM_URL = /^\/(flovatars|flobots|collectibles)\/(\d+)\/?$/;
+const TYPE_URL = /^\/flobits\/\d+\/?$/; // Flobit TYPE pages (prebuilt; origin renders the ones not built yet)
 
 function typeFor(key) {
   const name = key.split("/").pop();
@@ -246,6 +247,11 @@ async function handle(request, env) {
   if (item) {
     const fb = await itemFallback(request, env, c, url, item[1], item[2]);
     if (fb && fb.status === 200) return fb;
+    return notFound(request, env, c);
+  }
+  if (TYPE_URL.test(path)) {
+    const r = await proxy(request, env, c, url, { fallback: true });
+    if (r.status === 200) return r;
     return notFound(request, env, c);
   }
   // assets not mirrored on R2 (e.g. /webgl/*): try the origin, otherwise 404

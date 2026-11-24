@@ -96,27 +96,13 @@ class PublicController extends FilteredController
         return $this->templatesLean($set);
     }
 
-    /** Flobit type (template) page data: template, supply, open listings (floor), sales stats. */
+    /** Flobit type (template) page data: template, supply, open listings (floor + cheapest), sales stats. */
     public function template(int $flowId)
     {
-        return Cache::flexible('apiv2:template:'.$flowId, [60, 600], function () use ($flowId) {
-            $tpl = FlovatarTemplate::query()->select(Controller::TEMPLATE_LEAN_COLUMNS)->where('flow_id', $flowId)->first();
-            abort_unless($tpl, 404);
-            $componentIds = FlovatarComponent::query()->where('flovatar_template_id', $tpl->id)->select('id');
-            $minted = FlovatarComponent::query()->where('flovatar_template_id', $tpl->id)->count();
-            $listings = SaleOffer::query()->notBlocked()->where('item_type', FlovatarComponent::class)
-                ->where('is_completed', false)->whereIn('item_id', $componentIds)
-                ->selectRaw('count(*) c, min(price) floor, is_dapper')->groupBy('is_dapper')->get();
-            $sales = Sale::query()->notBlocked()->where('item_type', FlovatarComponent::class)->whereIn('item_id', $componentIds)
-                ->selectRaw('count(*) c, avg(price) avg, max(price) max, max(created_at) last_at')->first();
+        $data = Cache::flexible('apiv2:template:'.$flowId, [60, 600], fn () => ItemSnapshot::flobitType($flowId) ?? false);
+        abort_unless($data, 404);
 
-            return [
-                'template' => ItemSnapshot::template($tpl),
-                'minted' => $minted,
-                'listings' => $listings->map(fn ($l) => ['currency' => $l->is_dapper ? 'DUC' : 'FLOW', 'count' => (int) $l->c, 'floor' => (float) $l->floor])->values(),
-                'sales' => ['count' => (int) $sales->c, 'avg' => $sales->avg !== null ? round((float) $sales->avg, 2) : null, 'max' => $sales->max !== null ? (float) $sales->max : null, 'last_at' => $sales->last_at],
-            ];
-        });
+        return $data;
     }
 
     /** Pack supply (read-only; never secrets/signatures). A wallet's packs are read on chain. */

@@ -253,6 +253,11 @@ Route::get('flovatars/{flovatarId}/{address}/download/png', [DownloadController:
     ->where('address','0x([a-f0-9]{16})')
     ->name('flovatar-download-png');
 
+// Flobit TYPE page (one per template; prebuilt by headless:build, docs/HEADLESS.md)
+Route::get('flobits/{templateId}', \App\Http\Controllers\FlobitTypeController::class)
+    ->whereNumber('templateId')
+    ->name('flobit-type');
+
 Route::get('components/{componentId}/{address}', FlovatarComponentController::class)
     ->whereNumber('componentId')
     ->where('address','0x([a-f0-9]{16})')

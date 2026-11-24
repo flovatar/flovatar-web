@@ -21,6 +21,23 @@ class HeadlessRegen
 {
     public const MODEL_TYPES = [Flovatar::class => 'flovatar', Flobot::class => 'flobot', DustCollectible::class => 'collectible'];
 
+    /** Flobit TYPE page of the template of a Flobit (component flow id); see StaticSiteBuilder::TYPE_PAGE. */
+    public static function touchComponentType($componentFlowId): bool
+    {
+        if (! config('headless.enabled') || ! is_numeric($componentFlowId)) {
+            return false;
+        }
+        try {
+            $tpl = \App\Services\Headless\ItemSnapshot::templateFlowIdOfComponent((int) $componentFlowId);
+        } catch (Throwable $e) {
+            report($e);
+
+            return false;
+        }
+
+        return $tpl !== null && self::touch(\App\Services\Headless\StaticSiteBuilder::TYPE_PAGE, $tpl);
+    }
+
     public static function key(string $type, int $flowId): string
     {
         return 'headless-regen:'.$type.':'.$flowId;
@@ -82,6 +99,24 @@ class HeadlessRegen
         if ($itemType && $id !== null) {
             self::touch($itemType, $id);
         }
+        // Flobit TYPE pages: mint/burn (FlovatarComponent.*), FLOW-market component listings, Storefront component listings
+        $componentId = null;
+        if ($contract === 'FlovatarComponent') {
+            $componentId = $meta['id'] ?? null;
+        } elseif ($contract === 'FlovatarMarketplace' && str_contains($event, 'Component')) {
+            $componentId = $meta['id'] ?? $meta['tokenId'] ?? null;
+        } elseif ($contract === 'NFTStorefrontV2' && isset($meta['nftType'])) {
+            $typeId = is_array($meta['nftType']) ? ($meta['nftType']['typeID'] ?? '') : (string) $meta['nftType'];
+            if (str_ends_with($typeId, '.FlovatarComponent.NFT')) {
+                $componentId = $meta['nftID'] ?? null;
+            }
+        }
+        $typeRelevant = $contract !== 'FlovatarComponent' || in_array($event, ['Created', 'Burned', 'Destroyed'], true); // not plain transfers
+        if ($componentId !== null && $typeRelevant) {
+            isset($meta['templateId']) && is_numeric($meta['templateId']) // Created/Destroyed carry the template id
+                ? self::touch(\App\Services\Headless\StaticSiteBuilder::TYPE_PAGE, (int) $meta['templateId'])
+                : self::touchComponentType($componentId);
+        }
     }
 
     public static function register(): void
@@ -99,8 +134,22 @@ class HeadlessRegen
             if ($type && $row->item_id) {
                 $flowId = $row->item_type::query()->whereKey($row->item_id)->value('flow_id');
                 self::touch($type, $flowId);
+            } elseif ($row->item_type === \App\Models\FlovatarComponent::class && $row->item_id && config('headless.enabled')) {
+                self::touchComponentType(\App\Models\FlovatarComponent::query()->whereKey($row->item_id)->value('flow_id'));
             }
         };
+        // Flobit TYPE pages: mint (supply), burn/destroy; template rows (burned count, name, ...)
+        \App\Models\FlovatarComponent::saved(function ($c) {
+            if (config('headless.enabled') && ($c->wasRecentlyCreated || $c->wasChanged(['destroyed', 'flovatar_template_id']))) {
+                self::touchComponentType($c->flow_id);
+            }
+        });
+        \App\Models\FlovatarComponent::deleted(fn ($c) => self::touchComponentType($c->flow_id));
+        \App\Models\FlovatarTemplate::saved(function ($t) {
+            if ($t->flow_id !== null && $t->wasChanged(['burned', 'name', 'description', 'max_mintable', 'rarity'])) {
+                self::touch(\App\Services\Headless\StaticSiteBuilder::TYPE_PAGE, $t->flow_id);
+            }
+        });
         SaleOffer::saved($byListing);
         SaleOffer::deleted($byListing);
         Sale::created($byListing);

@@ -320,6 +320,52 @@ class HeadlessTest extends TestCase
         Queue::assertNothingPushed();
     }
 
+    private function seedFlobitType(): void
+    {
+        $now = now();
+        DB::table('flovatar_templates')->insert(['id' => 41, 'name' => 'Aviator Silver', 'category' => 'eyeglasses', 'series' => '1', 'rarity' => 'rare',
+            'max_mintable' => 250, 'burned' => 2, 'flow_id' => 214, 'svg' => '<svg>TPL</svg>', 'created_at' => $now, 'updated_at' => $now]);
+        DB::table('flovatar_components')->insert([
+            ['flovatar_template_id' => 41, 'flow_id' => 501, 'flow_address' => '0x2538515561c0c431', 'mint' => 7, 'created_at' => $now, 'updated_at' => $now],
+            ['flovatar_template_id' => 41, 'flow_id' => 502, 'flow_address' => '0x27407eda8e2bb47c', 'mint' => 8, 'created_at' => $now, 'updated_at' => $now],
+        ]);
+        DB::table('sale_offers')->insert(['item_id' => 1, 'item_type' => \App\Models\FlovatarComponent::class, 'flow_id' => 501, 'flow_address' => '0x2538515561c0c431',
+            'price' => 3.5, 'is_completed' => false, 'is_dapper' => false, 'created_at' => $now, 'updated_at' => $now]);
+    }
+
+    public function test_flobit_type_page_api_and_static_build(): void
+    {
+        $this->seedFlobitType();
+        $api = $this->get('/api/v2/templates/214');
+        $this->assertPublic($api);
+        $api->assertJsonPath('minted', 2)->assertJsonPath('listings.0.floor', 3.5)->assertJsonPath('listed.0.id', 501)
+            ->assertJsonPath('listed.0.owner', '0x2538515561c0c431')->assertJsonPath('url', 'https://next-testnet.flovatar.com/flobits/214');
+        $this->assertStringNotContainsString('<svg', $api->getContent());
+
+        $out = sys_get_temp_dir().'/headless-test-'.uniqid();
+        $this->artisan('headless:build', ['--items' => true, '--type' => 'flobit-type', '--out' => $out, '--quiet-puts' => true])->assertExitCode(0);
+        $html = file_get_contents($out.'/'.Headless::prefix().'flobits/214/index.html');
+        $this->assertStringContainsString('<link rel="canonical" href="https://next-testnet.flovatar.com/flobits/214" />', $html);
+        $this->assertStringContainsString('Aviator Silver', $html);
+        $this->assertStringContainsString('flobitTypeData(window.flobitType)', $html);
+        $this->assertStringContainsString('/components/', $html);
+        $this->artisan('headless:build', ['--sitemap' => true, '--out' => $out, '--quiet-puts' => true])->assertExitCode(0);
+        $this->assertStringContainsString('/flobits/214</loc>', file_get_contents($out.'/'.Headless::prefix().'sitemap.xml'));
+        $this->get('/flobits/999')->assertNotFound();
+    }
+
+    public function test_flobit_events_regenerate_the_type_page(): void
+    {
+        $this->seedFlobitType();
+        config(['headless.enabled' => true]);
+        Queue::fake();
+        \App\Support\HeadlessRegen::fromEvent('A.2c6a4c4342aeca55.FlovatarComponent.Deposit', ['id' => 501, 'to' => '0x1']); // transfer: no
+        \App\Support\HeadlessRegen::fromEvent('A.2c6a4c4342aeca55.FlovatarComponent.Created', ['id' => 503, 'templateId' => 214, 'mint' => 9]);
+        \App\Support\HeadlessRegen::fromEvent('A.2c6a4c4342aeca55.FlovatarMarketplace.FlovatarComponentForSale', ['id' => 502, 'price' => 4]);
+        Queue::assertPushed(RegenerateStaticItem::class, 1); // debounced per template
+        Queue::assertPushed(RegenerateStaticItem::class, fn ($j) => $j->type === 'flobit-type' && $j->flowId === 214);
+    }
+
     public function test_indexer_events_map_to_item_pages(): void
     {
         config(['headless.enabled' => true]);

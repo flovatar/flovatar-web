@@ -136,6 +136,58 @@ class ItemSnapshot
         ];
     }
 
+    /** Templates that get a Flobit TYPE page (/flobits/{flowId}): every template with at least one minted Flobit. */
+    public static function flobitTypeIds(): array
+    {
+        return FlovatarTemplate::query()->whereNotNull('flow_id')
+            ->whereIn('id', FlovatarComponent::query()->select('flovatar_template_id')->distinct())
+            ->orderBy('flow_id')->pluck('flow_id')->map(fn ($id) => (int) $id)->all();
+    }
+
+    /** Template flow id of a Flobit (component flow id), for regeneration of its type page. */
+    public static function templateFlowIdOfComponent($componentFlowId): ?int
+    {
+        $tplId = FlovatarComponent::query()->where('flow_id', $componentFlowId)->value('flovatar_template_id');
+        $flowId = $tplId ? FlovatarTemplate::query()->whereKey($tplId)->value('flow_id') : null;
+
+        return $flowId !== null ? (int) $flowId : null;
+    }
+
+    /**
+     * Flobit TYPE (template) data: template, supply, open listings per currency (count + floor), the cheapest open
+     * listings (links to the item pages) and sales stats. Used by GET /api/v2/templates/{id} and the static type page.
+     * Null when the template doesn't exist.
+     */
+    public static function flobitType(int $flowId, int $cheapest = 12): ?array
+    {
+        $tpl = FlovatarTemplate::query()->select(\App\Http\Controllers\Controller::TEMPLATE_LEAN_COLUMNS)->where('flow_id', $flowId)->first();
+        if (! $tpl) {
+            return null;
+        }
+        $componentIds = FlovatarComponent::query()->where('flovatar_template_id', $tpl->id)->select('id');
+        $minted = FlovatarComponent::query()->where('flovatar_template_id', $tpl->id)->count();
+        $open = fn () => SaleOffer::query()->notBlocked()->where('item_type', FlovatarComponent::class)
+            ->where('is_completed', false)->whereIn('item_id', $componentIds);
+        $listings = $open()->selectRaw('count(*) c, min(price) floor, is_dapper')->groupBy('is_dapper')->get();
+        $listed = $open()->with(['item' => fn ($q) => $q->select('id', 'flow_id', 'flow_address', 'mint')])
+            ->orderBy('price')->limit($cheapest)->get(['id', 'item_id', 'item_type', 'flow_id', 'flow_address', 'price', 'is_dapper']);
+        $sales = Sale::query()->notBlocked()->where('item_type', FlovatarComponent::class)->whereIn('item_id', $componentIds)
+            ->selectRaw('count(*) c, avg(price) avg, max(price) max, max(created_at) last_at')->first();
+
+        return [
+            'template' => self::template($tpl),
+            'url' => Headless::frontendUrl('flobits/'.$flowId),
+            'minted' => $minted,
+            'listings' => $listings->map(fn ($l) => ['currency' => $l->is_dapper ? 'DUC' : 'FLOW', 'count' => (int) $l->c, 'floor' => (float) $l->floor])->values()->all(),
+            'listed' => $listed->map(fn ($o) => [
+                'id' => (int) ($o->item?->flow_id ?? $o->flow_id), 'mint' => $o->item?->mint !== null ? (int) $o->item->mint : null,
+                'owner' => $o->flow_address ?? $o->item?->flow_address, 'price' => (float) $o->price, 'currency' => $o->is_dapper ? 'DUC' : 'FLOW',
+            ])->values()->all(),
+            'sales' => ['count' => (int) $sales->c, 'avg' => $sales->avg !== null ? round((float) $sales->avg, 2) : null, 'max' => $sales->max !== null ? (float) $sales->max : null,
+                'last_at' => $sales->last_at ? \Illuminate\Support\Carbon::parse($sales->last_at)->toIso8601String() : null],
+        ];
+    }
+
     public static function images(string $imgType, int $id): array
     {
         $og = ItemImages::og($imgType, $id);

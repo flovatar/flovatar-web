@@ -32,7 +32,8 @@ class RegenerateStaticItem implements ShouldQueue
     public function handle(): void
     {
         Cache::forget(\App\Support\HeadlessRegen::key($this->type, $this->flowId));
-        $result = (new StaticSiteBuilder())->buildItem($this->type, $this->flowId);
+        $builder = new StaticSiteBuilder();
+        $result = $this->type === StaticSiteBuilder::TYPE_PAGE ? $builder->buildFlobitType($this->flowId) : $builder->buildItem($this->type, $this->flowId);
         Log::info('headless: regenerated '.$this->type.' #'.$this->flowId.': '.$result);
     }
 

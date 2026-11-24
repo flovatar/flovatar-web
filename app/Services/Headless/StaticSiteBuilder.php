@@ -16,6 +16,7 @@ use Throwable;
  * Builds the static headless site from the app's own Blade views (Laravel = static site generator):
  *  - shells: home, marketplace, showroom(s), transactions, builders, info pages, collection shell, 404
  *  - items: one page per Flovatar / Flobot / DUST collectible (snapshot + live chain refresh in the browser)
+ *    and one Flobit TYPE page per template with minted Flobits (/flobits/{templateFlowId})
  *  - assets: public/ (css/js from the Mix build of THIS deploy, images, fonts)
  *  - sitemap.xml
  * Pages are rendered by sending an internal GET through the HTTP kernel (same controllers, middleware and
@@ -47,6 +48,9 @@ class StaticSiteBuilder
 
     public const ITEM_TYPES = ['flovatar' => Flovatar::class, 'flobot' => Flobot::class, 'collectible' => DustCollectible::class];
 
+    /** Pseudo item type for Flobit TYPE pages /flobits/{templateFlowId} (one per template with minted Flobits). */
+    public const TYPE_PAGE = 'flobit-type';
+
     private ?array $etags = null;
 
     private array $sizes = [];
@@ -62,7 +66,7 @@ class StaticSiteBuilder
 
     public static function itemKey(string $type, int $id): string
     {
-        return ItemSnapshot::SEGMENTS[$type].'/'.$id.'/index.html';
+        return $type === self::TYPE_PAGE ? 'flobits/'.$id.'/index.html' : ItemSnapshot::SEGMENTS[$type].'/'.$id.'/index.html';
     }
 
     // ---------------------------------------------------------------- rendering
@@ -125,8 +129,37 @@ class StaticSiteBuilder
         return $this->put(self::itemKey($type, $id), $r['html'], 'text/html; charset=utf-8', (string) config('headless.html_cache_control'));
     }
 
+    /** Build (or rebuild) one Flobit TYPE page. Returns 'uploaded' | 'unchanged' | 'missing'. */
+    public function buildFlobitType(int $flowId): string
+    {
+        $data = ItemSnapshot::flobitType($flowId, 0);
+        if (! $data || $data['minted'] < 1) {
+            $this->delete(self::itemKey(self::TYPE_PAGE, $flowId));
+
+            return 'missing';
+        }
+        $r = $this->render('/flobits/'.$flowId, ['page' => self::TYPE_PAGE, 'canonical' => '/flobits/'.$flowId]);
+
+        return $this->put(self::itemKey(self::TYPE_PAGE, $flowId), $r['html'], 'text/html; charset=utf-8', (string) config('headless.html_cache_control'));
+    }
+
+    public function buildFlobitTypes(?array $ids = null, ?int $limit = null): void
+    {
+        $all = ItemSnapshot::flobitTypeIds();
+        $list = $ids ? array_values(array_intersect($all, $ids)) : $all;
+        foreach (array_slice($list, 0, $limit ?: null) as $id) {
+            $this->guard("flobit type #{$id}", fn () => $this->buildFlobitType((int) $id));
+        }
+    }
+
     public function buildItems(?string $onlyType = null, ?array $ids = null, ?int $limit = null): void
     {
+        if (! $onlyType || $onlyType === self::TYPE_PAGE) {
+            $this->buildFlobitTypes($ids, $limit);
+            if ($onlyType) {
+                return;
+            }
+        }
         foreach (self::ITEM_TYPES as $type => $class) {
             if ($onlyType && $onlyType !== $type) {
                 continue;
@@ -217,6 +250,9 @@ class StaticSiteBuilder
             foreach ($class::query()->whereNotNull('flow_id')->whereNotNull('flow_address')->orderBy('flow_id')->pluck('flow_id') as $id) {
                 $urls[] = Headless::frontendUrl(ItemSnapshot::SEGMENTS[$type].'/'.$id);
             }
+        }
+        foreach (ItemSnapshot::flobitTypeIds() as $id) {
+            $urls[] = Headless::frontendUrl('flobits/'.$id);
         }
         $xml = '<?xml version="1.0" encoding="UTF-8"?>'."\n".'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'."\n";
         foreach ($urls as $u) {

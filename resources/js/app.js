@@ -20,6 +20,7 @@ require('./app/sales');
 require('./app/flovatar');
 require('./app/flobot');
 require('./app/component');
+require('./app/flobit-type');
 require('./app/chart');
 require('./app/getstarted');
 require('./app/treasurehunting');
