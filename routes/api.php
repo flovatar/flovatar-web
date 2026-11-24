@@ -72,11 +72,12 @@ Route::middleware([\App\Http\Middleware\AuthenticateRenderWorker::class, 'thrott
 
 /*
 | Headless frontend read API v2 (public, GET, edge-cacheable; docs/HEADLESS.md). No api-group IP throttle:
+| (the origin sees Cloudflare edge/Worker IPs, not clients, so a per-IP limit would throttle many users at once);
 | behind Cloudflare/the Worker the client IP is an edge IP, and the edge cache absorbs repeat traffic.
 */
 Route::prefix('v2')
     ->withoutMiddleware('throttle:api')
-    ->middleware([\App\Http\Middleware\PublicApiCache::class, 'throttle:600,1'])
+    ->middleware([\App\Http\Middleware\PublicApiCache::class, 'throttle:6000,1'])
     ->group(function () {
         $p = \App\Http\Controllers\Api\V2\PublicController::class;
         Route::get('meta', [$p, 'meta'])->name('api.v2.meta');
