@@ -30,11 +30,9 @@ window.logout = function(){
     window.dispatch('logged-out');
 
     // Also end the server (Laravel) session, without leaving the page.
+    // The nonce is fetched again only when the next login needs it (no origin request for anonymous visitors).
     fetch('/logout', {credentials: 'same-origin', redirect: 'manual', cache: 'no-store'}).catch(function(){});
-    window.serverAuth = {authenticated: false, address: null};
-    window.dispatchEvent(new CustomEvent('server-auth', {detail: window.serverAuth}));
-    window.accountProofNonce = null;
-    if(window.loadLoginNonce){ setTimeout(window.loadLoginNonce, 500); }
+    window.resetServerAuth();
 }
 
 window.getDiffString = function(start, end){

@@ -32,6 +32,7 @@ class LoginController extends AuthController
      */
     public function nonce() {
         $address = $this->authenticatedFlowAddress();
+        $this->syncLoginMarker($address !== null);
 
         return response()
             ->json([
@@ -90,6 +91,7 @@ class LoginController extends AuthController
     public function logout() {
         Auth::logout();
         Session::flush();
+        $this->syncLoginMarker(false);
         return Redirect::to('/')->with('notice', 'You\'ve successfully logged out!');
     }
 

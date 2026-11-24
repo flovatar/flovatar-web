@@ -18,6 +18,7 @@ class AuthController extends LoginController
     public function me()
     {
         $address = $this->authenticatedFlowAddress();
+        $this->syncLoginMarker($address !== null);
 
         return response()->json(['authenticated' => $address !== null, 'address' => $address])
             ->header('Cache-Control', 'private, no-store');
@@ -36,6 +37,7 @@ class AuthController extends LoginController
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+        $this->syncLoginMarker(false);
 
         return response()->json(['result' => true])->header('Cache-Control', 'private, no-store');
     }
