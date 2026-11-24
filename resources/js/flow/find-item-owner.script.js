@@ -2,7 +2,8 @@ import * as fcl from "@onflow/fcl"
 
 /**
  * Chain-first owner lookup for item pages: returns the first candidate address whose collection holds
- * the item (or null). One script for all candidates; cheap (getIDs only, no SVG).
+ * the item (or null): in its collection, or listed in its FlovatarMarketplace sale collection (FLOW listings move
+ * the NFT there). One script for all candidates; cheap (ID lists only, no SVG).
  * kind: flovatar | flobot | collectible | component
  */
 export async function findItemOwnerScript(kind, itemId, candidates) {
@@ -11,7 +12,7 @@ export async function findItemOwnerScript(kind, itemId, candidates) {
     return await fcl
         .query({
             cadence: `
-import Flovatar, Flobot, FlovatarComponent, FlovatarDustCollectible from 0xFlovatar
+import Flovatar, Flobot, FlovatarComponent, FlovatarDustCollectible, FlovatarMarketplace from 0xFlovatar
 
 access(all) fun main(kind: String, itemId: UInt64, candidates: [Address]): Address? {
     for a in candidates {
@@ -28,6 +29,15 @@ access(all) fun main(kind: String, itemId: UInt64, candidates: [Address]): Addre
         }
         if ids.contains(itemId) {
             return a
+        }
+        // FLOW listings of the legacy FlovatarMarketplace hold the NFT in the seller's sale collection
+        if kind == "flovatar" || kind == "component" {
+            if let m = acct.capabilities.borrow<&{FlovatarMarketplace.SalePublic}>(FlovatarMarketplace.CollectionPublicPath) {
+                let listed = kind == "flovatar" ? m.getFlovatarIDs() : m.getFlovatarComponentIDs()
+                if listed.contains(itemId) {
+                    return a
+                }
+            }
         }
     }
     return nil
