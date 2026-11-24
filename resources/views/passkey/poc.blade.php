@@ -37,7 +37,7 @@
         .card { background: rgba(33,39,65,.92); border: 1px solid rgba(174,215,247,.14); border-radius: 10px; padding: 18px 16px; margin: 14px 0; }
         .card.done { border-color: rgba(82,246,24,.45); }
         .card.locked { opacity: .55; }
-        .num { font-family: 'Staatliches', sans-serif; display: inline-flex; width: 32px; height: 32px; border-radius: 50%; background: var(--indigo); align-items: center; justify-content: center; font-size: 19px; flex: none; }
+        .num { font-family: 'Roboto Condensed', Arial, sans-serif; font-weight: 700; display: inline-flex; width: 32px; height: 32px; border-radius: 50%; background: var(--indigo); align-items: center; justify-content: center; font-size: 19px; flex: none; }
         .done .num { background: var(--green); color: var(--ink); }
         p { margin: 10px 0; }
         .hint { color: var(--muted); font-size: 15px; }
@@ -97,7 +97,7 @@
 
     {{-- Step 1: create / sign in --}}
     <section class="card" id="step-1">
-        <h2><span class="num">1</span> Create your account</h2>
+        <h2><span class="num">1</span> <span id="step1-title">Create your account</span></h2>
         <div id="signed-out">
             <label for="email">Email <span class="hint">(optional)</span></label>
             <input id="email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com">

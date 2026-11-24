@@ -95,6 +95,28 @@
         });
     }
 
+    // Safari (iOS/iPadOS/macOS) only shows the passkey sheet when the call comes straight from a tap. Our calls follow a
+    // server round trip, so if the first attempt is refused (NotAllowedError) we keep the prepared request and show a
+    // button that calls WebAuthn directly from the tap. The same button doubles as "try again" after a real cancel.
+    function ceremony(step, label, call) {
+        return call().catch(function (e) {
+            if (!e || e.name !== 'NotAllowedError') throw e;
+            return new Promise(function (resolve, reject) {
+                var el = $('status-' + step);
+                el.innerHTML = '<span class="wait">👆 Tap the button to ' + esc(label) + ' with Face ID / fingerprint.</span><br>'
+                    + '<button class="btn" type="button" data-ceremony="go">Continue with passkey</button> '
+                    + '<button class="btn ghost" type="button" data-ceremony="cancel">Cancel</button>';
+                el.querySelector('[data-ceremony=go]').onclick = function () {
+                    call().then(resolve, function (e2) {
+                        if (e2 && e2.name === 'NotAllowedError') { setStatus(step, '', ''); ceremony(step, label, call).then(resolve, reject); return; }
+                        reject(e2);
+                    });
+                };
+                el.querySelector('[data-ceremony=cancel]').onclick = function () { var c = new Error('Cancelled. Nothing was signed.'); reject(c); };
+            });
+        });
+    }
+
     // ---------------------------------------------------------------- transactions
     function waitTx(step, txId, label) {
         state.lastTx = { id: txId, label: label, status: 'Pending' };
@@ -118,7 +140,7 @@
         setStatus(step, '<span class="spinner"></span> Preparing the transaction…', 'wait');
         return api('POST', '/passkey/tx/prepare', { action: action, params: params || {} }).then(function (prep) {
             setStatus(step, '👆 Approve the passkey prompt to sign "' + esc(label) + '"…', 'wait');
-            return getAssertion(prep.challenge, [prep.credentialId]).then(function (assertion) {
+            return ceremony(step, 'sign "' + label + '"', function () { return getAssertion(prep.challenge, [prep.credentialId]); }).then(function (assertion) {
                 setStatus(step, '<span class="spinner"></span> Sending to Flow…', 'wait');
                 return api('POST', '/passkey/tx/submit', { token: prep.token, assertion: assertion });
             });
@@ -128,7 +150,9 @@
     // ---------------------------------------------------------------- actions
     var doCreate = wrap(1, function () {
         setStatus(1, '<span class="spinner"></span> Asking your device for a passkey…', 'wait');
-        return api('POST', '/passkey/register/options', { email: $('email').value.trim() || null }).then(createCredential).then(function (att) {
+        return api('POST', '/passkey/register/options', { email: $('email').value.trim() || null }).then(function (opts) {
+            return ceremony(1, 'create your passkey', function () { return createCredential(JSON.parse(JSON.stringify(opts))); });
+        }).then(function (att) {
             setStatus(1, '<span class="spinner"></span> Passkey saved. Creating your Flow account on testnet (about 10–20 seconds)…', 'wait');
             return api('POST', '/passkey/register/verify', att);
         }).then(function (r) {
@@ -140,7 +164,9 @@
 
     var doLogin = wrap(1, function () {
         setStatus(1, '<span class="spinner"></span> Choose your passkey…', 'wait');
-        return api('POST', '/passkey/login/options').then(function (o) { return getAssertion(o.publicKey.challenge, []); }).then(function (a) {
+        return api('POST', '/passkey/login/options').then(function (o) {
+            return ceremony(1, 'sign in', function () { return getAssertion(o.publicKey.challenge, []); });
+        }).then(function (a) {
             return api('POST', '/passkey/login/verify', a);
         }).then(function (r) {
             setStatus(1, '✅ Signed in as <span class="mono">' + esc(r.address) + '</span> (key #' + esc(r.key_index) + ')', 'ok');
@@ -178,7 +204,9 @@
 
     var doAddDevice = wrap(5, function () {
         setStatus(5, '<span class="spinner"></span> Saving a passkey on this device…', 'wait');
-        return api('POST', '/passkey/device/options').then(createCredential).then(function (att) {
+        return api('POST', '/passkey/device/options').then(function (opts) {
+            return ceremony(5, 'save a passkey on this device', function () { return createCredential(JSON.parse(JSON.stringify(opts))); });
+        }).then(function (att) {
             return api('POST', '/passkey/device/verify', att);
         }).then(function (r) {
             setStatus(5, '✅ Passkey saved on this device (' + esc(r.label) + '). Now approve it with the passkey you signed in with…', 'ok');
@@ -223,6 +251,7 @@
         var st = me.state || {};
         $('signed-out').classList.toggle('hidden', auth);
         $('signed-in').classList.toggle('hidden', !auth);
+        $('step1-title').textContent = auth ? 'Your account' : 'Create your account';
         if (me.stock) $('stock-line').textContent = 'Starter stock right now: ' + me.stock.flobits + ' Flobit(s), ' + me.stock.sparks + ' Spark(s).';
         if (auth) {
             $('addr').textContent = me.address;
