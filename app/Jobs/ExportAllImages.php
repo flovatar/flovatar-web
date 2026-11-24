@@ -33,7 +33,7 @@ class ExportAllImages extends BaseJob
     public function handle()
     {
         // New static renderer (resvg -> R2): PNG/JPG/og for flovatar, flobot and collectible.
-        RenderItemImages::queue($this->model, $this->flovatarId);
+        RenderItemImages::debounced($this->model, $this->flovatarId);
 
         if(!config('flovatar.imageExportEnabled')){
             info('Image export disabled (FLOVATAR_IMAGE_EXPORT_ENABLED=false), skipping '.static::class);

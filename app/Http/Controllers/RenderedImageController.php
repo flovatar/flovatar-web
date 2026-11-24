@@ -41,7 +41,7 @@ class RenderedImageController extends Controller
         if (! $exists) {
             abort(404);
         }
-        RenderItemImages::queue($type, $flowId, 0);
+        RenderItemImages::debounced($type, $flowId, 0);
         $svg = match ($type) {
             'flovatar' => $variant === 'nobg.png' ? '/api/image/nobg/'.$flowId : '/api/image/'.$flowId,
             'flobot' => '/api/image/flobot/'.$flowId,
