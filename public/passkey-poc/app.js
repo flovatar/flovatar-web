@@ -185,6 +185,7 @@
             return refresh().then(function () { return approve(r.pending, r.label); });
         });
     });
+    var doTestKey = wrap(5, function () { return signAndSend(5, 'setup', {}, 'No-op test signed by key #' + state.me.credential.key_index); });
     function approve(pendingId, label) {
         return signAndSend(5, 'add_key', { credential: pendingId }, 'Add device ' + (label || '')).then(function () {
             return new Promise(function (res) { setTimeout(res, 800); }).then(refresh);
@@ -244,6 +245,7 @@
             $('btn-gift').disabled = !auth || !initialized || !!me.gift_tx;
             $('btn-gift').textContent = me.gift_tx ? 'Gift received' : 'Send me a starter Flobit';
             $('btn-add-device').disabled = !auth;
+            $('btn-test-key').disabled = !auth || !initialized;
         }
         if (me.gift_tx && !$('status-3').innerHTML) setStatus(3, '🎁 Gift received <span class="txline">tx ' + txLink(me.gift_tx) + '</span>', 'ok');
         if (initialized && !$('status-2').innerHTML) setStatus(2, '✅ Collections are set up.', 'ok');
@@ -319,6 +321,7 @@
         $('btn-shuffle').onclick = function () { shuffle(); };
         $('btn-create-flovatar').onclick = doCreateFlovatar;
         $('btn-add-device').onclick = doAddDevice;
+        $('btn-test-key').onclick = doTestKey;
         refresh().catch(function (e) { state.lastError = e.message; renderDebug(); });
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();

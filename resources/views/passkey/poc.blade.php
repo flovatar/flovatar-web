@@ -171,7 +171,10 @@
             <li>Approve it with the passkey that is already on your account (QR code again if that is your phone). After about 10 seconds the new key is on your account.</li>
         </ol>
         <p class="hint">iPhone, iPad and Mac with the same Apple ID (or Android devices with the same Google account) already share passkeys: there you can simply sign in, no need to add the device.</p>
-        <button class="btn" id="btn-add-device" disabled>Add this device</button>
+        <div class="row">
+            <button class="btn" id="btn-add-device" disabled>Add this device</button>
+            <button class="btn ghost" id="btn-test-key" disabled>Test my key (sign a no-op tx)</button>
+        </div>
         <div id="pending-box" class="hidden">
             <p><b>Waiting for approval:</b></p>
             <ul class="items" id="pending"></ul>
