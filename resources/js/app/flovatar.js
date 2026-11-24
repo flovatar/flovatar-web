@@ -249,23 +249,23 @@ Alpine.data('flovatarData', (address, flovatarId, templates, flovatarSales, flov
         }
         return this.meta() ? this.meta().metadata.name : '';
     },
-    story(){
-        if(this.isFlovatar()){
-            return this.meta() && this.meta().bio.story ? this.meta().bio.story : '';
+    // bio lives on FlovatarData; FLOW-marketplace sale data (listed Flovatar) has none -> '' instead of a TypeError
+    bioValue(key){
+        const m = this.meta();
+        if(!m){
+            return '';
         }
-        return this.meta() ? this.meta().metadata.bio.story : '';
+        const bio = this.isFlovatar() ? m.bio : ((m.metadata && m.metadata.bio) || m.bio);
+        return bio && bio[key] ? bio[key] : '';
+    },
+    story(){
+        return this.bioValue('story');
     },
     unlocked3d(){
-        if(this.isFlovatar()){
-            return this.meta() && this.meta().bio['3d'] ? this.meta().bio['3d'] : '';
-        }
-        return this.meta() ? this.meta().metadata.bio['3d'] : '';
+        return this.bioValue('3d');
     },
     position(){
-        if(this.isFlovatar()){
-            return this.meta() && this.meta().bio['position'] ? this.meta().bio['position'] : '';
-        }
-        return this.meta() ? this.meta().bio['position'] : '';
+        return this.bioValue('position');
     },
     mint(){
         return this.meta() ? this.meta().metadata.mint : '';
