@@ -18,12 +18,17 @@ class FlowGateway
 
     protected function http()
     {
-        return Http::baseUrl($this->base)->acceptJson()->timeout(20)->connectTimeout(8);
+        // The access node rate-limits per IP (shared with the site's indexer): retry 429s and connection errors only.
+        return Http::baseUrl($this->base)->acceptJson()->timeout(20)->connectTimeout(8)
+            ->retry(5, fn ($attempt) => 400 * $attempt + random_int(0, 200), function ($e) {
+                return $e instanceof \Illuminate\Http\Client\ConnectionException
+                    || ($e instanceof \Illuminate\Http\Client\RequestException && $e->response->status() === 429);
+            }, throw: false);
     }
 
     public function latestSealedBlockId(): string
     {
-        $res = $this->http()->retry(3, 300)->get('/v1/blocks', ['height' => 'sealed'])->throw()->json();
+        $res = $this->http()->get('/v1/blocks', ['height' => 'sealed'])->throw()->json();
 
         return $res[0]['header']['id'];
     }
@@ -31,7 +36,7 @@ class FlowGateway
     /** ['address','balance'(FLOW float),'keys'=>[['index','public_key','sequence_number','weight','revoked','signing_algorithm','hashing_algorithm']]] */
     public function account(string $address): array
     {
-        $res = $this->http()->retry(3, 300)->get('/v1/accounts/0x'.FlowTransaction::addr($address), ['expand' => 'keys'])->throw()->json();
+        $res = $this->http()->get('/v1/accounts/0x'.FlowTransaction::addr($address), ['expand' => 'keys'])->throw()->json();
         $keys = array_map(fn ($k) => [
             'index' => (int) $k['index'],
             'public_key' => strtolower(preg_replace('/^0x/', '', $k['public_key'])),
@@ -94,7 +99,7 @@ class FlowGateway
             if ($r['error'] !== '' || $r['status'] === 'Sealed' || $r['status'] === 'Expired' || (! $untilSealed && $r['status'] === 'Executed')) {
                 return $r;
             }
-            usleep(1_000_000);
+            usleep(1_500_000);
         }
 
         return $r;
