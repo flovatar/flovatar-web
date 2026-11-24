@@ -24,7 +24,9 @@ class FlovatarComponentController extends Controller
             })->orderBy('id', 'asc')->get();
         });
 
-        $templateId = $templates ? $templates->first()->id : 0;
+        // unknown Flobit -> 404 (was a 500: first() on an empty collection)
+        abort_unless($templates && $templates->isNotEmpty(), 404);
+        $templateId = $templates->first()->id;
 
         $sales = Cache::remember('flovatar-component-sales-'.$templateId, now()->addMinutes(60), function() use ($templateId) {
             $components = FlovatarComponent::select('id')->whereFlovatarTemplateId($templateId)->get()->flatten();
