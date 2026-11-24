@@ -53,6 +53,7 @@ import {getCollectionsByNameFlovatarIdsScript} from './flow/get-collections-by-n
 import {getCollectionsFlovatarSaleScript} from './flow/get-collections-flovatar-sale.script';
 import {getCollectionsByNameFlovatarSaleScript} from './flow/get-collections-by-name-flovatar-sale.script';
 import {getCollectionsComponentScript} from './flow/get-collections-component.script';
+import {getCollectionsComponentBatched} from "./flow/get-collections-component-batch.script";
 import {getCollectionsByNameComponentScript} from './flow/get-collections-by-name-component.script';
 import {getCollectionsComponentSaleScript} from './flow/get-collections-component-sale.script';
 import {getCollectionsByNameComponentSaleScript} from './flow/get-collections-by-name-component-sale.script';
@@ -715,7 +716,11 @@ window.getCollectionsByNameFlovatarSale = async function(addressName){
 }
 
 window.getCollectionsComponent = async function(address){
-    await getCollectionsComponentScript(address).then(function(data){
+    await getCollectionsComponentScript(address).catch(function(error){
+        // wallets with ~2,000+ Flobits exceed the script computation limit: read IDs, then components in batches
+        console.log('component collection too big for one script, loading in batches');
+        return getCollectionsComponentBatched(address);
+    }).then(function(data){
         console.log('collections component loaded');
         //console.log(data);
         window.dispatch('collections-component-loaded', {collections: data});
