@@ -23,6 +23,9 @@ const TYPES = {
   glb: "model/gltf-binary", gltf: "model/gltf+json", map: "application/json",
 };
 
+// Full browser UA for the Worker's own subrequests: the zone WAF blocks "bot-like" agents on HTML.
+const FETCH_UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 flovatar-edge";
+
 const HTML_CACHE = "public, max-age=0, s-maxage=60, stale-while-revalidate=300";
 const ASSET_CACHE = "public, max-age=86400";
 const IMMUTABLE = "public, max-age=31536000, immutable";
@@ -80,7 +83,7 @@ async function getObject(env, c, key, request) {
   }
   if (!c.bucketUrl) return null;
   const r = await fetch(c.bucketUrl + "/" + c.prefix + key, {
-    headers: { "User-Agent": "Mozilla/5.0 (compatible; flovatar-headless-worker)" },
+    headers: { "User-Agent": FETCH_UA },
     cf: { cacheTtl: 30, cacheEverything: true },
   });
   if (r.status !== 200) return null;
@@ -134,7 +137,7 @@ async function proxy(request, env, c, url, opts = {}) {
   headers.set("X-Forwarded-Host", url.host);
   headers.set("X-Forwarded-Proto", "https");
   headers.set("X-Headless-Proxy", "1");
-  if (!headers.get("user-agent")) headers.set("User-Agent", "Mozilla/5.0 (compatible; flovatar-headless-worker)");
+  if (!headers.get("user-agent")) headers.set("User-Agent", FETCH_UA);
   const init = { method: request.method, headers, redirect: "manual" };
   if (!["GET", "HEAD"].includes(request.method)) init.body = request.body;
   const cacheable = request.method === "GET" && EDGE_CACHEABLE.some((re) => re.test(url.pathname));
@@ -169,7 +172,7 @@ function rewriteOriginHtml(resp, c, frontendOrigin) {
 
 // Item page not built yet (minted seconds ago): render it at the origin (owner URL), cache briefly.
 async function itemFallback(request, env, c, url, seg, id) {
-  const r = await fetch(`${c.origin}/${seg}/${id}`, { redirect: "manual", headers: { "User-Agent": "Mozilla/5.0 (compatible; flovatar-headless-worker)" } });
+  const r = await fetch(`${c.origin}/${seg}/${id}`, { redirect: "manual", headers: { "User-Agent": FETCH_UA } });
   const loc = r.headers.get("location");
   if (r.status >= 300 && r.status < 400 && loc) {
     const target = new URL(loc, c.origin);
