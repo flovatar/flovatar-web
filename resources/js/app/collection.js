@@ -1,5 +1,34 @@
 import Alpine from "alpinejs";
 
+/*
+ * Big wallets (admin 22,683 Flobits; 0xef43… 2,495): every grid was rendered in full (all tabs are x-show, so the hidden
+ * Flobit grid still built 22k cards), each list function re-filtered/re-sorted the whole reactive array on every call
+ * and template lookups were linear scans inside the sort comparator -> ~2 min frozen page. Now: O(1) template lookups,
+ * memoised filter/sort results (recomputed only when data or a filter changes) and pages of PAGE_SIZE cards per grid.
+ */
+const PAGE_SIZE = 100;
+const memo = new Map();
+function memoized(name, key, fn){
+    const hit = memo.get(name);
+    if(hit && hit.key === key){
+        return hit.value;
+    }
+    const value = fn();
+    memo.set(name, {key: key, value: value});
+    return value;
+}
+let templateMapSource = null;
+let templateMap = new Map();
+function templateByFlowId(templates, id){
+    const raw = Alpine.raw(templates);
+    if(raw !== templateMapSource){
+        templateMapSource = raw;
+        templateMap = new Map();
+        _.each(raw, t => { templateMap.set(parseInt(t.flow_id, 10), t); });
+    }
+    return templateMap.get(parseInt(id, 10));
+}
+
 Alpine.data('collectionData', (address, addressName, templates, dustEnabled, dustPerDayScore) => ({
     templates: templates,
     address: address,
@@ -76,8 +105,16 @@ Alpine.data('collectionData', (address, addressName, templates, dustEnabled, dus
     sendDustAmount: 0.0,
     sendDustAddress: '',
     sportpacks: [],
+    // pagination + text search for the grids (PAGE_SIZE cards per page)
+    pages: {flovatar: 1, flobot: 1, collectible: 1, spark: 1, flobit: 1, terrakit: 1},
+    pageSize: PAGE_SIZE,
+    searchText: '',
+    dataVersion: 0,
     init(){
         let self = this;
+        ['searchRarity', 'searchCat', 'searchCat2', 'searchTemplate', 'minMint', 'maxMint', 'sortBy', 'searchText'].forEach(prop => {
+            this.$watch(prop, () => { self.resetPages(); });
+        });
         this.$watch('showPackModal', () => {
             if(!self.showPackModal){
                 self.showPackAnimation = false;
@@ -151,6 +188,60 @@ Alpine.data('collectionData', (address, addressName, templates, dustEnabled, dus
         this.showFilterPanel = false;
         this.minMint = null;
         this.maxMint = null;
+        this.searchText = '';
+        this.resetPages();
+    },
+    resetPages(){
+        _.each(_.keys(this.pages), key => { if(this.pages[key] != 1){ this.pages[key] = 1; } });
+    },
+    // cache key of everything the list filters read (reading the props here also registers them as Alpine dependencies)
+    filterKey(){
+        return [this.dataVersion, this.flovatars.length, this.flovatarSales.length, this.flobots.length, this.flobotSales.length,
+            this.collectibles.length, this.searchRarity, this.searchCat, this.searchCat2, this.searchTemplate, this.minMint, this.maxMint,
+            this.sortBy, this.searchText, this.activeTab, this.groupSpark, this.groupBoosterRare, this.groupBoosterEpic,
+            this.groupBoosterLegendary, JSON.stringify(this.groupFlobits), JSON.stringify(this.groupTerraKit)].join('|');
+    },
+    matchesText(item){
+        let q = (this.searchText || '').trim().toLowerCase();
+        if(!q){
+            return true;
+        }
+        let meta = (item && item.metadata && item.metadata.category) ? item.metadata : item;
+        let name = item && item.name ? item.name : (meta && meta.name ? meta.name : '');
+        let tpl = meta && meta.templateId ? this.getTemplateById(meta.templateId) : null;
+        let hay = [name, tpl ? tpl.name : '', meta ? meta.category : '', item && item.id != null ? '#'+item.id : '', meta && meta.mint != null ? '#'+meta.mint : ''].join(' ').toLowerCase();
+        return hay.indexOf(q) !== -1;
+    },
+    fullList(tab){
+        switch(tab){
+            case 'flovatar': return this.filteredFlovatars();
+            case 'flobot': return this.filteredFlobots();
+            case 'collectible': return this.filteredCollectibles();
+            case 'spark': return this.filteredSparkBooster();
+            case 'flobit': return this.filteredFlobits();
+            case 'terrakit': return this.filteredTerrakit();
+        }
+        return [];
+    },
+    pageCount(tab){
+        return Math.max(1, Math.ceil(this.fullList(tab).length / this.pageSize));
+    },
+    currentPage(tab){
+        return Math.min(Math.max(1, this.pages[tab] || 1), this.pageCount(tab));
+    },
+    paged(tab){
+        let list = this.fullList(tab);
+        let page = Math.min(Math.max(1, this.pages[tab] || 1), Math.max(1, Math.ceil(list.length / this.pageSize)));
+        return list.slice((page - 1) * this.pageSize, page * this.pageSize);
+    },
+    setPage(tab, page, el){
+        this.pages[tab] = Math.min(Math.max(1, page), this.pageCount(tab));
+        if(el && el.closest){
+            let grid = el.closest('[data-grid]');
+            if(grid && grid.getBoundingClientRect().top < 0){
+                grid.scrollIntoView({block: 'start'});
+            }
+        }
     },
     flobitUpgraded(){
         this.burnList = [];
@@ -187,12 +278,15 @@ Alpine.data('collectionData', (address, addressName, templates, dustEnabled, dus
         window.upgradeFlobits(idArr);
     },
     filteredFlovatars(){
+        return memoized('flovatar', this.filterKey(), () => this.computeFilteredFlovatars());
+    },
+    computeFilteredFlovatars(){
         if(!this.flovatarsCombined()){
             return [];
         }
         let self = this;
         let filtered = _.filter(this.flovatarsCombined(), item => {
-            let check = true;
+            let check = self.matchesText(item);
             if(self.searchRarity != 'all' && self.searchRarity != self.getRarityText(item)){
                 check = false;
             }
@@ -216,13 +310,16 @@ Alpine.data('collectionData', (address, addressName, templates, dustEnabled, dus
         });
     },
     filteredFlobots(){
+        return memoized('flobot', this.filterKey(), () => this.computeFilteredFlobots());
+    },
+    computeFilteredFlobots(){
         if(!this.flobotsCombined()){
             return [];
         }
         let self = this;
 
         let filtered = _.filter(this.flobotsCombined(), item => {
-            let check = true;
+            let check = self.matchesText(item);
             if(self.searchRarity != 'all' && self.searchRarity != item.metadata.rarity){
                 check = false;
             }
@@ -247,24 +344,27 @@ Alpine.data('collectionData', (address, addressName, templates, dustEnabled, dus
     },
     filteredSparkBooster(){
         let self = this;
-        return _.filter(this.componentsSparkBooster(), item => {
-            return !self.groupComponent(item);
-        });
+        return memoized('spark', this.filterKey(), () => _.filter(Alpine.raw(this.componentsSparkBooster()), item => {
+            return !self.groupComponent(item) && self.matchesText(item);
+        }));
     },
     filteredTerrakit(){
         let self = this;
-        return _.filter(this.componentsTerraKit(), item => {
-            return !self.groupComponent(item);
-        });
+        return memoized('terrakit', this.filterKey(), () => _.filter(Alpine.raw(this.componentsTerraKit()), item => {
+            return !self.groupComponent(item) && self.matchesText(item);
+        }));
     },
     filteredFlobits(){
-        let allFlobits = this.componentsFlobit() ? this.componentsFlobit() : [];
+        return memoized('flobit', this.filterKey(), () => this.computeFilteredFlobits());
+    },
+    computeFilteredFlobits(){
+        let allFlobits = this.componentsFlobit() ? Alpine.raw(this.componentsFlobit()) : [];
         let self = this;
 
         allFlobits = allFlobits.concat(this.componentsStackedFlobit());
 
         let filtered = _.filter(allFlobits, item => {
-            let check = true;
+            let check = self.matchesText(item);
             let meta = (item.price) ? item.metadata : item;
             if(self.searchRarity != 'all' && self.searchRarity != meta.rarity){
                 check = false;
@@ -301,11 +401,15 @@ Alpine.data('collectionData', (address, addressName, templates, dustEnabled, dus
         });
     },
     filteredFlobitsUngrouped(){
-        let allFlobits = this.componentsFlobit() ? this.componentsFlobit() : [];
+        return memoized('flobitUngrouped', this.filterKey(), () => this.computeFilteredFlobitsUngrouped());
+    },
+    computeFilteredFlobitsUngrouped(){
+        let allFlobits = this.componentsFlobit() ? Alpine.raw(this.componentsFlobit()) : [];
         let self = this;
 
         let filtered = _.filter(allFlobits, item => {
-            let check = true;
+            let meta = (item.metadata && item.metadata.category) ? item.metadata : item;
+            let check = self.matchesText(item);
             if(self.searchRarity != 'all' && self.searchRarity != item.rarity){
                 check = false;
             }
@@ -329,7 +433,8 @@ Alpine.data('collectionData', (address, addressName, templates, dustEnabled, dus
         });
     },
     filteredCollectibles(){
-        return this.collectibles;
+        let self = this;
+        return memoized('collectible', this.filterKey(), () => _.filter(this.collectibles, item => self.matchesText(item)));
     },
     sortResultFunction(self, l,r){
         let lId = parseInt(l.id, 10);
@@ -514,10 +619,10 @@ Alpine.data('collectionData', (address, addressName, templates, dustEnabled, dus
         return this.packs.length;
     },
     componentsSparkBooster(){
-        return _.filter(this.components, function(component){
+        return memoized('componentsSparkBooster', this.dataVersion + '|' + this.components.length, () => _.filter(Alpine.raw(this.components), function(component){
             let item = (component.metadata) ? component.metadata : component;
             return item.category == 'spark' || item.category == 'boost';
-        });
+        }));
     },
     groupComponent(component){
         let item = (component.metadata) ? component.metadata : component;
@@ -552,8 +657,8 @@ Alpine.data('collectionData', (address, addressName, templates, dustEnabled, dus
     },
     loadCollections(data){
         //console.log(data);
-        this.flovatars = data.flovatars;
-        this.flovatarSales = data.flovatarSales;
+        this.flovatars = data.flovatars; this.dataVersion++;
+        this.flovatarSales = data.flovatarSales; this.dataVersion++;
         this.packs = data.packs;
         this.componentsTemp = data.components;
         this.componentSalesTemp = data.componentSales;
@@ -642,31 +747,31 @@ Alpine.data('collectionData', (address, addressName, templates, dustEnabled, dus
         }
     },
     loadCollectionsFlovatar(data){
-        this.flovatars = data.flovatars;
+        this.flovatars = data.flovatars; this.dataVersion++;
         if(this.address == ''){
             this.address = data.address;
         }
     },
     loadCollectionsFlovatarSale(data){
-        this.flovatarSales = data.flovatarSales;
+        this.flovatarSales = data.flovatarSales; this.dataVersion++;
         if(this.address == ''){
             this.address = data.address;
         }
     },
     loadCollectionsFlobot(data){
-        this.flobots = data.flobots;
+        this.flobots = data.flobots; this.dataVersion++;
         if(this.address == ''){
             this.address = data.address;
         }
     },
     loadCollectionsFlobotSale(data){
-        this.flobotSales = data.flobotSales;
+        this.flobotSales = data.flobotSales; this.dataVersion++;
         if(this.address == ''){
             this.address = data.address;
         }
     },
     loadCollectionsCollectible(data){
-        this.collectibles = data.collectibles;
+        this.collectibles = data.collectibles; this.dataVersion++;
         //console.log(this.collectibles);
         if(this.address == ''){
             this.address = data.address;
@@ -860,6 +965,7 @@ Alpine.data('collectionData', (address, addressName, templates, dustEnabled, dus
         //console.log('single flovatar loaded');
         //console.log(data);
         this.flovatars.push(data.flovatar);
+        this.dataVersion++;
     },
     loadComponents(){
         let self = this;
@@ -923,13 +1029,14 @@ Alpine.data('collectionData', (address, addressName, templates, dustEnabled, dus
             }
         });
 
+        let rawTemplates = Alpine.raw(self.templates);
         this.components = collection.sort(function (l,r){
             let lItem = l.metadata ? l.metadata : l;
             let rItem = r.metadata ? r.metadata : r;
 
             if(lItem.category == rItem.category){
-                let lTemp = self.getTemplateById(lItem.templateId);
-                let rTemp = self.getTemplateById(rItem.templateId);
+                let lTemp = templateByFlowId(rawTemplates, lItem.templateId);
+                let rTemp = templateByFlowId(rawTemplates, rItem.templateId);
 
                 if(lTemp && rTemp) {
                     if (lTemp.name > rTemp.name) {
@@ -962,20 +1069,20 @@ Alpine.data('collectionData', (address, addressName, templates, dustEnabled, dus
                 }
             }
         });
-
+        this.dataVersion++;
     },
 
     componentsFlobit(){
-        return _.filter(this.components, function(component){
+        return memoized('componentsFlobit', this.dataVersion + '|' + this.components.length, () => _.filter(Alpine.raw(this.components), function(component){
             let metadata = (component.metadata && component.metadata.category) ? component.metadata : component;
             return metadata.category != 'spark' && metadata.category != 'boost' && metadata.category != 'land' && metadata.category != 'fub' && metadata.category != 'flobotkit';
-        });
+        }));
     },
     componentsTerraKit(){
-        return _.filter(this.components, function(component){
+        return memoized('componentsTerraKit', this.dataVersion + '|' + this.components.length, () => _.filter(Alpine.raw(this.components), function(component){
             let metadata = (component.metadata && component.metadata.category) ? component.metadata : component;
             return metadata.category == 'land' || metadata.category == 'fub' || metadata.category == 'flobotkit';
-        });
+        }));
     },
     componentsStackedFlobit(){
         let collection = [];
@@ -1112,7 +1219,7 @@ Alpine.data('collectionData', (address, addressName, templates, dustEnabled, dus
         return component.metadata ? component.metadata.rarity : component.rarity;
     },
     getMaxMintable(templateId){
-        let template = _.find(this.templates, (el) => { return el.flow_id == parseInt(templateId,10); });
+        let template = templateByFlowId(this.templates, templateId);
         return template ? template.max_mintable : '';
     },
     getComponentMint(component){
@@ -1173,7 +1280,7 @@ Alpine.data('collectionData', (address, addressName, templates, dustEnabled, dus
         return (this.getComponentName(component) == 'Booster' || this.getComponentName(component) == 'Spark'  || this.getComponentName(component) == 'FUB' || this.getComponentName(component) == 'Asteroid' || this.getComponentName(component) == 'Flobot Kit') ? '' : 'builder-component-thumb'
     },
     getTemplateById(id){
-        return _.find(this.templates, function(item){ return item.flow_id == parseInt(id,10)});
+        return templateByFlowId(this.templates, id);
     }
 
 }));

@@ -216,46 +216,49 @@
                 </div>
                 @endif
 
-                <div x-show="activeTab == 'flovatar'">
+                <div x-show="activeTab == 'flovatar'" data-grid="flovatar">
                     @include('partials.filters-collection-flovatar')
                     <div class="flovatar-card-list">
-                        <template x-for="flovatar in filteredFlovatars()" :key="flovatar.id">
+                        <template x-for="flovatar in paged('flovatar')" :key="flovatar.id">
                             @include('partials.flovatar')
                         </template>
                     </div>
+                    @include('partials.collection-pager', ['tab' => 'flovatar'])
                     <div x-show="flovatars.length == 0 && flovatarSales.length == 0">
                         <span class="no-results-msg">No Flovatars yet. <a href="/builder" class="underline">Go create some!</a></span>
                     </div>
                 </div>
 
 
-                <div x-show="activeTab == 'flobot'">
+                <div x-show="activeTab == 'flobot'" data-grid="flobot">
                     @include('partials.filters-collection-flobot')
                     <div class="flovatar-card-list">
-                        <template x-for="flobot in filteredFlobots()" :key="flobot.id">
+                        <template x-for="flobot in paged('flobot')" :key="flobot.id">
                             @include('partials.flobot')
                         </template>
                     </div>
+                    @include('partials.collection-pager', ['tab' => 'flobot'])
                     <div x-show="flobots.length == 0">
                         <span class="no-results-msg">No Flobots yet. <a href="/builder/flobot" class="underline">Go create some!</a></span>
                     </div>
                 </div>
 
 
-                <div x-show="activeTab == 'collectible'">
+                <div x-show="activeTab == 'collectible'" data-grid="collectible">
                     @include('partials.filters-collection-collectible')
                     <div class="flovatar-card-list">
-                        <template x-for="collectible in filteredCollectibles()" :key="collectible.id">
+                        <template x-for="collectible in paged('collectible')" :key="collectible.id">
                             @include('partials.collectible')
                         </template>
                     </div>
+                    @include('partials.collection-pager', ['tab' => 'collectible'])
                     <div x-show="collectibles.length == 0">
                         <span class="no-results-msg">No Psyche Likee yet. <a href="/builder/dust" class="underline">Go create some!</a></span>
                     </div>
                 </div>
 
 
-                <div x-show="activeTab == 'spark'">
+                <div x-show="activeTab == 'spark'" data-grid="spark">
                     @include('partials.filters-collection-booster')
                     <div class="flovatar-card-list">
                         <div class="col" x-show="groupCategory('spark', 'common') && sparkCount>0">
@@ -339,32 +342,34 @@
                             </a>
                         </div>
 
-                        <template x-for="component in filteredSparkBooster()" :key="component.id">
+                        <template x-for="component in paged('spark')" :key="component.id">
                             @include('partials.component-collection')
                         </template>
                     </div>
+                    @include('partials.collection-pager', ['tab' => 'spark'])
                     <div x-show="componentsSparkBooster().length == 0">
                         <span class="no-results-msg">No Spark or Boosters here. <a href="/marketplace" class="underline">Go get some!</a></span>
                     </div>
                 </div>
 
 
-                <div x-show="activeTab == 'flobit'">
+                <div x-show="activeTab == 'flobit'" data-grid="flobit">
                     @include('partials.filters-collection-flobit')
                     <div class="flovatar-card-list">
 
 
-                        <template x-for="component in filteredFlobits()" :key="(component && component.id) ? component.id : ((component && component.templateId && component.name) ? component.name+component.templateId : component)">
+                        <template x-for="component in paged('flobit')" :key="(component && component.id) ? component.id : ((component && component.templateId && component.name) ? component.name+component.templateId : component)">
                             @include('partials.component-collection')
                         </template>
                     </div>
+                    @include('partials.collection-pager', ['tab' => 'flobit'])
                     <div x-show="componentsFlobit().length == 0">
                         <span class="no-results-msg">No Flobits here. <a href="/marketplace" class="underline">Go get some!</a></span>
                     </div>
                 </div>
 
 
-                <div x-show="activeTab == 'terrakit'">
+                <div x-show="activeTab == 'terrakit'" data-grid="terrakit">
                     @include('partials.filters-collection-terrakit')
                     <div class="flovatar-card-list">
                         <template x-for="flobit in componentsStackedTerraKit()" :key="flobit.templateId">
@@ -389,10 +394,11 @@
                                 </a>
                             </div>
                         </template>
-                        <template x-for="component in filteredTerrakit()" :key="component.id">
+                        <template x-for="component in paged('terrakit')" :key="component.id">
                             @include('partials.component-collection')
                         </template>
                     </div>
+                    @include('partials.collection-pager', ['tab' => 'terrakit'])
 
                     <div x-show="componentsTerraKit().length == 0">
                         <span class="no-results-msg">No TerraKit NFTs here. <a href="/marketplace" class="underline">Go get some!</a></span>
