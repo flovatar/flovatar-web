@@ -27,7 +27,7 @@ return [
 
     // Abuse limits (the sponsor pays): accounts per IP per day, accounts per day in total, starter gifts per account.
     'limits' => [
-        'accounts_per_ip_per_day' => (int) env('PASSKEY_ACCOUNTS_PER_IP_PER_DAY', 5),
+        'accounts_per_ip_per_day' => (int) env('PASSKEY_ACCOUNTS_PER_IP_PER_DAY', 10),
         'accounts_per_day' => (int) env('PASSKEY_ACCOUNTS_PER_DAY', 100),
         'txs_per_account_per_hour' => (int) env('PASSKEY_TXS_PER_ACCOUNT_PER_HOUR', 30),
     ],
