@@ -50,6 +50,7 @@ class CadenceJsonTest extends TestCase
         {
             public static function contractAddress(): string { return '921ea449dffec68a'; }
             public static function storefrontAddress(): string { return '4eb8a10cb9f87357'; }
+            public static function nftStandardAddress(): string { return '1d7e57aa55817448'; }
         };
         $listing = 'A.4eb8a10cb9f87357.NFTStorefrontV2.ListingAvailable';
 
@@ -57,5 +58,8 @@ class CadenceJsonTest extends TestCase
         $this->assertFalse($types::keep($listing, ['nftType' => ['typeID' => 'A.0b2a3299cc857e29.TopShot.NFT']]));
         $this->assertTrue($types::keep('A.921ea449dffec68a.FlovatarComponent.Deposit', ['id' => 1, 'to' => '0x1']));
         $this->assertFalse($types::keep('A.921ea449dffec68a.Unknown.Event', []));
+        $deposited = 'A.1d7e57aa55817448.NonFungibleToken.Deposited';
+        $this->assertTrue($types::keep($deposited, ['type' => 'A.921ea449dffec68a.Flobot.NFT', 'id' => 609, 'to' => '0x337bf11954a327d1']));
+        $this->assertFalse($types::keep($deposited, ['type' => 'A.0b2a3299cc857e29.TopShot.NFT', 'id' => 1, 'to' => '0x1']));
     }
 }

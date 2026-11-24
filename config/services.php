@@ -32,6 +32,8 @@ return [
     'flow' => [
         'address' => env('FLOW_MARKET_ADDRESS'),
         'storefrontaddress' => env('MIX_CONTRACT_STOREFRONT2', '0x2d55b98eb200daef'),
+        // NonFungibleToken contract (standard Deposited events for NFTs whose contract emits no own Deposit, e.g. Flobot)
+        'nftaddress' => env('MIX_CONTRACT_NON_FUNGIBLE', env('FLOW_NETWORK') === 'mainnet' ? '0x1d7e57aa55817448' : '0x631e88ae7f1d7c20'),
         'path' => env('FLOW_PATH', '~/.local/bin'),
         'network' => env('FLOW_NETWORK', 'emulator'),
         'minBlockHeight' => env('FLOW_MIN_BLOCK_HEIGHT', 0),

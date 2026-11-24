@@ -34,6 +34,15 @@ class FlowEventTypes
 
     const STOREFRONT_EVENTS = ['NFTStorefrontV2.ListingAvailable', 'NFTStorefrontV2.ListingCompleted'];
 
+    /**
+     * Standard NonFungibleToken events (global, on the NonFungibleToken contract account). Kept only for our NFT types
+     * whose contract emits NO own Deposit event: the Cadence 1.0 Flobot contract declares Flobot.Deposit but never emits
+     * it, so without NonFungibleToken.Deposited a minted/transferred Flobot never got an owner (Flobots 608/609).
+     */
+    const STANDARD_NFT_EVENTS = ['NonFungibleToken.Deposited'];
+
+    const STANDARD_DEPOSIT_NFTS = ['Flobot.NFT'];
+
     const NFT_CONTRACTS = ['Flovatar.NFT', 'FlovatarComponent.NFT', 'FlovatarDustCollectible.NFT',
         'FlovatarDustCollectibleAccessory.NFT', 'Flobot.NFT', 'FlovatarPack.Pack'];
 
@@ -61,9 +70,40 @@ class FlowEventTypes
         return array_map(fn ($e) => "A.$s.$e", self::STOREFRONT_EVENTS);
     }
 
+    public static function nftStandardAddress(): string
+    {
+        return strtolower(str_replace('0x', '', (string) config('services.flow.nftaddress')));
+    }
+
+    public static function standardTypes(): array
+    {
+        $n = static::nftStandardAddress();
+
+        return $n === '' ? [] : array_map(fn ($e) => "A.$n.$e", self::STANDARD_NFT_EVENTS);
+    }
+
+    public static function isStandardNft(string $type): bool
+    {
+        return static::nftStandardAddress() !== '' && str_starts_with($type, 'A.'.static::nftStandardAddress().'.NonFungibleToken.');
+    }
+
+    /** Our NFT types that only announce transfers through the standard NonFungibleToken.Deposited event. */
+    public static function standardDepositNftTypes(): array
+    {
+        $a = static::contractAddress();
+
+        return array_map(fn ($c) => "A.$a.$c", self::STANDARD_DEPOSIT_NFTS);
+    }
+
+    /** Global event types that need a server-side filter (stream subscription by type, not by address). */
+    public static function globalTypes(): array
+    {
+        return array_merge(static::storefrontTypes(), static::standardTypes());
+    }
+
     public static function all(): array
     {
-        return array_merge(static::contractTypes(), static::storefrontTypes());
+        return array_merge(static::contractTypes(), static::storefrontTypes(), static::standardTypes());
     }
 
     public static function isStorefront(string $type): bool
@@ -78,11 +118,15 @@ class FlowEventTypes
         return array_map(fn ($c) => "A.$a.$c", self::NFT_CONTRACTS);
     }
 
-    /** Storefront events are global: keep only listings of our NFT types. */
+    /** Storefront and NonFungibleToken events are global: keep only listings/deposits of our NFT types. */
     public static function keep(string $type, $payload): bool
     {
         if (! in_array($type, static::all(), true)) {
             return false;
+        }
+        if (static::isStandardNft($type)) {
+            return is_array($payload) && in_array($payload['type'] ?? null, static::standardDepositNftTypes(), true)
+                && ! empty($payload['to']);
         }
         if (! static::isStorefront($type)) {
             return true;

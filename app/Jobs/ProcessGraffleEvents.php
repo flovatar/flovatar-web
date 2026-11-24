@@ -55,6 +55,9 @@ class ProcessGraffleEvents extends BaseJob
                 $newFlovatar = $this->syncFlovatarFromFlowAddress($event->flow_metadata['id'], $event->flow_metadata['metadata']['creatorAddress']);
                 if($newFlovatar){
                     $check = true;
+                    if(!$newFlovatar->flow_address){
+                        $newFlovatar->update(['flow_address' => $event->flow_metadata['metadata']['creatorAddress']]);
+                    }
                     $this->updateTemplatesBurnCount($newFlovatar);
                     ExportAllImages::dispatch($event->flow_metadata['id']);
                 } else {
@@ -69,6 +72,11 @@ class ProcessGraffleEvents extends BaseJob
                 $newFlobot = $this->syncFlobotFromFlowAddress($event->flow_metadata['id'], $event->flow_metadata['metadata']['creatorAddress']);
                 if($newFlobot){
                     $check = true;
+                    // found in the creator's collection: that is the owner (the Flobot contract emits no Deposit event;
+                    // later transfers arrive as NonFungibleToken.Deposited)
+                    if(!$newFlobot->flow_address){
+                        $newFlobot->update(['flow_address' => $event->flow_metadata['metadata']['creatorAddress']]);
+                    }
                     $this->updateFlobotTemplatesBurnCount($newFlobot);
                     ExportAllImages::dispatch($event->flow_metadata['id'], 'flobot');
                 } else {
@@ -125,7 +133,9 @@ class ProcessGraffleEvents extends BaseJob
             } else {
                 info('Flovatar Updated event skipped because Flovatar was not found!!!!');
             }
-        } else if($event->type == $this->getEventAddress('FlobotDeposit')){
+        } else if($event->type == $this->getEventAddress('FlobotDeposit') || $this->isStandardFlobotDeposit($event)){
+            // Flobot.Deposit is declared but never emitted by the Cadence 1.0 contract: transfers/mints arrive as the
+            // standard NonFungibleToken.Deposited {type: A.x.Flobot.NFT, id, to}
             $flobot = Flobot::whereFlowId($event->flow_metadata['id'])->first();
             if(!$flobot){
                 $flobot = $this->syncFlobotFromFlowAddress($event->flow_metadata['id'], $event->flow_metadata['to']);
@@ -981,5 +991,14 @@ class ProcessGraffleEvents extends BaseJob
 
 
 
+    }
+
+    /** NonFungibleToken.Deposited of a Flobot NFT into an account collection. */
+    protected function isStandardFlobotDeposit($event): bool
+    {
+        return \App\Services\Flow\FlowEventTypes::isStandardNft((string) $event->type)
+            && str_ends_with((string) $event->type, '.NonFungibleToken.Deposited')
+            && ($event->flow_metadata['type'] ?? null) === $this->getFlobotNFTAddress()
+            && ! empty($event->flow_metadata['to']);
     }
 }
