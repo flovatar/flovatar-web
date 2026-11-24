@@ -32,6 +32,7 @@
     <section class="flovatar-detail"
              x-data="flovatarData('{{$address}}', {{$flovatarId}}, window.templates, window.flovatarSales, window.flovatarSaleOffer, {{ config('flovatar.dustPerDayScore') }})"
              x-init="initFlovatar($dispatch, '{{$address}}', {{$flovatarId}})"
+             @item-owner-resolved.window="address = $event.detail.address"
              @flovatar-loaded.window="loadFlovatar($event.detail.flovatar)"
              @flovatar-sale-loaded.window="loadSale($event.detail.sale)"
              @flovatar-sale-created.window="console.log('sale created!')"

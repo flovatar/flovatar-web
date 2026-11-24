@@ -393,8 +393,9 @@ Alpine.data('flobotData', (address, templates, flobotSales, flobotSaleOffer) => 
     }
 }));
 
-window.initFlobot = function(dispatch, address, flobotId){
+window.initFlobot = async function(dispatch, address, flobotId){
     window.dispatch = dispatch;
+    address = await window.resolveItemOwner('flobot', flobotId, address); // headless: owner confirmed on chain
     window.getFlobot(address, flobotId);
     //window.getFlobotSale(address, flobotId);
 }

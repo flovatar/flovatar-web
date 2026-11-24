@@ -121,7 +121,7 @@ Alpine.data('showroomFlobotData', (templates) => ({
         if(this.minMint && this.maxMint && this.minMint > this.maxMint){
             this.minMint = this.maxMint;
         }
-        axios.post('/showroom/flobot/search', this.getSearchParams()).then(function (response) {
+        window.searchApi('/showroom/flobot/search', this.getSearchParams()).then(function (response) {
             self.handleSearchResults(response.data);
         })
             .catch(function (error) {
@@ -136,7 +136,7 @@ Alpine.data('showroomFlobotData', (templates) => ({
     loadNextPage(){
         if(this.nextPage) {
             let self = this;
-            axios.post('/showroom/flobot/search', this.getSearchParams()).then(function (response) {
+            window.searchApi('/showroom/flobot/search', this.getSearchParams()).then(function (response) {
                 self.handleNextResults(response.data);
             })
                 .catch(function (error) {

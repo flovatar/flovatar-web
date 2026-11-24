@@ -284,6 +284,15 @@ Route::get('/csrf-token', [LoginController::class,'csrfToken'])->name('csrf.toke
 Route::post('/login', [LoginController::class,'submit'])->name('login.submit')->middleware('throttle:10,1');
 Route::get('/logout', [LoginController::class,'logout'])->name('logout-get');
 
+// Headless API v2 auth (session + CSRF like /login; the Worker proxies it on the frontend's own origin).
+Route::prefix('api/v2/auth')->group(function () {
+    Route::get('nonce', [\App\Http\Controllers\Api\V2\AuthController::class, 'nonce'])->name('api.v2.auth.nonce')->middleware('throttle:60,1');
+    Route::get('csrf', [\App\Http\Controllers\Api\V2\AuthController::class, 'csrfToken'])->name('api.v2.auth.csrf')->middleware('throttle:60,1');
+    Route::get('me', [\App\Http\Controllers\Api\V2\AuthController::class, 'me'])->name('api.v2.auth.me');
+    Route::post('login', [\App\Http\Controllers\Api\V2\AuthController::class, 'loginJson'])->name('api.v2.auth.login')->middleware('throttle:10,1');
+    Route::post('logout', [\App\Http\Controllers\Api\V2\AuthController::class, 'logoutJson'])->name('api.v2.auth.logout');
+});
+
 
 Route::get('twitter/login', [TwitterController::class,'login'])->name('twitter.login');
 Route::get('twitter/callback', [TwitterController::class,'callback'])->name('twitter.callback');
@@ -306,6 +315,8 @@ Route::view('my-collection', 'my-collection')->name('my-collection');
 Route::view('explore', 'explore')->name('explore');
 Route::view('dust', 'dust')->name('dust');
 Route::view('story', 'story')->name('story');
+// Not-found page of the static headless site (stored as 404.html by headless:build).
+Route::view('__headless_404', 'headless.404')->name('headless.404');
 
 
 // FlovaChat (OpenAI/ElevenLabs) was retired in 2026-11. Old shared chat links go to the

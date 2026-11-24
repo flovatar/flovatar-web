@@ -154,7 +154,7 @@ Alpine.data('salesData', (templates, address, stats) => ({
         if(this.minPrice && this.maxPrice && this.minPrice > this.maxPrice){
             this.minPrice = this.maxPrice;
         }
-        axios.post('/transactions/search', this.getSearchParams()).then(function (response) {
+        window.searchApi('/transactions/search', this.getSearchParams()).then(function (response) {
             self.handleSearchResults(response.data);
         })
             .catch(function (error) {
@@ -169,7 +169,7 @@ Alpine.data('salesData', (templates, address, stats) => ({
     loadNextPage(){
         if(this.nextPage) {
             let self = this;
-            axios.post('/transactions/search', this.getSearchParams()).then(function (response) {
+            window.searchApi('/transactions/search', this.getSearchParams()).then(function (response) {
                 self.handleNextResults(response.data);
             })
                 .catch(function (error) {
@@ -205,8 +205,10 @@ Alpine.data('salesData', (templates, address, stats) => ({
         return item ? wrapSvg(item.svg) : '';
     },
     getUrl(sale){
-        let prefix = this.isFlovatar(sale) ? '/flovatars/' : '/components/';
-        return sale.item ? prefix+sale.item.flow_id+'/'+sale.item.flow_address : '#';
+        if(!sale.item){
+            return '#';
+        }
+        return this.isFlovatar(sale) ? window.itemUrl('flovatars', sale.item.flow_id, sale.item.flow_address) : '/components/'+sale.item.flow_id+'/'+sale.item.flow_address;
     },
     getName(sale){
         let item = this.getItem(sale);

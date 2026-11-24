@@ -1,5 +1,9 @@
 <x-guest-layout>
-    @if(\App\Support\Blocklist::isBlocked($address ?? null))
+    @php($headlessShell = \App\Support\Headless::shell())
+    @if($headlessShell)
+        {{-- static shell (headless): wallet comes from the URL at runtime (resources/js/headless.js) --}}
+        <div class="container" x-data x-show="window.HEADLESS_ROUTE.blocked" x-cloak>@include('partials.incident-notice')</div>
+    @elseif(\App\Support\Blocklist::isBlocked($address ?? null))
         <div class="container">@include('partials.incident-notice')</div>
     @endif
     <script>
@@ -13,8 +17,13 @@
 
 
     <div
+        @if($headlessShell)
+        x-data="collectionData(window.HEADLESS_ROUTE.address, window.HEADLESS_ROUTE.name, window.templates, {{ config('flovatar.dustEnabled') ? 'true' : 'false' }}, {{ config('flovatar.dustPerDayScore') }})"
+        x-init="initCollection($dispatch, window.HEADLESS_ROUTE.address, window.HEADLESS_ROUTE.name, {{ config('flovatar.dustEnabled') ? 'true' : 'false' }})"
+        @else
         x-data="collectionData('{{$address}}', '{{$addressName}}', window.templates, {{ config('flovatar.dustEnabled') ? 'true' : 'false' }}, {{ config('flovatar.dustPerDayScore') }})"
         x-init="initCollection($dispatch, '{{$address}}', '{{$addressName}}', {{ config('flovatar.dustEnabled') }})"
+        @endif
         @server-auth.window="serverAuthenticated = !!$event.detail.authenticated"
         @collections-loaded.window="loadCollections($event.detail.collections)"
         @collections-pack-loaded.window="loadCollectionsPack($event.detail.collections)"

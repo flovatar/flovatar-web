@@ -25,6 +25,7 @@
     <section class="flovatar-detail"
              x-data="collectibleData('{{$address}}', {{$collectibleId}}, window.templates, window.collectibleSaleOffer)"
              x-init="initCollectible($dispatch, '{{$address}}', {{$collectibleId}})"
+             @item-owner-resolved.window="address = $event.detail.address"
              @fcollectible-loaded.window="loadCollectible($event.detail.collectible)"
              @fcollectible-sale-created.window="console.log('sale created!')"
              @fccollectible-sale-deleted.window="console.log('sale deleted!'); currentPrice = null;"

@@ -41,6 +41,12 @@ class Kernel extends ConsoleKernel
             $schedule->command('render:images all --missing --static-only --limit=60 --sleep=500')
                 ->hourlyAt(23)->withoutOverlapping(60)->runInBackground();
         }
+        if (config('headless.enabled')) {
+            // static headless site (R2): shells hourly (template lists/stats snapshots), full rebuild nightly as the
+            // safety net for the per-item regeneration jobs (HeadlessRegen). Unchanged objects are skipped.
+            $schedule->command('headless:build --shells --sitemap --quiet-puts')->hourlyAt(41)->withoutOverlapping(30)->runInBackground();
+            $schedule->command('headless:build --quiet-puts')->dailyAt('03:30')->withoutOverlapping(120)->runInBackground();
+        }
     }
 
     /**

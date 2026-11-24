@@ -1,5 +1,5 @@
 <div class="col">
-    <a x-bind:href="'/collectibles/'+collectible.id+'/'+address" class="card" x-bind:class="getCollectibleRarityText(collectible, templatesDust)">
+    <a x-bind:href="window.itemUrl('collectibles', collectible.id, address)" class="card" x-bind:class="getCollectibleRarityText(collectible, templatesDust)">
         <div class="img-hold">
             <div>
                 <img x-bind:src="'/api/image/collectible/'+collectible.id">

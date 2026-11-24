@@ -36,6 +36,7 @@ class PublicCache
         'treasure-hunting', 'treasure-hunting/*',
         'subscribe', 'moonpay/*', 'graffle',
         'admin', 'admin/*', 'sanctum/*',
+        'api/v2/auth/*',
     ];
 
     /** GET paths that never need a session, even for logged-in users (images, JSON). */

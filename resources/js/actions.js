@@ -1581,7 +1581,7 @@ window.buyCollectibleSale = async function(saleAddress, tokenId, amount, saleId)
                     //console.log(transaction);
                     window.dispatch('fcollectible-sale-purchased');
                     window.dispatch('loading-completed');
-                    window.location = '/collectibles/'+tokenId+'/'+window.user.addr;
+                    window.location = window.itemUrlAfterTx('collectibles', tokenId, window.user.addr);
                 } else {
                     window.dispatch('transaction-error', {message: window.transError(transaction)});
                 }
@@ -1676,7 +1676,7 @@ window.buyFlobotSale = async function(saleAddress, tokenId, amount, saleId){
                     //console.log(transaction);
                     window.dispatch('flobot-sale-purchased');
                     window.dispatch('loading-completed');
-                    window.location = '/flobots/'+tokenId+'/'+window.user.addr;
+                    window.location = window.itemUrlAfterTx('flobots', tokenId, window.user.addr);
                 } else {
                     window.dispatch('transaction-error', {message: window.transError(transaction)});
                 }
@@ -2241,7 +2241,7 @@ window.flovatarSendGift = async function(flovatarId, address){
                     //console.log(transaction);
                     window.dispatch('flovatar-gift-sent');
                     window.dispatch('loading-completed');
-                    window.location = '/flovatars/'+flovatarId+'/'+address;
+                    window.location = window.itemUrlAfterTx('flovatars', flovatarId, address);
                 } else {
                     window.dispatch('transaction-error', {message: window.transError(transaction)});
                 }
@@ -2268,7 +2268,7 @@ window.flobotSendGift = async function(flobotId, address){
                     //console.log(transaction);
                     window.dispatch('flobot-gift-sent');
                     window.dispatch('loading-completed');
-                    window.location = '/flobots/'+flobotId+'/'+address;
+                    window.location = window.itemUrlAfterTx('flobots', flobotId, address);
                 } else {
                     window.dispatch('transaction-error', {message: window.transError(transaction)});
                 }
@@ -2295,7 +2295,7 @@ window.collectibleSendGift = async function(collectibleId, address){
                     //console.log(transaction);
                     window.dispatch('collectible-gift-sent');
                     window.dispatch('loading-completed');
-                    window.location = '/collectibles/'+collectibleId+'/'+address;
+                    window.location = window.itemUrlAfterTx('collectibles', collectibleId, address);
                 } else {
                     window.dispatch('transaction-error', {message: window.transError(transaction)});
                 }
@@ -2327,7 +2327,7 @@ window.buyFlovatarSale = async function(saleAddress, tokenId, amount, saleId){
                     //console.log(transaction);
                     window.dispatch('flovatar-sale-purchased');
                     window.dispatch('loading-completed');
-                    window.location = '/flovatars/'+tokenId+'/'+window.user.addr;
+                    window.location = window.itemUrlAfterTx('flovatars', tokenId, window.user.addr);
                 } else {
                     window.dispatch('transaction-error', {message: window.transError(transaction)});
                 }

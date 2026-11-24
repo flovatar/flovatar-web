@@ -371,8 +371,15 @@ class FilteredController extends Controller
 
 
 
-    protected function getFilteredCollectibles(Request $req){
+    public const COLLECTIBLE_LIST_COLUMNS = ['id', 'mint', 'name', 'dust_series_id', 'rare_count', 'epic_count', 'legendary_count', 'rarity_score', 'flow_id', 'flow_address', 'created_at', 'updated_at'];
+
+    /** $lean (API v2): no svg blob / full_svg append; flow_metadata without its svg. */
+    protected function getFilteredCollectibles(Request $req, $lean = false){
         $collectibleQuery = DustCollectible::with('saleOffers');
+        if($lean){
+            $collectibleQuery->select(self::COLLECTIBLE_LIST_COLUMNS)
+                ->selectRaw("JSON_REMOVE(flow_metadata, '$.svg') as flow_metadata");
+        }
 
 
 /*
@@ -414,6 +421,10 @@ class FilteredController extends Controller
 
 
         $collectibles = $collectibleQuery->paginate(20);
+
+        if($lean){
+            $collectibles->getCollection()->each->makeHidden(['svg', 'full_svg']);
+        }
 
         return $collectibles;
     }

@@ -623,8 +623,9 @@ Alpine.data('flovatarData', (address, flovatarId, templates, flovatarSales, flov
     }
 }));
 
-window.initFlovatar = function(dispatch, address, flovatarId){
+window.initFlovatar = async function(dispatch, address, flovatarId){
     window.dispatch = dispatch;
+    address = await window.resolveItemOwner('flovatar', flovatarId, address); // headless: owner confirmed on chain
     window.getFlovatar(address, flovatarId);
     window.getFlovatarSale(address, flovatarId);
     if(window.dustEnabled) {

@@ -183,7 +183,7 @@ Alpine.data('marketplaceData', (templates, stats) => ({
         if(this.minPrice && this.maxPrice && this.minPrice > this.maxPrice){
             this.minPrice = this.maxPrice;
         }
-        axios.post('/search', this.getSearchParams()).then(function (response) {
+        window.searchApi('/search', this.getSearchParams()).then(function (response) {
             self.handleSearchResults(response.data);
         })
             .catch(function (error) {
@@ -198,7 +198,7 @@ Alpine.data('marketplaceData', (templates, stats) => ({
     loadNextPage(){
         if(this.nextPage) {
             let self = this;
-            axios.post('/search', this.getSearchParams()).then(function (response) {
+            window.searchApi('/search', this.getSearchParams()).then(function (response) {
                 self.handleNextResults(response.data);
             })
                 .catch(function (error) {
@@ -296,11 +296,13 @@ Alpine.data('marketplaceData', (templates, stats) => ({
     },
 
     getUrl(sale){
-        let prefix = this.isFlovatar(sale) ? '/flovatars/' : '/components/';
-        if(this.isDustCollectible(sale)){
-            prefix = '/collectibles/';
+        if(this.isFlovatar(sale)){
+            return window.itemUrl('flovatars', sale.flow_id, sale.flow_address);
         }
-        return prefix+sale.flow_id+'/'+sale.flow_address;
+        if(this.isDustCollectible(sale)){
+            return window.itemUrl('collectibles', sale.flow_id, sale.flow_address);
+        }
+        return '/components/'+sale.flow_id+'/'+sale.flow_address;
     },
     getName(sale){
         let item = this.getItem(sale);

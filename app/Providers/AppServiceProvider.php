@@ -28,6 +28,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        //
+        // Headless frontend: re-render an item's static page when it (or its listing/sale) changes.
+        \App\Support\HeadlessRegen::register();
     }
 }

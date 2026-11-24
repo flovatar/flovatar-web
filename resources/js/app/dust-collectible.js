@@ -255,7 +255,8 @@ Alpine.data('collectibleData', (address, collectibleId, templates, collectibleSa
     }
 }));
 
-window.initCollectible = function(dispatch, address, collectibleId){
+window.initCollectible = async function(dispatch, address, collectibleId){
     window.dispatch = dispatch;
+    address = await window.resolveItemOwner('collectible', collectibleId, address); // headless: owner confirmed on chain
     window.getDustCollectible(address, collectibleId);
 }

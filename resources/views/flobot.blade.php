@@ -24,6 +24,7 @@
     <div
         x-data="flobotData('{{$address}}', window.templates, window.flobotSales, window.flobotSaleOffer)"
         x-init="initFlobot($dispatch, '{{$address}}', {{$flobotId}})"
+        @item-owner-resolved.window="address = $event.detail.address"
         @flobot-loaded.window="loadFlobot($event.detail.flobot)"
         @flobot-sale-loaded.window="loadSale($event.detail.sale)"
         @flobot-sale-created.window="console.log('sale created!')"

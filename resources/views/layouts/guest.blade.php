@@ -16,7 +16,11 @@
     <meta name="theme-color" content="#5f3faf">
 
     <meta name="description" content="Flovatar is a next generation NFT creativity platform where people can become creator and make their characters with any combination they like." />
+    @if(\App\Support\Headless::building())
+    <link rel="canonical" href="{{ \App\Support\Headless::canonicalUrl() }}" />
+    @else
     <link rel="canonical" href="https://flovatar.com/" />
+    @endif
     <meta property="og:locale" content="en_US" />
     <meta property="og:type" content="website" />
     @php($ogItem = trim($__env->yieldPushContent('og')))
@@ -26,7 +30,7 @@
     @else
     <meta property="og:title" content="Flovatar" />
     <meta property="og:description" content="Flovatar is a next generation NFT creativity platform where people can become creator and make their characters with any combination they like." />
-    <meta property="og:url" content="https://flovatar.com/" />
+    <meta property="og:url" content="{{ \App\Support\Headless::building() ? \App\Support\Headless::canonicalUrl() : 'https://flovatar.com/' }}" />
     <meta property="og:site_name" content="Flovatar" />
     <meta property="article:modified_time" content="2023-03-08T02:29:49+00:00" />
     <meta property="og:image" content="https://flovatar.com/images/share.png" />
@@ -62,6 +66,10 @@
         var vipCookieVal = '{{ \App\Support\PublicCache::isStateless(request()) ? '' : session('vipcookie', '') }}';
         var dustEnabled = {{ config('flovatar.dustEnabled') ? 'true' : 'false' }};
     </script>
+    @if(\App\Support\Headless::building())
+    {{-- static page on R2 (headless:build): runtime config for resources/js/headless.js --}}
+    <script>window.HEADLESS = @json(\App\Support\Headless::bootstrap());</script>
+    @endif
     <script src="{{ mix('js/app.js') }}" defer></script>
 </head>
 <body class="{{request()->routeIs('home', 'builder', 'builder-psyche', 'flobot.builder', 'builder.flobot', 'pack', 'pack.buy', 'pack.login', 'fub', 'fub.sale', 'fub.test', 'land.sale') ? 'header-transparent' : ''}} {{request()->routeIs('fub.test') ? 'blueprint' : ''}}">
