@@ -56,7 +56,7 @@ class PublicController extends FilteredController
     /** Marketplace listings (same params as POST /search: type, rarity, sortby, minPrice, maxPrice, page, ...). */
     public function marketplace(Request $request)
     {
-        return $this->remember($request, 'marketplace', 10, fn () => $this->withThumbs($this->getFilteredSales($request, true), true));
+        return $this->remember($request, 'marketplace', 10, fn () => $this->trimRows($this->withThumbs($this->getFilteredSales($request, true), true), 'sale'));
     }
 
     public function stats()
@@ -66,22 +66,22 @@ class PublicController extends FilteredController
 
     public function transactions(Request $request)
     {
-        return $this->remember($request, 'transactions', 10, fn () => $this->withThumbs($this->getFilteredTransactions($request, true), true));
+        return $this->remember($request, 'transactions', 10, fn () => $this->trimRows($this->withThumbs($this->getFilteredTransactions($request, true), true), 'transaction'));
     }
 
     public function showroomFlovatars(Request $request)
     {
-        return $this->remember($request, 'showroom-flovatars', 30, fn () => $this->withThumbs($this->getFilteredFlovatars($request, true), false, 'flovatar'));
+        return $this->remember($request, 'showroom-flovatars', 30, fn () => $this->trimRows($this->withThumbs($this->getFilteredFlovatars($request, true), false, 'flovatar'), 'flovatar'));
     }
 
     public function showroomFlobots(Request $request)
     {
-        return $this->remember($request, 'showroom-flobots', 30, fn () => $this->withThumbs($this->getFilteredFlobots($request, true), false, 'flobot'));
+        return $this->remember($request, 'showroom-flobots', 30, fn () => $this->trimRows($this->withThumbs($this->getFilteredFlobots($request, true), false, 'flobot'), 'flobot'));
     }
 
     public function showroomCollectibles(Request $request)
     {
-        return $this->remember($request, 'showroom-collectibles', 30, fn () => $this->withThumbs($this->getFilteredCollectibles($request, true), false, 'collectible'));
+        return $this->remember($request, 'showroom-collectibles', 30, fn () => $this->trimRows($this->withThumbs($this->getFilteredCollectibles($request, true), false, 'collectible'), 'collectible'));
     }
 
     /** Lean template lists (no svg): set=all|series1|flobot, or set=dust (DUST collectible templates). */
@@ -211,6 +211,108 @@ class PublicController extends FilteredController
         }
 
         return []; // DUST collectibles have no background layer
+    }
+
+    /**
+     * v2 list shape: only the fields the list templates read (same JSON paths as the legacy shape, so the shared
+     * Alpine code renders both), no listing-event metadata, no svg, no timestamps nobody shows. The legacy endpoints
+     * (POST /search, /showroom/search, ...) are untouched. Measured on prod data: docs/HEADLESS.md §6.
+     */
+    private function trimRows($paginator, string $kind)
+    {
+        $paginator->setCollection($paginator->getCollection()->map(fn ($row) => match ($kind) {
+            'sale' => $this->trimSale($row),
+            'transaction' => $this->trimTransaction($row),
+            'flovatar' => $this->only($row, ['id', 'name', 'flow_id', 'flow_address', 'rare_count', 'epic_count', 'legendary_count', 'thumb', 'list_thumb'])
+                + ['flow_metadata' => $this->rarityMeta($row->flow_metadata), 'sale_offers' => $this->offers($row)],
+            'flobot' => $this->only($row, ['id', 'name', 'flow_id', 'flow_address', 'rarity', 'thumb', 'list_thumb'])
+                + ['flow_metadata' => $this->flobotMeta($row->flow_metadata), 'sale_offers' => $this->offers($row)],
+            'collectible' => $this->only($row, ['id', 'name', 'mint', 'flow_id', 'flow_address', 'dust_series_id', 'rare_count', 'epic_count', 'legendary_count', 'rarity_score', 'price', 'thumb', 'list_thumb'])
+                + ['sale_offers' => $this->offers($row)],
+        }));
+
+        return $paginator;
+    }
+
+    private function trimSale($row): array
+    {
+        return $this->only($row, ['id', 'item_type', 'flow_id', 'flow_address', 'price', 'is_dapper', 'listing_id', 'created_at', 'thumb', 'list_thumb'])
+            + ['item' => $this->trimItem($row->item)];
+    }
+
+    private function trimTransaction($row): array
+    {
+        return $this->only($row, ['id', 'item_type', 'price', 'is_dapper', 'transaction_id', 'flow_buyer_address', 'flow_seller_address', 'completed_at', 'created_at', 'thumb', 'list_thumb'])
+            + ['item' => $this->trimItem($row->item)];
+    }
+
+    /** The sold/listed item: what the cards read (name, ids, rarity counts / template id, mint). */
+    private function trimItem($item): ?array
+    {
+        if (! $item) {
+            return null;
+        }
+        $out = $this->only($item, ['id', 'flow_id', 'flow_address', 'name', 'flovatar_template_id', 'mint', 'rarity', 'rare_count', 'epic_count', 'legendary_count']);
+        if ($item instanceof Flovatar) {
+            $out['flow_metadata'] = $this->rarityMeta($item->flow_metadata);
+        } elseif ($item instanceof \App\Models\Flobot) {
+            $out['flow_metadata'] = $this->flobotMeta($item->flow_metadata);
+        }
+
+        return $out;
+    }
+
+    private function only($model, array $keys): array
+    {
+        $a = $model->toArray();
+
+        return array_intersect_key($a, array_flip($keys));
+    }
+
+    /** flow_metadata as array (models cast it AsCollection; selectRaw'd JSON arrives as string). */
+    private function metaArray($meta): ?array
+    {
+        if ($meta instanceof \Illuminate\Support\Collection) {
+            return $meta->toArray();
+        }
+        if (is_string($meta)) {
+            $meta = json_decode($meta, true);
+        }
+
+        return is_array($meta) ? $meta : null;
+    }
+
+    /** Flovatar flow_metadata -> {metadata: {rareCount, epicCount, legendaryCount}} (rarity text/score/badges). */
+    private function rarityMeta($meta): ?array
+    {
+        $meta = $this->metaArray($meta);
+        $m = is_array($meta) ? ($meta['metadata'] ?? null) : null;
+        if (! is_array($m)) {
+            return null;
+        }
+
+        return ['metadata' => array_intersect_key($m, array_flip(['rareCount', 'epicCount', 'legendaryCount', 'series', 'mint']))];
+    }
+
+    private function flobotMeta($meta): ?array
+    {
+        $meta = $this->metaArray($meta);
+        if (! is_array($meta)) {
+            return null;
+        }
+        $m = $meta['metadata'] ?? [];
+
+        return array_filter(['rarity' => $meta['rarity'] ?? null, 'metadata' => is_array($m) ? array_intersect_key($m, array_flip(['rarity', 'series', 'mint'])) : null], fn ($v) => $v !== null);
+    }
+
+    /** Open offers of a showroom row: only price + currency (the card shows the first price). */
+    private function offers($row): array
+    {
+        if (! $row->relationLoaded('saleOffers')) {
+            return [];
+        }
+
+        return $row->saleOffers->map(fn ($o) => ['price' => (float) $o->price, 'is_dapper' => (bool) $o->is_dapper])->values()->all();
     }
 
     private function rowItem($row): array

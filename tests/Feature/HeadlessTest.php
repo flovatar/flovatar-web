@@ -244,6 +244,19 @@ class HeadlessTest extends TestCase
         $this->assertNull($rows[5]['list_thumb']);
     }
 
+    public function test_v2_lists_are_trimmed_to_the_fields_the_cards_read(): void
+    {
+        $row = $this->get('/api/v2/marketplace')->assertOk()->json('data.0');
+        $this->assertSame(['created_at', 'flow_address', 'flow_id', 'id', 'is_dapper', 'item', 'item_type', 'list_thumb', 'listing_id', 'price', 'thumb'],
+            collect(array_keys($row))->sort()->values()->all());
+        $this->assertArrayNotHasKey('svg', $row['item']);
+        $this->assertSame(['metadata' => []], $row['item']['flow_metadata'] ?? ['metadata' => []]);
+
+        $f = $this->get('/api/v2/showroom/flovatars')->assertOk()->json('data.0');
+        $this->assertSame([['price' => 12.5, 'is_dapper' => false]], $f['sale_offers']);
+        $this->assertStringNotContainsString('<svg', json_encode($f));
+    }
+
     public function test_packs_never_expose_secrets(): void
     {
         $r = $this->get('/api/v2/packs');
