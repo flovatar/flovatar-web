@@ -53,7 +53,7 @@ import {getCollectionsByNameFlovatarIdsScript} from './flow/get-collections-by-n
 import {getCollectionsFlovatarSaleScript} from './flow/get-collections-flovatar-sale.script';
 import {getCollectionsByNameFlovatarSaleScript} from './flow/get-collections-by-name-flovatar-sale.script';
 import {getCollectionsComponentScript} from './flow/get-collections-component.script';
-import {getCollectionsComponentBatched} from "./flow/get-collections-component-batch.script";
+import {forceBatched, getCollectionBatched, getCollectionBatchedByName, getPacksList} from "./flow/get-collections-batch.script";
 import {getCollectionsByNameComponentScript} from './flow/get-collections-by-name-component.script';
 import {getCollectionsComponentSaleScript} from './flow/get-collections-component-sale.script';
 import {getCollectionsByNameComponentSaleScript} from './flow/get-collections-by-name-component-sale.script';
@@ -590,60 +590,56 @@ window.getCollectionsByName = async function(addressName){
         window.dispatch('collections-loaded', {collections: data});
     });
 }
-window.getCollectionsPack = async function(address){
-    await getCollectionsPackScript(address).then(function(data){
-        console.log('collections pack loaded');
-        //console.log(data);
-        window.dispatch('collections-pack-loaded', {collections: data});
-    });
+/**
+ * Collection loaders. Each tries the whole-collection script first (one round trip; enough for >99% of wallets) and
+ * falls back to ID batches (flow/get-collections-batch.script.js) when the access node refuses it, i.e. wallets beyond
+ * the script computation limit (mainnet, 2026-11-24: ~800 Flovatars / ~2,000 Flobits / ~2,500 collectibles per
+ * script; the Flovatar admin wallet holds 22k Flobits). `?batched=1` on the page URL forces the batched path.
+ */
+async function collectionWithFallback(label, whole, batched) {
+    if (forceBatched()) {
+        return batched();
+    }
+    try {
+        return await whole();
+    } catch (error) {
+        console.log(label + ' collection too big for one script, loading in batches');
+        return batched();
+    }
 }
-window.getCollectionsByNamePack = async function(addressName){
-    await getCollectionsByNamePackScript(addressName).then(function(data){
-        console.log('collections pack loaded');
-        //console.log(data);
-        window.dispatch('collections-pack-loaded', {collections: data});
-    });
-}
-
-window.getCollectionsFlovatar = async function(address){
-    await getCollectionsFlovatarScript(address).then(function(data){
-        console.log('collections flovatar loaded');
-        //console.log(data);
-        window.dispatch('collections-flovatar-loaded', {collections: data});
-    })
-    .catch(function (error) {
-        //console.log(error);
-        console.log('failed to load Flovatar collection');
-        window.dispatch('collections-flovatar-failed', {});
-    });
-}
-
-window.getCollectionsFlobot = async function(address){
-    await getCollectionsFlobotScript(address).then(function(data){
-        console.log('collections flobot loaded');
-        //console.log(data);
-        window.dispatch('collections-flobot-loaded', {collections: data});
-    })
-        .catch(function (error) {
-            //console.log(error);
-            console.log('failed to load Flobot collection');
-            window.dispatch('collections-flobot-failed', {});
+function collectionLoader(label, event, failedEvent, whole, batched) {
+    return async function(who){
+        await collectionWithFallback(label, () => whole(who), () => batched(who)).then(function(data){
+            console.log('collections ' + label + ' loaded');
+            window.dispatch(event, {collections: data});
+        }).catch(function (error) {
+            console.log('failed to load ' + label + ' collection');
+            if (failedEvent) {
+                window.dispatch(failedEvent, {});
+            }
         });
+    }
 }
 
-window.getCollectionsCollectible = async function(address){
-    await getCollectionsCollectibleScript(address).then(function(data){
-        console.log('collections collectible loaded');
-        //console.log(data);
-        window.dispatch('collections-collectible-loaded', {collections: data});
-    })
-        .catch(function (error) {
-            //console.log(error);
-            console.log('failed to load Collectible collection');
-            window.dispatch('collections-collectible-failed', {});
-        });
-}
+window.getCollectionsPack = collectionLoader('pack', 'collections-pack-loaded', null,
+    getCollectionsPackScript, getPacksList);
+window.getCollectionsByNamePack = collectionLoader('pack', 'collections-pack-loaded', null,
+    getCollectionsByNamePackScript, (name) => getCollectionBatchedByName('pack', name));
 
+window.getCollectionsFlovatar = collectionLoader('flovatar', 'collections-flovatar-loaded', 'collections-flovatar-failed',
+    getCollectionsFlovatarScript, (address) => getCollectionBatched('flovatar', address));
+window.getCollectionsByNameFlovatar = collectionLoader('flovatar', 'collections-flovatar-loaded', 'collections-flovatar-failed',
+    getCollectionsByNameFlovatarScript, (name) => getCollectionBatchedByName('flovatar', name));
+
+window.getCollectionsFlobot = collectionLoader('flobot', 'collections-flobot-loaded', 'collections-flobot-failed',
+    getCollectionsFlobotScript, (address) => getCollectionBatched('flobot', address));
+window.getCollectionsByNameFlobot = collectionLoader('flobot', 'collections-flobot-loaded', 'collections-flobot-failed',
+    getCollectionsByNameFlobotScript, (name) => getCollectionBatchedByName('flobot', name));
+
+window.getCollectionsCollectible = collectionLoader('collectible', 'collections-collectible-loaded', 'collections-collectible-failed',
+    getCollectionsCollectibleScript, (address) => getCollectionBatched('collectible', address));
+window.getCollectionsByNameCollectible = collectionLoader('collectible', 'collections-collectible-loaded', 'collections-collectible-failed',
+    getCollectionsByNameCollectibleScript, (name) => getCollectionBatchedByName('collectible', name));
 
 window.getCollectionsFlovatarIds = async function(address){
     await getCollectionsFlovatarIdsScript(address).then(function(data){
@@ -652,46 +648,6 @@ window.getCollectionsFlovatarIds = async function(address){
         window.dispatch('collections-flovatar-ids-loaded', {collections: data});
     });
 }
-
-window.getCollectionsByNameFlovatar = async function(addressName){
-    await getCollectionsByNameFlovatarScript(addressName).then(function(data){
-        console.log('collections flovatar loaded');
-        //console.log(data);
-        window.dispatch('collections-flovatar-loaded', {collections: data});
-    })
-    .catch(function (error) {
-        //console.log(error);
-        console.log('failed to load Flovatar collection');
-        window.dispatch('collections-flovatar-failed', {});
-    });
-}
-
-window.getCollectionsByNameFlobot = async function(addressName){
-    await getCollectionsByNameFlobotScript(addressName).then(function(data){
-        console.log('collections flobot loaded');
-        //console.log(data);
-        window.dispatch('collections-flobot-loaded', {collections: data});
-    })
-        .catch(function (error) {
-            //console.log(error);
-            console.log('failed to load Flobot collection');
-            window.dispatch('collections-flobot-failed', {});
-        });
-}
-
-window.getCollectionsByNameCollectible = async function(addressName){
-    await getCollectionsByNameCollectibleScript(addressName).then(function(data){
-        console.log('collections collectible loaded');
-        //console.log(data);
-        window.dispatch('collections-collectible-loaded', {collections: data});
-    })
-        .catch(function (error) {
-            //console.log(error);
-            console.log('failed to load Collectible collection');
-            window.dispatch('collections-collectible-failed', {});
-        });
-}
-
 window.getCollectionsByNameFlovatarIds = async function(addressName){
     await getCollectionsByNameFlovatarIdsScript(addressName).then(function(data){
         console.log('collections flovatar ids loaded');
@@ -700,53 +656,20 @@ window.getCollectionsByNameFlovatarIds = async function(addressName){
     });
 }
 
-window.getCollectionsFlovatarSale = async function(address){
-    await getCollectionsFlovatarSaleScript(address).then(function(data){
-        console.log('collections flovatar sale loaded');
-        //console.log(data);
-        window.dispatch('collections-flovatar-sale-loaded', {collections: data});
-    });
-}
-window.getCollectionsByNameFlovatarSale = async function(addressName){
-    await getCollectionsByNameFlovatarSaleScript(addressName).then(function(data){
-        console.log('collections flovatar sale loaded');
-        //console.log(data);
-        window.dispatch('collections-flovatar-sale-loaded', {collections: data});
-    });
-}
+window.getCollectionsFlovatarSale = collectionLoader('flovatar sale', 'collections-flovatar-sale-loaded', null,
+    getCollectionsFlovatarSaleScript, (address) => getCollectionBatched('flovatarSale', address));
+window.getCollectionsByNameFlovatarSale = collectionLoader('flovatar sale', 'collections-flovatar-sale-loaded', null,
+    getCollectionsByNameFlovatarSaleScript, (name) => getCollectionBatchedByName('flovatarSale', name));
 
-window.getCollectionsComponent = async function(address){
-    await getCollectionsComponentScript(address).catch(function(error){
-        // wallets with ~2,000+ Flobits exceed the script computation limit: read IDs, then components in batches
-        console.log('component collection too big for one script, loading in batches');
-        return getCollectionsComponentBatched(address);
-    }).then(function(data){
-        console.log('collections component loaded');
-        //console.log(data);
-        window.dispatch('collections-component-loaded', {collections: data});
-    });
-}
-window.getCollectionsByNameComponent = async function(addressName){
-    await getCollectionsByNameComponentScript(addressName).then(function(data){
-        console.log('collections component loaded');
-        //console.log(data);
-        window.dispatch('collections-component-loaded', {collections: data});
-    });
-}
-window.getCollectionsComponentSale = async function(address){
-    await getCollectionsComponentSaleScript(address).then(function(data){
-        console.log('collections component sale loaded');
-        //console.log(data);
-        window.dispatch('collections-component-sale-loaded', {collections: data});
-    });
-}
-window.getCollectionsByNameComponentSale = async function(addressName){
-    await getCollectionsByNameComponentSaleScript(addressName).then(function(data){
-        console.log('collections component sale loaded');
-        //console.log(data);
-        window.dispatch('collections-component-sale-loaded', {collections: data});
-    });
-}
+window.getCollectionsComponent = collectionLoader('component', 'collections-component-loaded', null,
+    getCollectionsComponentScript, (address) => getCollectionBatched('component', address));
+window.getCollectionsByNameComponent = collectionLoader('component', 'collections-component-loaded', null,
+    getCollectionsByNameComponentScript, (name) => getCollectionBatchedByName('component', name));
+
+window.getCollectionsComponentSale = collectionLoader('component sale', 'collections-component-sale-loaded', null,
+    getCollectionsComponentSaleScript, (address) => getCollectionBatched('componentSale', address));
+window.getCollectionsByNameComponentSale = collectionLoader('component sale', 'collections-component-sale-loaded', null,
+    getCollectionsByNameComponentSaleScript, (name) => getCollectionBatchedByName('componentSale', name));
 
 
 window.getComponent = async function(address, componentId){
