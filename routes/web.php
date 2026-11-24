@@ -327,3 +327,8 @@ Route::view('__headless_404', 'headless.404')->name('headless.404');
 Route::redirect('chat', '/', 301);
 Route::get('chat/{flovatarId}', [RedirectController::class, 'retiredChat'])
     ->where('flovatarId', '(?!(send|check|checkaddress|tts|update)$)[^/]+');
+
+// Passkey (WebAuthn / FLIP-264) walletless-onboarding proof of concept: TESTNET ONLY, off unless PASSKEY_POC_ENABLED=true.
+if (config('passkey.enabled')) {
+    require __DIR__.'/passkey.php';
+}

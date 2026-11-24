@@ -37,6 +37,7 @@ class PublicCache
         'subscribe', 'graffle',
         'admin', 'admin/*', 'sanctum/*',
         'api/v2/auth/*',
+        'passkey', 'passkey/*',
     ];
 
     /** GET paths that never need a session, even for logged-in users (images, JSON). */
