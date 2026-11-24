@@ -28,7 +28,7 @@
                             <div class="col">
                                 <a x-bind:href="window.itemUrl('flovatars', flovatar.flow_id, flovatar.flow_address)" class="card" x-bind:class="getRarityColor(flovatar)">
                                     <div class="img-hold">
-                                        <img x-bind:src="'/api/image/'+flovatar.flow_id" />
+                                        <img x-bind:src="flovatar.list_thumb || '/api/image/'+flovatar.flow_id" />
                                         <div x-html="getFlovatarRarityImages(flovatar.flow_metadata)" class="rarity-score-boosters"></div>
                                     </div>
                                     <div class="wrap">

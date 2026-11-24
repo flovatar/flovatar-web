@@ -277,6 +277,10 @@ Alpine.data('marketplaceData', (templates, stats) => ({
     },
 
     getSvgUrl(sale){
+        // headless API rows: R2 thumbnail when it looks the same as the SVG (opaque, not animated); else the SVG
+        if(sale.list_thumb){
+            return sale.list_thumb;
+        }
         let item = this.getItem(sale);
         if(this.isDustCollectible(sale)){
             return '/api/image/collectible/'+item.flow_id;

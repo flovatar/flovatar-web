@@ -224,6 +224,26 @@ class HeadlessTest extends TestCase
         $m->assertJsonPath('total', 1)->assertJsonPath('data.0.flow_id', 3);
     }
 
+    public function test_list_thumb_only_where_the_jpeg_looks_like_the_svg(): void
+    {
+        $now = now();
+        // #3 has no background (transparent) -> SVG; #4 has one -> R2 thumb; #5 has one but is animated -> SVG
+        foreach ([4 => '570', 5 => '571'] as $id => $bg) {
+            DB::table('flovatars')->insert(['name' => 'f'.$id, 'flow_id' => $id, 'flow_address' => '0x2538515561c0c431',
+                'flow_metadata' => json_encode(['id' => (string) $id, 'backgroundId' => $bg]), 'created_at' => $now, 'updated_at' => $now]);
+        }
+        foreach ([3 => false, 4 => false, 5 => true] as $id => $animated) {
+            DB::table('rendered_images')->insert(['item_type' => 'flovatar', 'flow_id' => $id, 'hash' => 'h'.$id, 'path' => "flovatar/r/$id/h$id",
+                'animated' => $animated, 'variants' => json_encode(['full.png', 'thumb.jpg']), 'rendered_at' => $now, 'created_at' => $now, 'updated_at' => $now]);
+        }
+        $rows = collect($this->get('/api/v2/showroom/flovatars')->assertOk()->json('data'))->keyBy('flow_id');
+        $this->assertStringEndsWith('flovatar/r/3/h3/thumb.jpg', $rows[3]['thumb']);
+        $this->assertNull($rows[3]['list_thumb']);
+        $this->assertStringEndsWith('flovatar/r/4/h4/thumb.jpg', $rows[4]['list_thumb']);
+        $this->assertNotNull($rows[5]['thumb']);
+        $this->assertNull($rows[5]['list_thumb']);
+    }
+
     public function test_packs_never_expose_secrets(): void
     {
         $r = $this->get('/api/v2/packs');

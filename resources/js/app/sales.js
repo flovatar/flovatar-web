@@ -197,6 +197,10 @@ Alpine.data('salesData', (templates, address, stats) => ({
         return this.isFlovatar(sale) ? sale.item : _.find(this.templates, {  'id': sale.item.flovatar_template_id });
     },
     getSvgUrl(sale){
+        // headless API rows: R2 thumbnail when it looks the same as the SVG (opaque, not animated); else the SVG
+        if(sale.list_thumb){
+            return sale.list_thumb;
+        }
         let item = this.getItem(sale);
         return this.isFlovatar(sale) ? '/api/image/'+item.flow_id : '/api/image/template/'+item.flow_id;
     },

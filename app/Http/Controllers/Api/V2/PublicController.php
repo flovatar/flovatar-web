@@ -56,7 +56,7 @@ class PublicController extends FilteredController
     /** Marketplace listings (same params as POST /search: type, rarity, sortby, minPrice, maxPrice, page, ...). */
     public function marketplace(Request $request)
     {
-        return $this->withThumbs($this->remember($request, 'marketplace', 10, fn () => $this->getFilteredSales($request, true)), true);
+        return $this->remember($request, 'marketplace', 10, fn () => $this->withThumbs($this->getFilteredSales($request, true), true));
     }
 
     public function stats()
@@ -66,22 +66,22 @@ class PublicController extends FilteredController
 
     public function transactions(Request $request)
     {
-        return $this->withThumbs($this->remember($request, 'transactions', 10, fn () => $this->getFilteredTransactions($request, true)), true);
+        return $this->remember($request, 'transactions', 10, fn () => $this->withThumbs($this->getFilteredTransactions($request, true), true));
     }
 
     public function showroomFlovatars(Request $request)
     {
-        return $this->withThumbs($this->remember($request, 'showroom-flovatars', 30, fn () => $this->getFilteredFlovatars($request, true)), false, 'flovatar');
+        return $this->remember($request, 'showroom-flovatars', 30, fn () => $this->withThumbs($this->getFilteredFlovatars($request, true), false, 'flovatar'));
     }
 
     public function showroomFlobots(Request $request)
     {
-        return $this->withThumbs($this->remember($request, 'showroom-flobots', 30, fn () => $this->getFilteredFlobots($request, true)), false, 'flobot');
+        return $this->remember($request, 'showroom-flobots', 30, fn () => $this->withThumbs($this->getFilteredFlobots($request, true), false, 'flobot'));
     }
 
     public function showroomCollectibles(Request $request)
     {
-        return $this->withThumbs($this->remember($request, 'showroom-collectibles', 30, fn () => $this->getFilteredCollectibles($request, true)), false, 'collectible');
+        return $this->remember($request, 'showroom-collectibles', 30, fn () => $this->withThumbs($this->getFilteredCollectibles($request, true), false, 'collectible'));
     }
 
     /** Lean template lists (no svg): set=all|series1|flobot, or set=dust (DUST collectible templates). */
@@ -153,8 +153,11 @@ class PublicController extends FilteredController
     }
 
     /**
-     * Adds `thumb` (best R2 render, immutable URL) to each row so lists can show images from R2 instead of
-     * the origin's SVG endpoint. One query per page. $sales: rows are sale offers/sales with ->item.
+     * Adds `thumb` (best R2 render, immutable URL, or null) and `list_thumb` to each row. `list_thumb` is the URL list
+     * templates show instead of the origin's /api/image SVG, set only when the JPEG looks the same on the dark list
+     * cards: thumb.jpg is flattened on white, so transparent items (Flovatars/Flobots without a background, every DUST
+     * collectible, Flobit templates other than backgrounds) and animated items (JPEG = frozen frame) keep the SVG.
+     * Two small queries per page; the result is memoised with the page. $sales: rows are sale offers/sales with ->item.
      */
     private function withThumbs($paginator, bool $sales, ?string $type = null)
     {
@@ -167,19 +170,47 @@ class PublicController extends FilteredController
             }
         }
         $thumbs = [];
+        $listThumbs = [];
         foreach ($wanted as $t => $ids) {
-            foreach (RenderedImage::query()->where('item_type', $t)->whereIn('flow_id', array_unique($ids))->whereNotNull('rendered_at')->get() as $r) {
+            $renders = RenderedImage::query()->where('item_type', $t)->whereIn('flow_id', array_unique($ids))->whereNotNull('rendered_at')->get();
+            $opaque = $this->opaqueItems($t, $renders->pluck('flow_id')->all());
+            foreach ($renders as $r) {
                 if ($url = $r->url('thumb.jpg')) {
                     $thumbs[$t.':'.$r->flow_id] = $url;
+                    if (! $r->animated && isset($opaque[(int) $r->flow_id])) {
+                        $listThumbs[$t.':'.$r->flow_id] = $url;
+                    }
                 }
             }
         }
         foreach ($rows as $row) {
             [$t, $id] = $sales ? $this->rowItem($row) : [$type, $row->flow_id];
             $row->setAttribute('thumb', $thumbs[$t.':'.$id] ?? null);
+            $row->setAttribute('list_thumb', $listThumbs[$t.':'.$id] ?? null);
         }
 
         return $paginator;
+    }
+
+    /** flow_id => true for items whose image has an opaque background (see withThumbs). */
+    private function opaqueItems(string $type, array $flowIds): array
+    {
+        if (! $flowIds) {
+            return [];
+        }
+        $model = ['flovatar' => Flovatar::class, 'flobot' => \App\Models\Flobot::class][$type] ?? null;
+        if ($model) {
+            return $model::query()->whereIn('flow_id', $flowIds)
+                ->selectRaw("flow_id, json_extract(flow_metadata, '$.backgroundId') bg")->get()
+                ->filter(fn ($r) => ! in_array(trim((string) $r->bg, "\" "), ["", "null"], true)) // MySQL: JSON text ("570" | null), SQLite: 570 | NULL
+                ->mapWithKeys(fn ($r) => [(int) $r->flow_id => true])->all();
+        }
+        if ($type === 'template') {
+            return FlovatarTemplate::query()->whereIn('flow_id', $flowIds)->where('category', 'background')
+                ->pluck('flow_id')->mapWithKeys(fn ($id) => [(int) $id => true])->all();
+        }
+
+        return []; // DUST collectibles have no background layer
     }
 
     private function rowItem($row): array
