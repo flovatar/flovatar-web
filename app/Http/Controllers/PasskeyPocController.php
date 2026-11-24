@@ -117,6 +117,8 @@ class PasskeyPocController extends Controller
             'sponsor' => PasskeyPoc::sponsorAddress(),
             'flowscan' => config('passkey.flowscan'),
             'stock' => null,
+            // session()->regenerate() on sign-in/out rotates the CSRF token: the page picks the new one up here
+            'csrf' => $request->session()->token(),
         ];
         try {
             $stock = $poc->script('account_state', [['type' => 'Address', 'value' => PasskeyPoc::sponsorAddress()]]);
@@ -254,7 +256,7 @@ class PasskeyPocController extends Controller
         $request->session()->put(self::SESSION_ACCOUNT, $account->id);
         $request->session()->put(self::SESSION_CREDENTIAL, $cred->id);
 
-        return response()->json(['address' => $address, 'txId' => $txId]);
+        return response()->json(['address' => $address, 'txId' => $txId, 'csrf' => $request->session()->token()]);
     }
 
     // ------------------------------------------------------------------ sign in
@@ -308,7 +310,7 @@ class PasskeyPocController extends Controller
         $request->session()->put(self::SESSION_ACCOUNT, $cred->passkey_account_id);
         $request->session()->put(self::SESSION_CREDENTIAL, $cred->id);
 
-        return response()->json(['address' => $cred->account->address, 'key_index' => $cred->key_index]);
+        return response()->json(['address' => $cred->account->address, 'key_index' => $cred->key_index, 'csrf' => $request->session()->token()]);
     }
 
     public function logout(Request $request): JsonResponse
@@ -316,7 +318,7 @@ class PasskeyPocController extends Controller
         $request->session()->forget([self::SESSION_ACCOUNT, self::SESSION_CREDENTIAL]);
         $request->session()->regenerate();
 
-        return response()->json(['ok' => true]);
+        return response()->json(['ok' => true, 'csrf' => $request->session()->token()]);
     }
 
     // ------------------------------------------------------------------ add another device

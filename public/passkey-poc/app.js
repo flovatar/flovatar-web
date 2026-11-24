@@ -34,6 +34,7 @@
                 var j = {};
                 try { j = t ? JSON.parse(t) : {}; } catch (e) { j = { error: 'Unexpected answer from the server (' + r.status + ')' }; }
                 if (r.status === 419) j.error = 'Your session expired. Reload the page and try again.';
+                if (j && j.csrf) { var m = document.querySelector('meta[name=csrf-token]'); if (m) m.setAttribute('content', j.csrf); }
                 if (!r.ok) { var err = new Error(j.error || j.message || ('Request failed (' + r.status + ')')); err.status = r.status; throw err; }
                 return j;
             });
