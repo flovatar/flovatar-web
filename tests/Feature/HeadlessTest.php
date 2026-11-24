@@ -352,6 +352,11 @@ class HeadlessTest extends TestCase
         $this->artisan('headless:build', ['--sitemap' => true, '--out' => $out, '--quiet-puts' => true])->assertExitCode(0);
         $this->assertStringContainsString('/flobits/214</loc>', file_get_contents($out.'/'.Headless::prefix().'sitemap.xml'));
         $this->get('/flobits/999')->assertNotFound();
+        // classic site: the type page is edge-cacheable like the other public pages (no session)
+        $page = $this->get('/flobits/214');
+        $page->assertOk();
+        $this->assertStringContainsString('s-maxage=60', (string) $page->headers->get('Cache-Control'));
+        $this->assertSame([], $page->headers->getCookies());
     }
 
     public function test_flobit_events_regenerate_the_type_page(): void

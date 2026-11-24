@@ -50,7 +50,7 @@ class PublicCache
         '/', 'builder', 'builder/*', 'flobot/builder',
         'marketplace', 'marketplace/*',
         'showroom', 'showroom/*',
-        'flovatars/*', 'flobots/*', 'collectibles/*', 'components/*', 'dust/accessories/*',
+        'flovatars/*', 'flobots/*', 'collectibles/*', 'components/*', 'flobits/*', 'dust/accessories/*',
         'collection/*',
         'transactions', 'transactions/*',
         'get-started', 'explore', 'story', 'terms', 'privacy', 'policy', 'dust',

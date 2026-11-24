@@ -174,11 +174,14 @@ async function proxy(request, env, c, url, opts = {}) {
 // Server-rendered HTML coming through the proxy: canonical/og:url and absolute origin links -> this host.
 function rewriteOriginHtml(resp, c, frontendOrigin, pathname = "/") {
   const fix = (v) => (v && v.startsWith(c.origin) ? frontendOrigin + v.slice(c.origin.length) : v);
-  // legacy layout prints a site-wide canonical (https://flovatar.com/) on every SSR page -> this page's own URL
-  const canonical = (v) => (!v || /^https?:\/\/[^\/]+\/?$/.test(v) ? frontendOrigin + pathname : fix(v));
+  // legacy layout prints a site-wide canonical (https://flovatar.com/) on every SSR page -> this page's own URL;
+  // item pages rendered at the origin (not built yet) use the owner-less canonical item URL
+  const own = pathname.replace(ITEM_OWNER_URL, "/$1/$2");
+  const canonical = (v) => (!v || /^https?:\/\/[^\/]+\/?$/.test(v) ? frontendOrigin + own : fix(v));
+  const ogUrl = (v) => { const f = fix(v); return f && f.startsWith(frontendOrigin) ? frontendOrigin + f.slice(frontendOrigin.length).replace(ITEM_OWNER_URL, "/$1/$2") : f; };
   return new HTMLRewriter()
     .on('link[rel="canonical"]', { element(e) { e.setAttribute("href", canonical(e.getAttribute("href"))); } })
-    .on('meta[property="og:url"]', { element(e) { e.setAttribute("content", fix(e.getAttribute("content"))); } })
+    .on('meta[property="og:url"]', { element(e) { e.setAttribute("content", ogUrl(e.getAttribute("content"))); } })
     .on("a[href]", { element(e) { const h = e.getAttribute("href"); if (h && h.startsWith(c.origin)) e.setAttribute("href", fix(h)); } })
     .transform(resp);
 }
@@ -236,7 +239,16 @@ async function handle(request, env) {
   // shells: wallet comes from the URL at runtime
   if (/^\/collection\/[^\/]+\/?$/.test(path)) {
     const obj = await getObject(env, c, "_shells/collection.html", request);
-    if (obj) return objectResponse(c, request, "_shells/collection.html", obj);
+    if (obj) {
+      const resp = objectResponse(c, request, "_shells/collection.html", obj);
+      // one shell for every wallet: canonical/og:url = this wallet's URL (the build can only print /collection)
+      if (resp.status !== 200 || typeof HTMLRewriter === "undefined") return resp;
+      const self = url.origin + url.pathname.replace(/\/+$/, "");
+      return new HTMLRewriter()
+        .on('link[rel="canonical"]', { element(e) { e.setAttribute("href", self); } })
+        .on('meta[property="og:url"]', { element(e) { e.setAttribute("content", self); } })
+        .transform(resp);
+    }
     return proxy(request, env, c, url, { fallback: true });
   }
   if (path === "/collection" || path === "/collection/") return Response.redirect(`${url.origin}/`, 302);
