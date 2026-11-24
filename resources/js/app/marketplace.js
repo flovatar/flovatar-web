@@ -217,16 +217,29 @@ Alpine.data('marketplaceData', (templates, stats) => ({
     isDustCollectible(sale){
         return (sale.item_type == 'App\\Models\\DustCollectible');
     },
+    isFlobot(sale){
+        return (sale.item_type == 'App\\Models\\Flobot');
+    },
+    // Flovatars, Flobots and DUST collectibles carry their own row; Flobits (components) are described by their template
+    isWholeItem(sale){
+        return this.isFlovatar(sale) || this.isDustCollectible(sale) || this.isFlobot(sale);
+    },
     isFlobit(sale){
-        if(this.isFlovatar(sale) || this.isDustCollectible(sale)){
+        if(this.isWholeItem(sale)){
             return false;
         } else {
             let item = this.getItem(sale);
+            if(!item){
+                return false;
+            }
             return (item.category != 'spark' && item.category != 'boost' && item.category != 'land' && item.category != 'fub' && item.category != 'flobotkit') ? true : false;
         }
     },
     getItem(sale){
-        return (this.isFlovatar(sale) || this.isDustCollectible(sale)) ? sale.item : _.find(this.templates, {  'id': sale.item.flovatar_template_id });
+        if(!sale.item){
+            return null;
+        }
+        return this.isWholeItem(sale) ? sale.item : _.find(this.templates, {  'id': sale.item.flovatar_template_id });
     },
     getBurnedData(cat){
         if(cat == 'spark'){
@@ -283,9 +296,15 @@ Alpine.data('marketplaceData', (templates, stats) => ({
         }
         let item = this.getItem(sale);
         if(this.isDustCollectible(sale)){
-            return '/api/image/collectible/'+item.flow_id;
+            return '/api/image/collectible/'+sale.flow_id;
         }
-        return this.isFlovatar(sale) ? '/api/image/'+item.flow_id : '/api/image/template/'+item.flow_id;
+        if(this.isFlobot(sale)){
+            return '/api/image/flobot/'+sale.flow_id;
+        }
+        if(this.isFlovatar(sale)){
+            return '/api/image/'+sale.flow_id;
+        }
+        return item ? '/api/image/template/'+item.flow_id : '';
     },
 
     svg(){
@@ -306,6 +325,9 @@ Alpine.data('marketplaceData', (templates, stats) => ({
         if(this.isDustCollectible(sale)){
             return window.itemUrl('collectibles', sale.flow_id, sale.flow_address);
         }
+        if(this.isFlobot(sale)){
+            return window.itemUrl('flobots', sale.flow_id, sale.flow_address);
+        }
         return '/components/'+sale.flow_id+'/'+sale.flow_address;
     },
     getName(sale){
@@ -315,6 +337,9 @@ Alpine.data('marketplaceData', (templates, stats) => ({
     getType(sale){
         if(this.isDustCollectible(sale)){
             return 'Dust Collectible'
+        }
+        if(this.isFlobot(sale)){
+            return 'Flobot';
         }
         return this.isFlovatar(sale) ? 'Flovatar' : 'Component';
     },
@@ -330,9 +355,15 @@ Alpine.data('marketplaceData', (templates, stats) => ({
         return (this.isFlovatar(sale)) ? window.getRarityScore(sale.item.flow_metadata) : 0;
     },
     getRarityText(sale){
+        if(!sale.item){
+            return '';
+        }
+        if(this.isFlobot(sale)){
+            return sale.item.rarity || '';
+        }
         if(!this.isFlovatar(sale) && sale.item.flovatar_template_id){
             return this.getRarityById(sale.item.flovatar_template_id);
-        } else if(this.isFlovatar(sale) && sale.item.flow_metadata.metadata){
+        } else if(this.isFlovatar(sale) && sale.item.flow_metadata && sale.item.flow_metadata.metadata){
             return window.getFlovatarRarityText(sale.item.flow_metadata);
         } else if(this.isDustCollectible(sale)){
             return window.getCollectibleRarityScoreFromCounts(sale.item.legendary_count, sale.item.epic_count, sale.item.rare_count);
@@ -341,23 +372,23 @@ Alpine.data('marketplaceData', (templates, stats) => ({
         }
     },
     hasMint(sale){
-        let item = this.getItem(sale);
-        if(this.isFlovatar(sale) || this.isDustCollectible(sale)){
+        if(this.isWholeItem(sale)){
             return true;
         } else {
-            return sale.item.mint != null;
+            return !!sale.item && sale.item.mint != null;
         }
     },
     getMint(sale){
         let item = this.getItem(sale);
-        if(this.isFlovatar(sale) || this.isDustCollectible(sale)){
-            return '#' + item.flow_id;
+        if(this.isWholeItem(sale)){
+            return '#' + sale.flow_id;
         } else {
-            return this.hasMint(sale) ? '#' + sale.item.mint + ' / '+ item.max_mintable : item.max_mintable;
+            let max = item ? item.max_mintable : '';
+            return this.hasMint(sale) ? '#' + sale.item.mint + ' / '+ max : max;
         }
     },
     getBurnText(sale){
-        if(this.isFlovatar(sale) || this.isDustCollectible(sale)){
+        if(this.isWholeItem(sale) || !sale.flow_metadata || !sale.flow_metadata.metadata){
             return '';
         }
         let template = _.find(this.templates, (el) => { return el.id == sale.flow_metadata.metadata.templateId; });
@@ -368,14 +399,20 @@ Alpine.data('marketplaceData', (templates, stats) => ({
         if(this.isDustCollectible(sale)){
             return 'collectible';
         }
-        return this.isFlovatar(sale) ? 'flovatar' : item.category;
+        if(this.isFlobot(sale)){
+            return 'flobot';
+        }
+        return this.isFlovatar(sale) ? 'flovatar' : (item ? item.category : '');
     },
     getRarityColor(sale){
-        return (this.isFlovatar(sale) || this.isDustCollectible(sale)) ? this.getRarityText(sale) : this.getRarityClassById(sale.item.flovatar_template_id);
+        if(this.isWholeItem(sale)){
+            return this.getRarityText(sale);
+        }
+        return sale.item ? this.getRarityClassById(sale.item.flovatar_template_id) : '';
     },
     getFlovatarRarityImages(sale){
         let item = this.getItem(sale);
-        return this.isFlovatar(sale) ? window.getFlovatarRarityImagesFromMeta(item.flow_metadata.metadata) : '';
+        return (this.isFlovatar(sale) && item && item.flow_metadata && item.flow_metadata.metadata) ? window.getFlovatarRarityImagesFromMeta(item.flow_metadata.metadata) : '';
     }
 }));
 
