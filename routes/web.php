@@ -165,7 +165,7 @@ Route::get('api/image/jpg/{flovatarId}', [FlovatarImageController::class,'jpg'])
 Route::get('api/image/r/{type}/{flowId}/{variant}', \App\Http\Controllers\RenderedImageController::class)
     ->where('type', 'flovatar|flobot|collectible|template')
     ->whereNumber('flowId')
-    ->where('variant', 'full\.png|full\.jpg|nobg\.png|thumb\.jpg|og\.jpg')
+    ->where('variant', 'full\.png|full\.jpg|nobg\.png|thumb\.jpg|og\.jpg|anim\.gif|anim\.mp4')
     ->name('renderedimage');
 
 Route::get('api/image/mp4/{flovatarId}', [FlovatarImageController::class,'mp4'])

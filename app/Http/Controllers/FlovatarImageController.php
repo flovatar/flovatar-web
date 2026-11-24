@@ -30,8 +30,9 @@ class FlovatarImageController extends Controller
         });
         return $flovatarSvg ? response($flovatarSvg)->header('Content-Type', 'image/svg+xml') : abort(404);
     }
+    // GIF/MP4: the browser render (agent box) when present, else the legacy export (prod only)
     public function gif($flovatarId){
-        return $this->imageFromStorage('/flovatar/gif/'.$flovatarId.'.gif');
+        return RenderedImageController::respond('flovatar', (int) $flovatarId, 'anim.gif');
     }
     public function gifNoBg($flovatarId){
         return $this->imageFromStorage('/flovatar/gif/'.$flovatarId.'-nobg.gif');
@@ -47,7 +48,7 @@ class FlovatarImageController extends Controller
         return RenderedImageController::respond('flovatar', (int) $flovatarId, 'full.jpg');
     }
     public function mp4($flovatarId){
-        return $this->imageFromStorage('/flovatar/mp4/'.$flovatarId.'.mp4');
+        return RenderedImageController::respond('flovatar', (int) $flovatarId, 'anim.mp4');
     }
     public function mp4NoBg($flovatarId){
         return $this->imageFromStorage('/flovatar/mp4/'.$flovatarId.'-nobg.mp4');

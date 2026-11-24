@@ -192,6 +192,26 @@
                             </ul>
                         </div>
                     </div>
+                    @php($dlTemplate = ($templates ?? null) ? $templates->first() : null)
+                    @if($dlTemplate && $dlTemplate->flow_id)
+                    <div class="content-box downloads-box">
+                        <div class="title-row">
+                            <h2>Downloads</h2>
+                        </div>
+                        <div class="box">
+                            <ul class="content-list">
+                                <li>
+                                    <strong>2D Assets</strong>
+                                    <div class="col-r">
+                                        <div class="input-panel download-panel">
+                                            @include('partials.render-downloads', ['dlType' => 'template', 'dlId' => $dlTemplate->flow_id, 'dlName' => 'Flobit-'.$componentId])
+                                        </div>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    @endif
                 </div>
             </div>
         </div>

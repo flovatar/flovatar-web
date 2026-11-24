@@ -31,7 +31,7 @@ class ItemImages
         return self::$memo[$key];
     }
 
-    /** $variant: full.png | full.jpg | nobg.png | thumb.jpg | og.jpg */
+    /** $variant: full.png | full.jpg | nobg.png | thumb.jpg | og.jpg | anim.gif | anim.mp4 */
     public static function url(string $type, $flowId, string $variant = 'full.png', bool $legacy = true): ?string
     {
         if ($url = self::record($type, $flowId)?->url($variant)) {
@@ -46,9 +46,38 @@ class ItemImages
         if (! config('render.legacy_fallback') || ! is_numeric($flowId) || ! in_array($type, ['flovatar', 'flobot', 'collectible'], true)) {
             return null;
         }
+        $base = rtrim((string) config('flovatar.imagesUrl'), '/').'/'.$type;
+        if ($variant === 'anim.gif' || $variant === 'anim.mp4') {
+            // legacy webgif exports (old pipeline): only where they exist
+            $ext = substr($variant, 5);
+
+            return $base.'/'.$ext.'/'.(int) $flowId.'.'.$ext;
+        }
         $suffix = $variant === 'nobg.png' ? '-nobg' : '';
 
-        return rtrim((string) config('flovatar.imagesUrl'), '/').'/'.$type.'/png/'.(int) $flowId.$suffix.'.png';
+        return $base.'/png/'.(int) $flowId.$suffix.'.png';
+    }
+
+    /**
+     * Download links for an item page: PNG/JPG always (route 302s to the best render: browser > server > legacy),
+     * GIF/MP4 only when the browser render has them, or (prod) a legacy export exists for this type.
+     * Item-level data only, so cached anonymous HTML stays user-agnostic.
+     *
+     * @return array<string, string> ext => url (png, jpg[, gif, mp4])
+     */
+    public static function downloads(string $type, $flowId): array
+    {
+        $r = '/api/image/r/'.$type.'/'.(int) $flowId.'/';
+        $out = ['png' => $r.'full.png', 'jpg' => $r.'full.jpg'];
+        $record = self::record($type, $flowId);
+        $legacyAnim = config('render.legacy_fallback') && in_array($type, ['flovatar', 'flobot', 'collectible'], true) && ! ($record && $record->source === 'browser');
+        foreach (['gif', 'mp4'] as $ext) {
+            if (($record && $record->url('anim.'.$ext)) || $legacyAnim) {
+                $out[$ext] = $r.'anim.'.$ext;
+            }
+        }
+
+        return $out;
     }
 
     /** og:image for an item page; falls back to the site share card. */

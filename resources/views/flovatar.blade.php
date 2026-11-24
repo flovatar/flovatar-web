@@ -450,10 +450,7 @@
 
                                         <div class="input-panel download-panel">
                                             <button @click.prevent.stop="saveSvg()" class="btn btn-sm btn-lilac"><span class="inner">SVG</span></button>
-                                            <a x-bind:download="'Flovatar-'+mint()+'.png'" target="_blank" x-bind:href="'/api/image/png/'+mint()" class="btn btn-sm btn-lilac"><span class="inner">PNG</span></a>
-                                            <a x-bind:download="'Flovatar-'+mint()+'.jpg'" target="_blank" x-bind:href="'/api/image/jpg/'+mint()" class="btn btn-sm btn-lilac"><span class="inner">JPG</span></a>
-                                            <a x-bind:download="'Flovatar-'+mint()+'.mp4'"  target="_blank" x-bind:href="'/api/image/mp4/'+mint()" class="btn btn-sm btn-lilac"><span class="inner">MP4</span></a>
-                                            <a x-bind:download="'Flovatar-'+mint()+'.gif'"  target="_blank" x-bind:href="'/api/image/gif/'+mint()" class="btn btn-sm btn-lilac"><span class="inner">GIF</span></a>
+                                            @include('partials.render-downloads', ['dlType' => 'flovatar', 'dlId' => $flovatarId, 'dlName' => 'Flovatar-'.$flovatarId])
                                         </div>
                                     </div>
                                 </li>

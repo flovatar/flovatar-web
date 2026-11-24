@@ -82,6 +82,7 @@
                                 <dd>
                                     <div class="input-panel">
                                         <a target="_blank" x-bind:download="'Flobot-'+mint()+'.svg'" x-bind:href="'/api/image/flobot/'+mint()" class="btn btn-sm btn-lilac"><span class="inner">SVG</span></a>
+                                        @include('partials.render-downloads', ['dlType' => 'flobot', 'dlId' => $flobotId, 'dlName' => 'Flobot-'.$flobotId])
                                     </div>
                                 </dd>
                             </dl>

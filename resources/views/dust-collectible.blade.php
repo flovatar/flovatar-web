@@ -330,14 +330,7 @@
 
                                             <div class="input-panel download-panel">
                                                 <button @click.prevent.stop="saveSvg()" class="btn btn-sm btn-lilac"><span class="inner">SVG</span></button>
-                                                <a x-bind:download="'FlovatarCollectible-'+mint()+'.png'" target="_blank" x-bind:href="'/api/image/r/collectible/'+collectibleId+'/full.png'" class="btn btn-sm btn-lilac"><span class="inner">PNG</span></a>
-                                                <a x-bind:download="'FlovatarCollectible-'+mint()+'.jpg'" target="_blank" x-bind:href="'/api/image/r/collectible/'+collectibleId+'/full.jpg'" class="btn btn-sm btn-lilac"><span class="inner">JPG</span></a>
-                                                @if(config('render.legacy_fallback')){{-- legacy export on the prod CDN --}}
-                                                <a x-bind:download="'FlovatarCollectible-'+mint()+'.mp4'"  target="_blank" x-bind:href="'https://images.flovatar.com/collectible/mp4/'+collectibleId+'.mp4'" class="btn btn-sm btn-lilac"><span class="inner">MP4</span></a>
-                                                @endif
-                                                @if(config('render.legacy_fallback')){{-- legacy export on the prod CDN --}}
-                                                <a x-bind:download="'FlovatarCollectible-'+mint()+'.gif'"  target="_blank" x-bind:href="'https://images.flovatar.com/collectible/gif/'+collectibleId+'.gif'" class="btn btn-sm btn-lilac"><span class="inner">GIF</span></a>
-                                                @endif
+                                                @include('partials.render-downloads', ['dlType' => 'collectible', 'dlId' => $collectibleId, 'dlName' => 'FlovatarCollectible-'.$collectibleId])
                                             </div>
                                         </div>
                                     </li>
