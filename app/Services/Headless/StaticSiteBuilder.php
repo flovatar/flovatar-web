@@ -402,7 +402,7 @@ class StaticSiteBuilder
         return [
             'html' => 'text/html; charset=utf-8', 'css' => 'text/css; charset=utf-8', 'js' => 'application/javascript; charset=utf-8',
             'json' => 'application/json', 'xml' => 'application/xml', 'svg' => 'image/svg+xml', 'png' => 'image/png', 'jpg' => 'image/jpeg',
-            'jpeg' => 'image/jpeg', 'gif' => 'image/gif', 'webp' => 'image/webp', 'ico' => 'image/x-icon', 'woff' => 'font/woff',
+            'jpeg' => 'image/jpeg', 'gif' => 'image/gif', 'webp' => 'image/webp', 'avif' => 'image/avif', 'ico' => 'image/x-icon', 'woff' => 'font/woff',
             'woff2' => 'font/woff2', 'ttf' => 'font/ttf', 'otf' => 'font/otf', 'eot' => 'application/vnd.ms-fontobject', 'mp4' => 'video/mp4',
             'webm' => 'video/webm', 'mp3' => 'audio/mpeg', 'wav' => 'audio/wav', 'pdf' => 'application/pdf', 'txt' => 'text/plain; charset=utf-8',
             'webmanifest' => 'application/manifest+json', 'glb' => 'model/gltf-binary', 'gltf' => 'model/gltf+json', 'map' => 'application/json',

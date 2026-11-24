@@ -16,7 +16,7 @@
 const TYPES = {
   html: "text/html; charset=utf-8", css: "text/css; charset=utf-8", js: "application/javascript; charset=utf-8",
   mjs: "application/javascript; charset=utf-8", json: "application/json", xml: "application/xml; charset=utf-8",
-  svg: "image/svg+xml", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp",
+  svg: "image/svg+xml", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp", avif: "image/avif",
   ico: "image/x-icon", woff: "font/woff", woff2: "font/woff2", ttf: "font/ttf", otf: "font/otf",
   eot: "application/vnd.ms-fontobject", mp4: "video/mp4", webm: "video/webm", mp3: "audio/mpeg", wav: "audio/wav",
   pdf: "application/pdf", txt: "text/plain; charset=utf-8", webmanifest: "application/manifest+json",
@@ -156,16 +156,18 @@ async function proxy(request, env, c, url, opts = {}) {
   if (c.noindex) out.set("X-Robots-Tag", "noindex, nofollow, noarchive");
   let resp = new Response(r.body, { status: r.status, statusText: r.statusText, headers: out });
   if ((out.get("content-type") || "").includes("text/html") && typeof HTMLRewriter !== "undefined") {
-    resp = rewriteOriginHtml(resp, c, url.origin);
+    resp = rewriteOriginHtml(resp, c, url.origin, url.pathname);
   }
   return resp;
 }
 
 // Server-rendered HTML coming through the proxy: canonical/og:url and absolute origin links -> this host.
-function rewriteOriginHtml(resp, c, frontendOrigin) {
+function rewriteOriginHtml(resp, c, frontendOrigin, pathname = "/") {
   const fix = (v) => (v && v.startsWith(c.origin) ? frontendOrigin + v.slice(c.origin.length) : v);
+  // legacy layout prints a site-wide canonical (https://flovatar.com/) on every SSR page -> this page's own URL
+  const canonical = (v) => (!v || /^https?:\/\/[^\/]+\/?$/.test(v) ? frontendOrigin + pathname : fix(v));
   return new HTMLRewriter()
-    .on('link[rel="canonical"]', { element(e) { e.setAttribute("href", fix(e.getAttribute("href"))); } })
+    .on('link[rel="canonical"]', { element(e) { e.setAttribute("href", canonical(e.getAttribute("href"))); } })
     .on('meta[property="og:url"]', { element(e) { e.setAttribute("content", fix(e.getAttribute("content"))); } })
     .on("a[href]", { element(e) { const h = e.getAttribute("href"); if (h && h.startsWith(c.origin)) e.setAttribute("href", fix(h)); } })
     .transform(resp);

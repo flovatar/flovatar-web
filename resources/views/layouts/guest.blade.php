@@ -17,7 +17,9 @@
 
     <meta name="description" content="Flovatar is a next generation NFT creativity platform where people can become creator and make their characters with any combination they like." />
     @if(\App\Support\Headless::building())
+    @if((\App\Support\Headless::context()['page'] ?? null) !== '404')
     <link rel="canonical" href="{{ \App\Support\Headless::canonicalUrl() }}" />
+    @endif
     @else
     <link rel="canonical" href="https://flovatar.com/" />
     @endif
