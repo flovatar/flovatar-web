@@ -99,6 +99,7 @@ Throttle: `/api/v2` public routes skip the api-group 60/min/IP limiter (behind C
 - OG: item pages carry og:title/og:url/og:image (og.jpg 1200×630 from images.flovatar.com, fallback legacy PNG/share.png) from the build; SSR fallback pages get og:url rewritten to the frontend host. Crawlers get the real HTML (no JS needed).
 - Sitemap: `/sitemap.xml` = R2 object (shells + every item page), rebuilt hourly.
 - Deploy: `cd headless/worker && npx wrangler@4 deploy` (token: Workers Scripts Edit + R2 read) or dashboard (paste worker.js, add vars + R2 binding). Custom domain = Worker → Settings → Domains & Routes → Custom domain (creates DNS + cert).
+- Proxy headers (prod prep 2026-11-24): the Worker sends the visitor's `CF-Connecting-IP` as `X-Headless-Client-IP` (+ `X-Headless-Proxy: 1`); Laravel `HeadlessProxyRequest` (global middleware) uses it as the client IP only when the connection comes from Cloudflare's Workers range (`HEADLESS_WORKER_IPS`, default `2a06:98c0::/29`). Without it every Worker subrequest reaches the origin as `2a06:98c0:3600::103` and ALL visitors share one per-IP throttle bucket (`/login/nonce` 60/min is called on every page view). Edge-cached proxy responses get `max-age` reset to 0 when they carry `s-maxage` (the zone Browser Cache TTL rewrote it to 4 h on testnet API JSON). Origin `X-Robots-Tag` is dropped unless `NOINDEX`; direct hits on the origin host (`HEADLESS_ORIGIN_HOSTS`, prod `api.flovatar.com`) are noindex.
 
 ## 8. Environment keys (Laravel `.env`)
 
@@ -116,6 +117,8 @@ Throttle: `/api/v2` public routes skip the api-group 60/min/IP limiter (behind C
 - Script computation limits (mainnet, measured 2026-11-24 by looping the contract helpers): ~800 Flovatars, ~2,000 Flobits, ~2,500 DUST collectibles per script; top real holders: 256 Flovatars, 2,495 Flobits (fails as one script), admin wallet 22,683 Flobits (57 batch scripts, ~17 MB, loads but the collection UI then blocks ~2 min rendering every Flobit).
 - Model `flow_metadata` is cast `AsCollection`: convert with `->toArray()` before `array_*` helpers (a `json_decode` guard silently returns null).
 - browser tooling: `Network.setUserAgentOverride` / emulation do not persist across separate browser_exec calls; a HeadlessChrome UA gets the zone WAF block page on proxied (origin) pages.
+- Worker subrequests all come from ONE address at the origin (`2a06:98c0:3600::103`, verified on testnet by hashing the throttle keys): any per-IP limit becomes site-wide behind the Worker unless the visitor IP is passed and trusted (section 7). Port this to Sportvatar before its prod cutover.
+- Cache-eligible responses through a proxied hostname without a Cache Rule get the zone Browser Cache TTL (4 h) in `max-age` even when the origin says `max-age=0`; fix in the Worker (or a Cache Rule with Browser TTL "respect origin").
 
 ## 10. Security notes
 
@@ -147,3 +150,15 @@ Sportvatar (`flovatar/sportvatar`, same Laravel 12/Blade/Alpine/FCL structure, S
 5. `.env` (testnet.sportvatar.com): `HEADLESS_*`, `SPORTVATAR_ACCOUNT_PROOF_ORIGINS` += frontend origin; update `make-testnet-env.py`; deploy script step `headless:build --assets --shells --sitemap`.
 6. Worker: second deployment `sportvatar-headless` from the same worker.js with its own vars (`ORIGIN=https://testnet.sportvatar.com`, bucket `sportvatar-web`, `SITE_PREFIX=testnet/site/`) — adjust the PROXY list to Sportvatar's dynamic paths.
 7. Added on Flovatar after v1 (port the same way): batched collection fallback (`flow/get-collections-batch.script.js` + `collectionLoader()` in actions.js; Sportvatar/Sportbit contracts' helpers), trimmed v2 list rows (`PublicController::trimRows`: whitelist the fields the cards read, keep JSON paths), `list_thumb` rule (opaque + not animated only), Worker `.avif` + SSR canonical fix.
+
+## Production (flovatar.com) — prepared 2026-11-24
+
+- Origin host for the Worker: **`api.flovatar.com`** (existing proxied record already points to 2.29.186.126; Forge alias
+  domain 2384396 on site 3514579 with a clone of the zone's Cloudflare Origin CA cert 3986190 → Full (strict) OK).
+  `HEADLESS_ORIGIN_HOSTS=api.flovatar.com` → direct hits noindex.
+- Frontend attach: Worker **route `flovatar.com/*`** in front of the existing proxied A record (not a Custom Domain):
+  failure mode *fail open* serves the classic site if the Worker errors/exceeds limits; rollback = delete the route.
+  `www.flovatar.com` is not routed (nginx 301 → apex).
+- Prod `.env`: `HEADLESS_ENABLED=true`, `HEADLESS_FRONTEND_URL=https://flovatar.com`, `HEADLESS_PREFIX=` (empty → `site/`),
+  `HEADLESS_DISK=r2web`, `R2_WEB_BUCKET=flovatar-web`, `HEADLESS_DEBOUNCE=30`, `HEADLESS_QUEUE=default`,
+  `HEADLESS_ORIGIN_HOSTS=api.flovatar.com`. Cutover steps + rollback: KB `notes/headless-prod-cutover.md`.

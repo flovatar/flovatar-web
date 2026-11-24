@@ -380,4 +380,32 @@ class HeadlessTest extends TestCase
         Queue::assertPushed(RegenerateStaticItem::class, fn ($j) => $j->type === 'flobot' && $j->flowId === 9);
         Queue::assertPushed(RegenerateStaticItem::class, fn ($j) => $j->type === 'collectible' && $j->flowId === 11);
     }
+
+    public function test_worker_passes_the_visitor_ip_only_from_the_workers_range(): void
+    {
+        \Illuminate\Support\Facades\Route::get('/__ip_probe', fn (\Illuminate\Http\Request $r) => $r->ip());
+        $worker = ['REMOTE_ADDR' => '2a06:98c0:3600::103'];
+        $via = ['X-Headless-Proxy' => '1', 'X-Headless-Client-IP' => '203.0.113.7'];
+        // Worker subrequest -> visitor IP (per-IP throttles stay per visitor)
+        $this->withServerVariables($worker)->withHeaders($via)->get('/__ip_probe')->assertSeeText('203.0.113.7');
+        // header from anyone else is ignored
+        $this->withServerVariables(['REMOTE_ADDR' => '198.51.100.9'])->withHeaders($via)->get('/__ip_probe')->assertSeeText('198.51.100.9');
+        // Workers range without the proxy marker / with garbage: unchanged
+        $this->withServerVariables($worker)->withHeaders(['X-Headless-Proxy' => '0', 'X-Headless-Client-IP' => '203.0.113.7'])->get('/__ip_probe')->assertSeeText('2a06:98c0:3600::103');
+        $this->withServerVariables($worker)->withHeaders(['X-Headless-Proxy' => '1', 'X-Headless-Client-IP' => 'evil'])->get('/__ip_probe')->assertSeeText('2a06:98c0:3600::103');
+    }
+
+    public function test_origin_host_is_noindex_except_through_the_worker(): void
+    {
+        config(['headless.origin_hosts' => ['api.flovatar.com']]);
+        $direct = $this->get('http://api.flovatar.com/api/v2/packs');
+        $direct->assertOk();
+        $this->assertSame('noindex, nofollow', $direct->headers->get('X-Robots-Tag'));
+        $proxied = $this->withServerVariables(['REMOTE_ADDR' => '2a06:98c0:3600::103'])
+            ->withHeaders(['X-Headless-Proxy' => '1', 'X-Headless-Client-IP' => '203.0.113.7'])->get('http://api.flovatar.com/api/v2/packs');
+        $proxied->assertOk();
+        $this->assertNull($proxied->headers->get('X-Robots-Tag'));
+        // the classic host is untouched
+        $this->assertNull($this->get('http://flovatar.com/api/v2/packs')->headers->get('X-Robots-Tag'));
+    }
 }

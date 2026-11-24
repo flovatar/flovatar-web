@@ -134,10 +134,15 @@ function rewriteLocation(loc, c, frontendOrigin) {
 async function proxy(request, env, c, url, opts = {}) {
   const upstream = c.origin + url.pathname + url.search;
   const headers = new Headers(request.headers);
+  // the origin sees every Worker subrequest from Cloudflare's Workers address: pass the visitor's IP so per-IP
+  // limits (login nonce, POST /login, api group) stay per visitor (Laravel HeadlessProxyRequest trusts it only
+  // from the Workers range)
+  const clientIp = request.headers.get("cf-connecting-ip") || "";
   for (const k of ["host", "cf-connecting-ip", "cf-ipcountry", "cf-ray", "cf-visitor", "x-real-ip", "content-length"]) headers.delete(k);
   headers.set("X-Forwarded-Host", url.host);
   headers.set("X-Forwarded-Proto", "https");
   headers.set("X-Headless-Proxy", "1");
+  if (clientIp) headers.set("X-Headless-Client-IP", clientIp); else headers.delete("X-Headless-Client-IP");
   if (!headers.get("user-agent")) headers.set("User-Agent", FETCH_UA);
   const init = { method: request.method, headers, redirect: "manual" };
   if (!["GET", "HEAD"].includes(request.method)) init.body = request.body;
@@ -152,8 +157,13 @@ async function proxy(request, env, c, url, opts = {}) {
     out.delete("set-cookie");
     for (const ck of cookies) out.append("set-cookie", ck.replace(/;\s*domain=[^;]*/i, ""));
   }
+  // edge-cached proxy responses come back with the zone's Browser Cache TTL (4 h) in max-age: restore the origin's
+  // browser TTL (0) for shared-cache responses so browsers don't keep marketplace/API JSON for hours
+  const cc = out.get("cache-control");
+  if (cc && /s-maxage=/.test(cc)) out.set("cache-control", cc.replace(/(^|,\s*)max-age=\d+/, "$1max-age=0"));
   out.set("X-Headless", opts.fallback ? "origin-fallback" : "origin");
-  if (c.noindex) out.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+  // the origin host itself is noindex; pages served here are indexable unless NOINDEX
+  if (c.noindex) out.set("X-Robots-Tag", "noindex, nofollow, noarchive"); else out.delete("X-Robots-Tag");
   let resp = new Response(r.body, { status: r.status, statusText: r.statusText, headers: out });
   if ((out.get("content-type") || "").includes("text/html") && typeof HTMLRewriter !== "undefined") {
     resp = rewriteOriginHtml(resp, c, url.origin, url.pathname);

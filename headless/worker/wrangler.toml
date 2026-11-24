@@ -23,8 +23,11 @@ bucket_name = "flovatar-web"
 # routes = [ { pattern = "next-testnet.flovatar.com", custom_domain = true } ]
 
 [env.production]
+# flovatar.com (Luca, dashboard: notes/headless-prod-cutover.md). Attached as a ROUTE flovatar.com/* in front of the
+# existing proxied A record (not a Custom Domain): failure mode "fail open" falls back to the classic site, rollback =
+# remove the route. www.flovatar.com stays on the origin (nginx 301 www -> apex).
 name = "flovatar-headless-prod"
 workers_dev = false
 vars = { SITE_PREFIX = "site/", ORIGIN = "https://api.flovatar.com", BUCKET_URL = "https://headless-reboot.flovatar.com", NOINDEX = "false" }
 r2_buckets = [ { binding = "SITE", bucket_name = "flovatar-web" } ]
-# routes = [ { pattern = "flovatar.com", custom_domain = true }, { pattern = "www.flovatar.com", custom_domain = true } ]
+# routes = [ { pattern = "flovatar.com/*", zone_name = "flovatar.com" } ]
