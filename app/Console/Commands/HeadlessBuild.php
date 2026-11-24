@@ -54,6 +54,7 @@ class HeadlessBuild extends Command
         }
         if ($all || $this->option('assets')) {
             $builder->syncAssets('bundle');
+            $builder->syncVersionedBundle();
         }
         if ($all || $this->option('shells')) {
             $builder->buildShells($this->option('page') ?: null);

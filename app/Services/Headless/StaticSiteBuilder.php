@@ -49,6 +49,8 @@ class StaticSiteBuilder
 
     private ?array $etags = null;
 
+    private array $sizes = [];
+
     public array $stats = ['uploaded' => 0, 'unchanged' => 0, 'failed' => 0, 'bytes' => 0];
 
     /** @var callable|null */
@@ -171,6 +173,37 @@ class StaticSiteBuilder
         }
     }
 
+    /**
+     * Keep every deployed bundle version: js/app.js@{id}, css/app.css@{id} (ids from mix-manifest.json). The Worker serves
+     * /js/app.js?id=X from the matching copy, so a page built before a deploy keeps the bundle it was built with
+     * (immutable caching stays correct) and new pages get the new one.
+     */
+    public function syncVersionedBundle(): void
+    {
+        $manifest = public_path('mix-manifest.json');
+        if (! is_file($manifest)) {
+            return;
+        }
+        foreach ((array) json_decode((string) file_get_contents($manifest), true) as $asset => $versioned) {
+            if (! preg_match('/[?&]id=([a-f0-9]+)/', (string) $versioned, $m)) {
+                continue;
+            }
+            $rel = ltrim($asset, '/');
+            $file = public_path($rel);
+            if (! is_file($file)) {
+                continue;
+            }
+            $key = $rel.'@'.$m[1];
+            $this->guard("bundle {$key}", function () use ($key, $file, $rel) {
+                if ($this->outDir || $this->currentEtag($this->fullKey($key)) !== md5_file($file)) {
+                    $this->put($key, (string) file_get_contents($file), self::mime($rel), (string) config('headless.versioned_asset_cache_control'));
+                } else {
+                    $this->stats['unchanged']++;
+                }
+            });
+        }
+    }
+
     public function buildSitemap(): void
     {
         $urls = [];
@@ -219,6 +252,7 @@ class StaticSiteBuilder
             $res = $client->listObjectsV2(array_filter(['Bucket' => $bucket, 'Prefix' => Headless::prefix(), 'ContinuationToken' => $token]));
             foreach ($res['Contents'] ?? [] as $o) {
                 $this->etags[$o['Key']] = trim((string) $o['ETag'], '"');
+                $this->sizes[$o['Key']] = (int) ($o['Size'] ?? -1);
             }
             $token = ! empty($res['IsTruncated']) ? $res['NextContinuationToken'] : null;
         } while ($token);
@@ -283,17 +317,24 @@ class StaticSiteBuilder
             @mkdir(dirname($dest), 0775, true);
             copy($path, $dest);
         } else {
-            if (! $this->force && $this->currentEtag($full) === $md5) {
+            $etag = $this->currentEtag($full);
+            $multipartSame = $etag !== null && str_contains($etag, '-') && ($this->sizes[$full] ?? -1) === filesize($path);
+            if (! $this->force && ($etag === $md5 || $multipartSame)) {
                 $this->stats['unchanged']++;
 
                 return 'unchanged';
             }
             if (! $this->dryRun) {
-                $stream = fopen($path, 'rb');
-                try {
-                    $this->disk()->writeStream($full, $stream, ['ContentType' => self::mime($rel), 'CacheControl' => (string) config('headless.asset_cache_control')]);
-                } finally {
-                    is_resource($stream) && fclose($stream);
+                $opts = ['ContentType' => self::mime($rel), 'CacheControl' => (string) config('headless.asset_cache_control')];
+                if (filesize($path) < 64 * 1048576) {
+                    $this->disk()->put($full, file_get_contents($path), $opts); // single PUT: ETag = md5 (skip check works)
+                } else {
+                    $stream = fopen($path, 'rb');
+                    try {
+                        $this->disk()->writeStream($full, $stream, $opts);
+                    } finally {
+                        is_resource($stream) && fclose($stream);
+                    }
                 }
             }
         }

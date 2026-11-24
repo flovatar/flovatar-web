@@ -96,15 +96,15 @@ async function getObject(env, c, key, request) {
   };
 }
 
-function objectResponse(c, request, key, obj, status = 200, cacheOverride = null) {
+function objectResponse(c, request, key, obj, status = 200, cacheOverride = null, typeKey = null) {
   const h = new Headers();
-  const url = new URL(request.url);
-  const type = typeFor(key) || obj.contentType || "application/octet-stream";
+  const type = typeFor(typeKey || key) || obj.contentType || "application/octet-stream";
   h.set("Content-Type", type);
   let cache = cacheOverride;
   if (!cache) {
     if (type.startsWith("text/html")) cache = HTML_CACHE;
-    else if (url.searchParams.has("id") && /\.(js|css)$/.test(key)) cache = IMMUTABLE; // mix-versioned bundle URL
+    else if (/@[a-f0-9]+$/.test(key)) cache = IMMUTABLE; // versioned bundle copy (js/app.js@{mix id})
+    else if (/\.(js|css)$/.test(key)) cache = "public, max-age=300"; // unversioned bundle: may change on deploy
     else cache = obj.cacheControl && !/text\/html/.test(type) ? obj.cacheControl : ASSET_CACHE;
   }
   h.set("Cache-Control", cache);
@@ -230,6 +230,12 @@ async function handle(request, env) {
 
   // static objects
   let p = path.replace(/^\/+/, "");
+  // mix-versioned bundle: /js/app.js?id=X -> the copy of exactly that build (pages built before a deploy keep theirs)
+  const vid = url.searchParams.get("id");
+  if (vid && /^[a-f0-9]{8,64}$/.test(vid) && /^(js|css)\/[^\/]+\.(js|css)$/.test(p)) {
+    const obj = await getObject(env, c, `${p}@${vid}`, request);
+    if (obj) return objectResponse(c, request, `${p}@${vid}`, obj, 200, null, p);
+  }
   const candidates = p === "" ? ["index.html"] : p.endsWith("/") ? [p + "index.html"] : typeFor(p) ? [p] : [p + "/index.html", p + ".html"];
   for (const key of candidates) {
     const obj = await getObject(env, c, key, request);
