@@ -408,7 +408,11 @@ Alpine.data('passkeyAuth', () => ({
             if (out.recovered) {
                 // DB-loss recovery: the account was found on chain; the email is unknown -> ask to verify it
                 await this.openAccount();
-                this.info = 'Welcome back! We restored your account from the blockchain. Please confirm your email below.';
+                this.info = 'Welcome back! We restored your account from the blockchain. Please confirm your email (form above).';
+            } else if (out.email_verified === false) {
+                // accounts created before email codes existed: nudge once per sign-in (the panel shows the form on top)
+                await this.openAccount();
+                this.info = 'One quick thing: confirm your email with a 6-digit code (form above). It keeps your account recoverable and unlocks ĐUST quests.';
             }
         });
     },
