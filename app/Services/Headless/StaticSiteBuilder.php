@@ -46,6 +46,27 @@ class StaticSiteBuilder
         '/__headless_404' => ['404', '404.html'],
     ];
 
+    /**
+     * Shells that exist only while their feature flag is on (never in the sitemap: hidden pages).
+     * path => [page id, object key, shell?, enabled() callable]
+     */
+    public const FLAGGED_SHELLS = [
+        '/terrakit/check' => ['terrakit-check', 'terrakit/check/index.html', false, [\App\Support\TerrakitCheck::class, 'enabled']],
+    ];
+
+    /** SHELLS + the FLAGGED_SHELLS whose flag is on in this environment (prod: flags off → not built). */
+    public static function shells(): array
+    {
+        $shells = self::SHELLS;
+        foreach (self::FLAGGED_SHELLS as $path => $def) {
+            if (call_user_func($def[3])) {
+                $shells[$path] = [$def[0], $def[1], $def[2]];
+            }
+        }
+
+        return $shells;
+    }
+
     public const ITEM_TYPES = ['flovatar' => Flovatar::class, 'flobot' => Flobot::class, 'collectible' => DustCollectible::class];
 
     /** Pseudo item type for Flobit TYPE pages /flobits/{templateFlowId} (one per template with minted Flobits). */
@@ -98,7 +119,7 @@ class StaticSiteBuilder
 
     public function buildShells(?array $only = null): void
     {
-        foreach (self::SHELLS as $path => $def) {
+        foreach (self::shells() as $path => $def) {
             [$page, $key] = $def;
             if ($only && ! in_array($page, $only, true)) {
                 continue;
@@ -107,6 +128,13 @@ class StaticSiteBuilder
                 $r = $this->render($path, ['page' => $page, 'shell' => (bool) ($def[2] ?? false), 'canonical' => $page === 'collection' ? '/collection' : $path]);
                 $this->put($key, $r['html'], 'text/html; charset=utf-8', (string) config('headless.html_cache_control'));
             });
+        }
+        // flag switched off: remove the page object left by an earlier build (no-op when it never existed)
+        foreach (self::FLAGGED_SHELLS as $path => $def) {
+            if (($only && ! in_array($def[0], $only, true)) || call_user_func($def[3])) {
+                continue;
+            }
+            $this->guard("shell {$def[0]} (off)", fn () => $this->delete($def[1]));
         }
     }
 

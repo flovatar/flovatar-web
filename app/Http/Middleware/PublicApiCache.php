@@ -25,7 +25,10 @@ class PublicApiCache
             $response->headers->set($k, $v);
         }
         $status = $response->getStatusCode();
-        if (in_array($request->getMethod(), ['GET', 'HEAD'], true) && in_array($status, PublicCache::CACHEABLE_STATUS, true)) {
+        if (\App\Support\Stealth::wasRendered($request)) {
+            // stealth (admin) request: may contain stealth-only data, never shared
+            $response->headers->set('Cache-Control', PublicCache::PRIVATE_HEADER);
+        } elseif (in_array($request->getMethod(), ['GET', 'HEAD'], true) && in_array($status, PublicCache::CACHEABLE_STATUS, true)) {
             $response->headers->set('Cache-Control', PublicCache::PUBLIC_HEADER);
         } else {
             $response->headers->set('Cache-Control', PublicCache::PRIVATE_HEADER);

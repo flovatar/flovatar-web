@@ -113,9 +113,12 @@ class BaseJob implements ShouldQueue
     protected function cleanupSales($id, $address, $type='flovatar')
     {
 
-        $type = ($type == 'flovatar') ? 'App\Models\Flovatar' : 'App\Models\FlovatarComponent';
-        $type = ($type == 'flobot') ? 'App\Models\Flobot' : $type;
-        $type = ($type == 'collectible') ? 'App\Models\DustCollectible' : $type;
+        // (the old chained ternaries mapped 'flobot'/'collectible' to FlovatarComponent: a Flobot deposit deleted Flobit offers)
+        $type = [
+            'flovatar' => 'App\Models\Flovatar',
+            'flobot' => 'App\Models\Flobot',
+            'collectible' => 'App\Models\DustCollectible',
+        ][$type] ?? 'App\Models\FlovatarComponent';
         SaleOffer::whereFlowId($id)->where('flow_address', '!=', $address)->whereItemType($type)->delete();
     }
 

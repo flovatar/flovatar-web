@@ -79,7 +79,7 @@
                                     <li class="grow">
                                         <a x-bind:href="getMarketplaceUrl()" class="btn btn-sm btn-lilac"><span class="inner">View in Marketplace</span></a>
                                     </li>
-                                    <li x-show="!isSale() && isOwned() && !showSale">
+                                    <li x-show="!isSale() && isOwned() && !showSale{{ \App\Support\DustMarket::enabled() ? ' && !$store.dust.live' : '' }}">
                                         <button @click.prevent.stop="showSale = true" x-bind:disabled="!loggedIn()" class="btn btn-sm btn-green"><span class="inner">Sell</span></button>
                                     </li>
                                     <li x-show="showSaleBtn()">
@@ -91,7 +91,7 @@
                                     <li x-show="showGift">
                                         <button @click.prevent.stop="showGift = false" x-bind:disabled="!loggedIn()" class="btn btn-icon btn-gray"><span class="inner"><i class="icon-close"></i></span></button>
                                     </li>
-                                    <li x-show="!isSale() && isOwned() && !showGift">
+                                    <li x-show="!isSale() && isOwned() && !showGift{{ \App\Support\DustMarket::enabled() ? ' && !$store.dust.live' : '' }}">
                                         <button @click.prevent.stop="showGift = true" x-bind:disabled="!loggedIn()" class="btn btn-sm btn-lilac"><span class="inner">Gift</span></button>
                                     </li>
                                 </ul>
@@ -142,6 +142,7 @@
                             </ul>
                         </div>
                     </div>
+                    @include('partials.dust-market', ['dustKind' => 'flobit', 'dustId' => $componentId])
                     <div class="content-box" x-show="isSale() || (isOwned() && showSale)">
                         <div class="title-row">
                             <h2>Marketplace</h2>
@@ -183,6 +184,7 @@
                                         </div>
                                     </div>
                                 </li>
+@include('partials.dust-swap-pay-dust', ['swapKind' => 'flobit'])
                                 <li x-show="!isSale() && isOwned() && showSale">
                                     <strong>Sale Price</strong>
                                     <div class="col-r" x-show="isOwned() && !isDapperSale()">
@@ -342,7 +344,7 @@
                                 <a x-bind:href="getMarketplaceUrl()" class="btn btn-sm btn-lilac"><span class="inner">View in Marketplace</span></a>
                             </div>
                             <div class="btns-right">
-                                <div x-show="!isSale() && isOwned() && !showGift" class="btn-wrp">
+                                <div x-show="!isSale() && isOwned() && !showGift{{ \App\Support\DustMarket::enabled() ? ' && !$store.dust.live' : '' }}" class="btn-wrp">
                                     <button @click.prevent.stop="showGift = true" x-bind:disabled="!loggedIn()" class="btn btn-sm btn-lilac"><span class="inner">Gift</span></button>
                                 </div>
                                 <div x-show="!isSale() && isOwned() && !showSale" class="btn-wrp">

@@ -13,7 +13,11 @@
                 <dt x-text="isFlovatar(sale) ? 'RARITY SCORE' : 'CATEGORY'"></dt>
                 <dd x-text="isFlovatar(sale) ? getRarityScoreNumber(sale) : getCategory(sale)"></dd>
                 <dt>Sale Price</dt>
+                @if(\App\Support\DustMarket::enabled())
+                <dd x-text="formatMarketPrice(sale, ' FLOW')" x-bind:class="isDustRow(sale) ? 'currency-dust' : ''"></dd>
+                @else
                 <dd x-text="formatPrice(sale.price)+' FLOW'"></dd>
+                @endif
             </dl>
         </div>
     </a>

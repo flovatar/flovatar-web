@@ -37,6 +37,8 @@ class PublicCache
         'subscribe', 'graffle',
         'admin', 'admin/*', 'sanctum/*',
         'api/v2/auth/*',
+        'passkey', 'passkey/*',
+        'quests', 'quests/*',
     ];
 
     /** GET paths that never need a session, even for logged-in users (images, JSON). */
@@ -110,6 +112,10 @@ class PublicCache
         if (self::isReading($request)) {
             if ($request->is(...self::ALWAYS_STATELESS_PATHS)) {
                 return true;
+            }
+            // stealth launch: a VALID signed fl_s cookie = an admin/tester (App\Support\Stealth) → real session, never shared
+            if (Stealth::cookiePayload($request) !== null) {
+                return false;
             }
 
             return ! self::hasSessionCookie($request);

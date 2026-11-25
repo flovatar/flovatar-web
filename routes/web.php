@@ -327,3 +327,30 @@ Route::view('__headless_404', 'headless.404')->name('headless.404');
 Route::redirect('chat', '/', 301);
 Route::get('chat/{flovatarId}', [RedirectController::class, 'retiredChat'])
     ->where('flovatarId', '(?!(send|check|checkaddress|tts|update)$)[^/]+');
+
+// Stealth/on features (App\Support\Stealth, config/stealth.php): routes exist when the feature's mode is stealth or on
+// (config only, route:cache safe); the `stealth:<feature>` middleware 404s every request the feature is not visible to
+// (stealth = only requests with the stealth cookie / an admin wallet session; StealthRoutes 404s anonymous ones even
+// before the session starts).
+
+// Passkey (WebAuthn / FLIP-264) sign-in: PASSKEY_MODE (legacy PASSKEY_POC_ENABLED); testnet, or mainnet only with the
+// KMS sponsor configured (PasskeyPoc::networkReady(), fail closed).
+if (\App\Support\Stealth::active('passkey') && \App\Services\Passkey\PasskeyPoc::networkReady()) {
+    Route::middleware('stealth:passkey')->group(__DIR__.'/passkey.php');
+}
+
+// ĐUST Quests: DUST_QUESTS_MODE (legacy DUST_QUESTS_ENABLED) + passkey sign-in + payouts ready (mainnet: rewards server).
+// The HMAC payout API (quests/payout/*) is exempt from the stealth gate (the worker authenticates itself).
+if (\App\Support\DustQuests::active()) {
+    Route::middleware('stealth:quests')->group(__DIR__.'/quests.php');
+}
+
+// TerraKit wallet check (read-only, chain-first): TERRAKIT_CHECK_MODE (legacy TERRAKIT_CHECK_ENABLED).
+if (\App\Support\TerrakitCheck::active()) {
+    Route::middleware('stealth:terrakit')->group(__DIR__.'/terrakit.php');
+}
+
+// Stealth gate: /__stealth/{secret} sets the signed fl_s cookie (STEALTH_SECRET in .env; ?off=1 clears it).
+// Lazy feature bundles /fx/{code}.js|css (webpack chunks kept OUT of public/, served only to requests that see the feature).
+Route::get('__stealth/{token}', [\App\Http\Controllers\StealthController::class, 'enter'])->where('token', '[A-Za-z0-9_\-]{1,200}');
+Route::get('fx/{file}', \App\Http\Controllers\FxAssetController::class)->where('file', '[a-z]{1,8}\.(js|css)');

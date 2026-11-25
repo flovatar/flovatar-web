@@ -1,4 +1,5 @@
 import Alpine from "alpinejs";
+import {geoEditor} from "../geo";
 
 Alpine.data('flovatarData', (address, flovatarId, templates, flovatarSales, flovatarSaleOffer, dustPerDayScore) => ({
     templates: templates,
@@ -7,7 +8,7 @@ Alpine.data('flovatarData', (address, flovatarId, templates, flovatarSales, flov
     flovatarSales: flovatarSales,
     flovatarSaleOffer: flovatarSaleOffer,
     dustPerDayScore: dustPerDayScore,
-    geocoder: null,
+    ...geoEditor('flovatarLat', 'flovatarLon'), // GEO Location editor (OpenStreetMap), resources/js/geo.js
     isLoading: true,
     flovatar: null,
     sale: null,
@@ -43,30 +44,6 @@ Alpine.data('flovatarData', (address, flovatarId, templates, flovatarSales, flov
             this.currentPriceChange = this.currentPrice;
         }
 
-        if(typeof google !== 'undefined' && google.maps) {
-            self.geocoder = new google.maps.Geocoder();
-        }
-
-    },
-    geocodeAddress(){
-        let self = this;
-        if(this.geocoder) {
-            this.geocoder.geocode({address: this.searchAddress}, (results, status) => {
-                if (status === "OK" && results.length > 0) {
-                    // Display response in the console
-                    //console.log(results);
-                    self.foundAddress = results[0].formatted_address;
-                    let pos = results[0].geometry.location;
-                    self.flovatarLat = pos.lat();
-                    self.flovatarLon = pos.lng();
-                } else {
-                    self.foundAddress = '';
-                    self.flovatarLat = 0;
-                    self.flovatarLon = 0;
-                    //alert("Geocode error: " + status);
-                }
-            });
-        }
     },
     isDapperSale(){
         return (this.flovatarSaleOffer);

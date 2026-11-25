@@ -69,6 +69,29 @@
     {{-- static page on R2 (headless:build): runtime config for resources/js/headless.js --}}
     <script>window.HEADLESS = @json(\App\Support\Headless::bootstrap());</script>
     @endif
+@if(\App\Support\DustMarket::enabled())
+    {{-- ĐUST marketplace (testnet): static-safe runtime config for resources/js/app/dust-market.js --}}
+    <script>window.DUST_MARKET = @json(\App\Support\DustMarket::bootstrap());</script>
+@endif
+@if(\App\Support\DustSwap::enabled())
+    {{-- ĐUST ⇄ FLOW swap (testnet): static-safe runtime config for resources/js/app/dust-swap.js --}}
+    <script>window.DUST_SWAP = @json(\App\Support\DustSwap::bootstrap());</script>
+@endif
+@if(\App\Support\PasskeyLogin::enabled())
+    {{-- testnet passkey sign-in: static-safe runtime config for resources/js/passkey.js --}}
+    <script>window.PASSKEY_LOGIN = @json(\App\Support\PasskeyLogin::bootstrap());</script>
+@endif
+@if(\App\Support\DustQuests::enabled())
+    {{-- ĐUST Quests (testnet): static-safe runtime config for resources/js/quests.js --}}
+    <script>window.DUST_QUESTS = @json(\App\Support\DustQuests::bootstrap());</script>
+@endif
+@php($fxBundles = \App\Support\Stealth::bundles())
+@if($fxBundles)
+    <script>window.__FX = @json($fxBundles);</script>
+@foreach($fxBundles as $fxCode)
+    <link rel="stylesheet" href="/fx/{{ $fxCode }}.css?id={{ \App\Support\Stealth::assetVersion($fxCode.'.css') }}">
+@endforeach
+@endif
     <script src="{{ mix('js/app.js') }}" defer></script>
 </head>
 <body class="{{request()->routeIs('home', 'builder', 'builder-psyche', 'flobot.builder', 'builder.flobot', 'pack', 'pack.buy', 'pack.login', 'fub', 'fub.sale', 'fub.test', 'land.sale') ? 'header-transparent' : ''}} {{request()->routeIs('fub.test') ? 'blueprint' : ''}}">
@@ -119,6 +142,9 @@
     @endif
 
     @include('partials/modals')
+@if(\App\Support\PasskeyLogin::enabled())
+        @include('partials/passkey-auth')
+@endif
 
 
     <!-- transaction loader -->

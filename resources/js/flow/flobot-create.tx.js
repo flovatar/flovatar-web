@@ -1,4 +1,4 @@
-import * as fcl from "@onflow/fcl"
+import * as fcl from "./fcl-tx"
 import * as t from "@onflow/types"
 
 export async function flobotCreateTx(flobotkit, body, head, arms, legs, face, background) {

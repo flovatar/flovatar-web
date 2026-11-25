@@ -24,6 +24,14 @@ class PublicCacheHeaders
             return $response;
         }
 
+        if (\App\Support\Stealth::wasRendered($request)) {
+            // rendered for a stealth (admin) request: never let a shared cache keep it
+            $response->headers->set('Cache-Control', PublicCache::PRIVATE_HEADER);
+            $response->headers->remove('X-Edge-Cacheable');
+
+            return $response;
+        }
+
         if (PublicCache::isPublicPage($request) && in_array($response->getStatusCode(), PublicCache::CACHEABLE_STATUS, true)) {
             foreach ($response->headers->getCookies() as $cookie) {
                 $response->headers->removeCookie($cookie->getName(), $cookie->getPath(), $cookie->getDomain());

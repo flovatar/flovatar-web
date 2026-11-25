@@ -50,7 +50,11 @@
                                             <strong x-text="sale.flow_buyer_address"></strong>
                                             <span x-text="parseDateTimeString(sale.created_at)"></span>
                                         </td>
+                                        @if(\App\Support\DustMarket::enabled())
+                                        <td class="value" x-text="formatMarketPrice(sale, ' F')" x-bind:class="isDustRow(sale) ? 'currency-dust' : ''"></td>
+                                        @else
                                         <td class="value" x-text="formatPrice(sale.price) + ' F'"></td>
+                                        @endif
                                         <td class="flowscan"><a x-bind:href="(sale.transaction_id) ? 'https://www.flowdiver.io/tx/'+sale.transaction_id : '#'" class="icon-link"></a></td>
                                     </tr>
                                 </template>

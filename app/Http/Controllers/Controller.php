@@ -161,7 +161,7 @@ class Controller extends BaseController
             $dustClaimed = Storage::exists('claimed-dust.txt') ? Storage::get('claimed-dust.txt') : 0;
             $dustClaimed = $dustClaimed ? round(floatval($dustClaimed)) : 0;
 
-            $agg = Sale::notBlocked()->selectRaw('sum(price) as total, avg(price) as avg, count(price) as count, max(price) as max')->first();
+            $agg = Sale::notBlocked()->notDust()->selectRaw('sum(price) as total, avg(price) as avg, count(price) as count, max(price) as max')->first();
 
             return [
                 'total' => $agg->total,

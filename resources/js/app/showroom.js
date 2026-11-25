@@ -185,6 +185,9 @@ Alpine.data('showroomData', (templates) => ({
     },
     getFlovatarPrice(flovatar){
         if(flovatar.sale_offers && flovatar.sale_offers.length>0){
+            if(window.isDustRow && window.isDustRow(flovatar.sale_offers[0])){
+                return window.formatDust(flovatar.sale_offers[0].price); // ĐUST marketplace
+            }
             return window.formatPrice(flovatar.sale_offers[0].price)+' <span>Flow</span>';
         } else {
             return null;

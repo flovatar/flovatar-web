@@ -159,6 +159,30 @@
                 </div>
                 @endif
 
+                @if(\App\Support\DustMarket::enabled())
+                {{-- ĐUST marketplace: this wallet's ĐUST storefront listings, read on chain --}}
+                <div class="dust-listings-section" x-data="dustListings('')" x-show="dustRows.length > 0" x-cloak>
+                    <div class="title-row">
+                        <h2>Listed for ĐUST</h2>
+                    </div>
+                    <table>
+                        <thead><tr><th>Item</th><th>Price</th><th>Status</th><th></th></tr></thead>
+                        <tbody>
+                        <template x-for="row in dustRows" :key="row.listingId">
+                            <tr x-bind:class="row.valid ? '' : 'dust-dead'">
+                                <td><a x-bind:href="row.url" x-text="row.label"></a></td>
+                                <td class="currency-dust" x-text="fmt(row.price)"></td>
+                                <td x-text="row.valid ? 'For sale' : (row.purchased ? 'Sold' : (row.expired ? 'Expired' : 'Item moved'))"></td>
+                                <td>
+                                    <button x-show="row.valid && mine() && !dapper()" @click.prevent.stop="cancel(row)" class="btn btn-sm btn-red"><span class="inner">Cancel</span></button>
+                                    <button x-show="!row.valid && user && !dapper()" @click.prevent.stop="cleanup(row)" class="btn btn-sm btn-lilac"><span class="inner">Clean up</span></button>
+                                </td>
+                            </tr>
+                        </template>
+                        </tbody>
+                    </table>
+                </div>
+                @endif
                 <div class="collection">
                     <div class="title-row">
                         <h2>Your Collection</h2>

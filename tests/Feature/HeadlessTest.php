@@ -105,6 +105,8 @@ class HeadlessTest extends TestCase
             $t->boolean('is_completed')->default(false);
             $t->boolean('is_dapper')->default(false);
             $t->string('listing_id')->nullable();
+            $t->string('currency', 16)->nullable();
+            $t->timestamp('expires_at')->nullable();
             $t->timestamps();
         });
         Schema::create('sales', function (Blueprint $t) {
@@ -117,6 +119,7 @@ class HeadlessTest extends TestCase
             $t->string('flow_buyer_address')->nullable();
             $t->string('flow_seller_address')->nullable();
             $t->boolean('is_dapper')->default(false);
+            $t->string('currency', 16)->nullable();
             $t->timestamps();
         });
         Schema::create('rendered_images', function (Blueprint $t) {

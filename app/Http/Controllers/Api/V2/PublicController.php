@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V2;
 
+use App\Support\DustMarket;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\FilteredController;
 use App\Models\DustTemplate;
@@ -34,7 +35,7 @@ class PublicController extends FilteredController
     {
         $params = $request->query();
         ksort($params);
-        $key = 'apiv2:'.$name.':'.md5(json_encode($params));
+        $key = \App\Support\Stealth::cacheKey('apiv2:'.$name.':'.md5(json_encode($params)), $request);
 
         return Cache::flexible($key, [$fresh, $fresh * 10], $fn);
     }
@@ -99,7 +100,7 @@ class PublicController extends FilteredController
     /** Flobit type (template) page data: template, supply, open listings (floor + cheapest), sales stats. */
     public function template(int $flowId)
     {
-        $data = Cache::flexible('apiv2:template:'.$flowId, [60, 600], fn () => ItemSnapshot::flobitType($flowId) ?? false);
+        $data = Cache::flexible(\App\Support\Stealth::cacheKey('apiv2:template:'.$flowId), [60, 600], fn () => ItemSnapshot::flobitType($flowId) ?? false);
         abort_unless($data, 404);
 
         return $data;
@@ -125,12 +126,12 @@ class PublicController extends FilteredController
                 ->whereNotNull('flow_address')->when($blocked, fn ($q) => $q->whereNotIn('flow_address', $blocked))
                 ->groupBy('flow_address')->orderByDesc('c')->limit(25)->get()
                 ->map(fn ($r) => ['address' => $r->flow_address, 'flovatars' => (int) $r->c, 'legendary' => (int) $r->legendary, 'epic' => (int) $r->epic, 'rare' => (int) $r->rare]);
-            $topSales = Sale::query()->notBlocked()->with(['item' => $this->leanItemConstraints()])
+            $topSales = Sale::query()->notBlocked()->notDust()->with(['item' => $this->leanItemConstraints()])
                 ->orderByDesc('price')->limit(25)->get(['id', 'item_id', 'item_type', 'price', 'is_dapper', 'flow_buyer_address', 'flow_seller_address', 'completed_at', 'created_at'])
                 ->map(function ($s) {
                     $type = array_search($s->item_type, ItemSnapshot::TYPES, true) ?: null;
 
-                    return ['type' => $type, 'id' => $s->item?->flow_id, 'name' => $s->item?->name ?? null, 'price' => (float) $s->price, 'currency' => $s->is_dapper ? 'DUC' : 'FLOW',
+                    return ['type' => $type, 'id' => $s->item?->flow_id, 'name' => $s->item?->name ?? null, 'price' => (float) $s->price, 'currency' => DustMarket::currencyOf($s),
                         'buyer' => $s->flow_buyer_address, 'seller' => $s->flow_seller_address, 'at' => optional($s->completed_at ?? $s->created_at)->toIso8601String()];
                 });
 
@@ -223,13 +224,19 @@ class PublicController extends FilteredController
     private function trimSale($row): array
     {
         return $this->only($row, ['id', 'item_type', 'flow_id', 'flow_address', 'price', 'is_dapper', 'listing_id', 'created_at', 'thumb', 'list_thumb'])
-            + ['item' => $this->trimItem($row->item)];
+            + $this->currencyField($row) + ['item' => $this->trimItem($row->item)];
     }
 
     private function trimTransaction($row): array
     {
         return $this->only($row, ['id', 'item_type', 'price', 'is_dapper', 'transaction_id', 'flow_buyer_address', 'flow_seller_address', 'completed_at', 'created_at', 'thumb', 'list_thumb'])
-            + ['item' => $this->trimItem($row->item)];
+            + $this->currencyField($row) + ['item' => $this->trimItem($row->item)];
+    }
+
+    /** ĐUST marketplace: `currency` (FLOW | DUC | DUST) in list rows, only while DUST_MARKET_ENABLED (prod JSON unchanged). */
+    private function currencyField($row): array
+    {
+        return DustMarket::enabled() ? ['currency' => DustMarket::currencyOf($row)] : [];
     }
 
     /** The sold/listed item: what the cards read (name, ids, rarity counts / template id, mint). */
@@ -298,7 +305,9 @@ class PublicController extends FilteredController
             return [];
         }
 
-        return $row->saleOffers->map(fn ($o) => ['price' => (float) $o->price, 'is_dapper' => (bool) $o->is_dapper])->values()->all();
+        $offers = DustMarket::enabled() ? $row->saleOffers : $row->saleOffers->filter(fn ($o) => DustMarket::currencyOf($o) !== DustMarket::CURRENCY);
+
+        return $offers->map(fn ($o) => ['price' => (float) $o->price, 'is_dapper' => (bool) $o->is_dapper] + $this->currencyField($o))->values()->all();
     }
 
     private function rowItem($row): array

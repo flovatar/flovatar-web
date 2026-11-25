@@ -34,6 +34,23 @@ require('./app/asteroid-builder');
 
 window.Alpine = Alpine;
 
-Alpine.start();
+// Feature bundles (passkey sign-in, ĐUST market/swap/quests, TerraKit check) are lazy webpack chunks served by the
+// origin only to requests that may see the feature (App\Support\Stealth: mode on, or stealth + stealth gate). The
+// layout lists them in window.__FX; without it (every public/static page while a feature is off or stealth) nothing
+// is loaded and Alpine starts exactly as before.
+const FX = {
+    p: () => import(/* webpackChunkName: "p" */ './passkey'),
+    m: () => import(/* webpackChunkName: "m" */ './app/dust-market'),
+    s: () => import(/* webpackChunkName: "s" */ './app/dust-swap'),
+    q: () => import(/* webpackChunkName: "q" */ './quests'),
+    t: () => import(/* webpackChunkName: "t" */ './app/terrakit-check'),
+};
+const fx = (Array.isArray(window.__FX) ? window.__FX : []).filter((k) => FX[k]);
+if (fx.length) {
+    // registration order matters (the passkey bundle wraps initApp before the others use it)
+    fx.reduce((p, k) => p.then(() => FX[k]()).catch((e) => console.error(e)), Promise.resolve()).then(() => Alpine.start());
+} else {
+    Alpine.start();
+}
 
 

@@ -16,6 +16,7 @@ Alpine.data('marketplaceData', (templates, stats) => ({
     showFilterPanel: false,
     showDapper: false,
     selectedMarketplace: 'blocto',
+    currency: 'all', // ĐUST marketplace: all | flow | dust (only sent while window.DUST_MARKET is on)
     init(){
         let self = this;
         if(this.currentWallet == 'dapper'){
@@ -37,6 +38,7 @@ Alpine.data('marketplaceData', (templates, stats) => ({
         });
         this.$watch('searchRarity', () => { self.searchResults(); });
         this.$watch('showDapper', () => { self.searchResults(); });
+        this.$watch('currency', () => { self.searchResults(); });
         this.$watch('selectedMarketplace', () => { self.showDapper = (self.selectedMarketplace == 'dapper'); });
         this.$watch('searchCat2', () => { self.searchTemplate = 'all'; self.searchResults(); });
         this.$watch('searchTemplate', () => {
@@ -58,6 +60,7 @@ Alpine.data('marketplaceData', (templates, stats) => ({
         this.searchRarity = 'all';
         this.searchCat2 = 'all';
         this.searchTemplate = 'all';
+        this.currency = 'all';
     },
     loadSearchParams(){
         let self = this;
@@ -86,6 +89,8 @@ Alpine.data('marketplaceData', (templates, stats) => ({
                         self.nextPage = paramArr[1];
                     } else if(paramArr[0] == 'dapper'){
                         self.showDapper = paramArr[1];
+                    } else if(paramArr[0] == 'currency' && window.altCurrencyOn && window.altCurrencyOn()){
+                        self.currency = ['flow', 'dust'].indexOf(paramArr[1]) >= 0 ? paramArr[1] : 'all';
                     }
                 }
             });
@@ -103,6 +108,9 @@ Alpine.data('marketplaceData', (templates, stats) => ({
             page: this.nextPage,
             dapper: this.showDapper
         };
+        if(window.altCurrencyOn && window.altCurrencyOn()){
+            params.currency = this.currency;
+        }
         let hashParams = this.getHashParams(params);
         if(Object.keys(hashParams).length > 0 || window.location.hash){
             window.writeHashParams(hashParams);
@@ -134,6 +142,9 @@ Alpine.data('marketplaceData', (templates, stats) => ({
         }
         if(params.dapper === true){
             hashParams.dapper = params.dapper;
+        }
+        if(params.currency && params.currency != 'all'){
+            hashParams.currency = params.currency;
         }
         return hashParams;
     },
@@ -175,7 +186,7 @@ Alpine.data('marketplaceData', (templates, stats) => ({
             return '';
         }
 
-        return output + ' FLOW';
+        return output + (this.currency == 'dust' ? ' ĐUST' : ' FLOW');
     },
     searchResults(){
         let self = this;

@@ -36,6 +36,10 @@ class Kernel extends ConsoleKernel
             $schedule->command('flow:process --queue')->everyMinute()->withoutOverlapping();
         }
         $schedule->command('flovatar:refresh-collectible-templates')->hourly();
+        if (\App\Support\DustMarket::active()) {
+            // ĐUST marketplace: drop offers whose storefront listing died on chain (ghost, expired, sold elsewhere)
+            $schedule->command('dust-market:reconcile')->everyTenMinutes()->withoutOverlapping(10)->runInBackground();
+        }
         // Heavy batch jobs (render batches, headless builds) run through bin/heavy-job: ONE server-wide flock shared by
         // the 4 sites on the box (flovatar, sportvatar, both testnets) + nice/ionice, so only one of them runs at a
         // time (mysqld was OOM-killed while overnight builds overlapped). Times are staggered per site (UTC):
@@ -60,6 +64,11 @@ class Kernel extends ConsoleKernel
                 ->hourlyAt($mainnet ? 41 : 11)->withoutOverlapping(30)->runInBackground();
             $this->heavy($schedule, 'headless:build --quiet-puts', 3600)
                 ->dailyAt($mainnet ? '03:30' : '02:30')->withoutOverlapping(180)->runInBackground();
+        }
+        if (\App\Support\Stealth::active('passkey') && \App\Services\Passkey\PasskeyPoc::networkReady() && config('passkey.sponsor.address')) {
+            // passkey sponsor: low-balance warning in the log (hourly) + per-day spend summary (fees, account funding)
+            $schedule->command('passkey:sponsor-watch')->hourlyAt(17)->withoutOverlapping(10)->runInBackground();
+            $schedule->command('passkey:sponsor-spend')->dailyAt('00:20')->withoutOverlapping(30)->runInBackground();
         }
     }
 

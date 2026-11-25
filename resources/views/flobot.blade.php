@@ -145,10 +145,10 @@
                                 <a x-bind:href="combinationUrl()" class="btn btn-sm btn-lilac"><span class="inner">View in Builder</span></a>
                             </div>
                             <div class="btns-right">
-                                <div x-show="!isSale() && isOwned() && !showGift && !isDapperWallet()" class="btn-wrp">
+                                <div x-show="!isSale() && isOwned() && !showGift && !isDapperWallet(){{ \App\Support\DustMarket::enabled() ? ' && !$store.dust.live' : '' }}" class="btn-wrp">
                                     <button @click.prevent.stop="showGift = true" x-bind:disabled="!loggedIn()" class="btn btn-sm btn-lilac"><span class="inner">Gift</span></button>
                                 </div>
-                                <div x-show="!isSale() && isOwned() && !showSale" class="btn-wrp">
+                                <div x-show="!isSale() && isOwned() && !showSale{{ \App\Support\DustMarket::enabled() ? ' && !$store.dust.live' : '' }}" class="btn-wrp">
                                     <button @click.prevent.stop="showSale = true" x-bind:disabled="!loggedIn()" class="btn btn-sm btn-green"><span class="inner">Sell</span></button>
                                 </div>
                                 <div x-show="showSaleBtn()" class="btn-wrp">
@@ -167,6 +167,9 @@
 
 
 
+        @if(\App\Support\DustMarket::enabled())
+        <div class="container dust-market-flobot">@include('partials.dust-market', ['dustKind' => 'flobot', 'dustId' => $flobotId])</div>
+        @endif
         <!-- Customize Flobits -->
         <div class="customize-flobits" x-show="isOwned() && !isSale()">
             <div class="container">

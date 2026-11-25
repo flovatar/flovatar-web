@@ -141,6 +141,10 @@ window.loadLoginNonce = function(){
         }
         if(response.data){
             window.serverAuth = {authenticated: !!response.data.authenticated, address: response.data.address || null};
+            if(response.data.auth_type){
+                // only sent when the testnet passkey sign-in is enabled: 'passkey' | 'wallet'
+                window.serverAuth.authType = response.data.auth_type;
+            }
             window.dispatchEvent(new CustomEvent('server-auth', {detail: window.serverAuth}));
         }
         return response.data;

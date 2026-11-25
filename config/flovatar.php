@@ -110,4 +110,42 @@ return [
         explode(',', (string) env('FLOVATAR_BLOCKED_ADDRESSES', '0x0c7deb7a0c9cb424'))
     ))),
     'blockedNotice' => env('FLOVATAR_BLOCKED_NOTICE', 'This wallet or item is linked to the 2026-11-16 security incident. It is hidden from the marketplace while the team reviews it.'),
+
+    /*
+    | ĐUST marketplace (KB notes/dust-marketplace.md): buy/sell any Flovatar item for ĐUST through the standard
+    | NFTStorefrontV2. Default OFF: with the flag off the indexer ignores ĐUST listings, every public query excludes
+    | currency DUST and no ĐUST UI is rendered (prod unchanged). Testnet .env only for now.
+    | Creator royalties: paid only when the creator has a ĐUST receiver (Luca 2026-11-25, fixed in the Cadence).
+    | Dapper wallets get no ĐUST features at all (Luca 2026-11-25).
+    */
+    'dustMarket' => [
+        'enabled' => (bool) env('DUST_MARKET_ENABLED', false),
+        // listing lifetime chosen by the site's sell box (seconds)
+        'listingTtl' => (int) env('DUST_MARKET_LISTING_TTL', 60 * 60 * 24 * 365),
+        'customId' => 'flovatar-dust',
+    ],
+
+    /*
+    | ĐUST ⇄ FLOW auto-swap through IncrementFi (KB notes/dust-swap.md): "pay with FLOW" for ĐUST listings, "pay with
+    | ĐUST" for FLOW listings (self-custody Flow Wallet only), live rate chip, quick-swap widget on /dust. Default OFF;
+    | testnet .env only for now. Increment is a third party: every address is config (per network, env-overridable) and
+    | the browser hides the swap whenever a quote script fails. Testnet uses OUR copy of Increment's contracts
+    | (Increment's own testnet deployment has no ĐUST pair). Rates are read on chain in the browser (chain-first).
+    */
+    'dustSwap' => [
+        'enabled' => (bool) env('DUST_SWAP_ENABLED', false),
+        'router' => env('DUST_SWAP_ROUTER', env('FLOW_NETWORK') === 'mainnet' ? '0xa6850776a94e6551' : '0x84e6590ef1493ae7'),
+        // SwapConfig + SwapInterfaces + SwapError
+        'swapConfig' => env('DUST_SWAP_CONFIG', env('FLOW_NETWORK') === 'mainnet' ? '0xb78ef7afa52ff906' : '0x84e6590ef1493ae7'),
+        'factory' => env('DUST_SWAP_FACTORY', env('FLOW_NETWORK') === 'mainnet' ? '0xb063c16cac85dbd1' : '0x84e6590ef1493ae7'),
+        // the ĐUST/FLOW pair: the browser checks that SwapFactory returns exactly this pair, else the swap stays hidden
+        'pair' => env('DUST_SWAP_PAIR', env('FLOW_NETWORK') === 'mainnet' ? '0xa06c38beec9cf0e8' : '0x76d585e079b73059'),
+        'slippageDefault' => (float) env('DUST_SWAP_SLIPPAGE_DEFAULT', 1.0),
+        'slippageMax' => (float) env('DUST_SWAP_SLIPPAGE_MAX', 3.0),
+        'impactWarn' => (float) env('DUST_SWAP_IMPACT_WARN', 2.0),
+        'impactBlock' => (float) env('DUST_SWAP_IMPACT_BLOCK', 10.0),
+        // pool FLOW below this → the rate chip says "low liquidity"
+        'lowLiquidityFlow' => (float) env('DUST_SWAP_LOW_LIQUIDITY_FLOW', env('FLOW_NETWORK') === 'mainnet' ? 1000 : 5),
+        'deadlineSeconds' => (int) env('DUST_SWAP_DEADLINE_SECONDS', 300),
+    ],
 ];

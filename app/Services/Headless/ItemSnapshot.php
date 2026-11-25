@@ -2,6 +2,7 @@
 
 namespace App\Services\Headless;
 
+use App\Support\DustMarket;
 use App\Models\DustCollectible;
 use App\Models\Flobot;
 use App\Models\Flovatar;
@@ -166,22 +167,22 @@ class ItemSnapshot
         }
         $componentIds = FlovatarComponent::query()->where('flovatar_template_id', $tpl->id)->select('id');
         $minted = FlovatarComponent::query()->where('flovatar_template_id', $tpl->id)->count();
-        $open = fn () => SaleOffer::query()->notBlocked()->where('item_type', FlovatarComponent::class)
+        $open = fn () => SaleOffer::query()->notBlocked()->marketVisible()->where('item_type', FlovatarComponent::class)
             ->where('is_completed', false)->whereIn('item_id', $componentIds);
-        $listings = $open()->selectRaw('count(*) c, min(price) floor, is_dapper')->groupBy('is_dapper')->get();
+        $listings = $open()->selectRaw('count(*) c, min(price) floor, is_dapper, currency')->groupBy('is_dapper', 'currency')->get();
         $listed = $open()->with(['item' => fn ($q) => $q->select('id', 'flow_id', 'flow_address', 'mint')])
-            ->orderBy('price')->limit($cheapest)->get(['id', 'item_id', 'item_type', 'flow_id', 'flow_address', 'price', 'is_dapper']);
-        $sales = Sale::query()->notBlocked()->where('item_type', FlovatarComponent::class)->whereIn('item_id', $componentIds)
+            ->orderBy('price')->limit($cheapest)->get(['id', 'item_id', 'item_type', 'flow_id', 'flow_address', 'price', 'is_dapper', 'currency']);
+        $sales = Sale::query()->notBlocked()->notDust()->where('item_type', FlovatarComponent::class)->whereIn('item_id', $componentIds)
             ->selectRaw('count(*) c, avg(price) avg, max(price) max, max(created_at) last_at')->first();
 
         return [
             'template' => self::template($tpl),
             'url' => Headless::frontendUrl('flobits/'.$flowId),
             'minted' => $minted,
-            'listings' => $listings->map(fn ($l) => ['currency' => $l->is_dapper ? 'DUC' : 'FLOW', 'count' => (int) $l->c, 'floor' => (float) $l->floor])->values()->all(),
+            'listings' => $listings->map(fn ($l) => ['currency' => DustMarket::currencyOf($l), 'count' => (int) $l->c, 'floor' => (float) $l->floor])->values()->all(),
             'listed' => $listed->map(fn ($o) => [
                 'id' => (int) ($o->item?->flow_id ?? $o->flow_id), 'mint' => $o->item?->mint !== null ? (int) $o->item->mint : null,
-                'owner' => $o->flow_address ?? $o->item?->flow_address, 'price' => (float) $o->price, 'currency' => $o->is_dapper ? 'DUC' : 'FLOW',
+                'owner' => $o->flow_address ?? $o->item?->flow_address, 'price' => (float) $o->price, 'currency' => DustMarket::currencyOf($o),
             ])->values()->all(),
             'sales' => ['count' => (int) $sales->c, 'avg' => $sales->avg !== null ? round((float) $sales->avg, 2) : null, 'max' => $sales->max !== null ? (float) $sales->max : null,
                 'last_at' => $sales->last_at ? \Illuminate\Support\Carbon::parse($sales->last_at)->toIso8601String() : null],
@@ -203,14 +204,14 @@ class ItemSnapshot
 
     private static function listing(Model $item): ?array
     {
-        $offer = SaleOffer::query()
+        $offer = SaleOffer::query()->marketVisible()
             ->where('item_type', get_class($item))->where('item_id', $item->id)
             ->where('is_completed', false)->orderByDesc('created_at')
-            ->first(['id', 'flow_id', 'flow_address', 'price', 'is_dapper', 'listing_id', 'created_at']);
+            ->first(['id', 'flow_id', 'flow_address', 'price', 'is_dapper', 'currency', 'listing_id', 'created_at']);
 
         return $offer ? [
             'price' => (float) $offer->price,
-            'currency' => $offer->is_dapper ? 'DUC' : 'FLOW',
+            'currency' => DustMarket::currencyOf($offer),
             'is_dapper' => (bool) $offer->is_dapper,
             'seller' => $offer->flow_address,
             'listing_id' => $offer->listing_id,
@@ -220,13 +221,13 @@ class ItemSnapshot
 
     private static function sales(Model $item): array
     {
-        return Sale::query()->notBlocked()
+        return Sale::query()->notBlocked()->marketVisible()
             ->where('item_type', get_class($item))->where('item_id', $item->id)
             ->orderBy('created_at')->limit(100)
-            ->get(['price', 'is_dapper', 'flow_buyer_address', 'flow_seller_address', 'transaction_id', 'completed_at', 'created_at'])
+            ->get(['price', 'is_dapper', 'currency', 'flow_buyer_address', 'flow_seller_address', 'transaction_id', 'completed_at', 'created_at'])
             ->map(fn ($s) => [
                 'price' => (float) $s->price,
-                'currency' => $s->is_dapper ? 'DUC' : 'FLOW',
+                'currency' => DustMarket::currencyOf($s),
                 'buyer' => $s->flow_buyer_address,
                 'seller' => $s->flow_seller_address,
                 'tx' => $s->transaction_id,

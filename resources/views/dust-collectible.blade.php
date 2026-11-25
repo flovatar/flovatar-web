@@ -18,9 +18,6 @@
         @endif
     </script>
 
-    @if(config('services.google_maps.enabled') && config('services.google_maps.api_key'))
-    <script src="https://maps.googleapis.com/maps/api/js?key={{ urlencode(config('services.google_maps.api_key')) }}"></script>
-    @endif
 
     <section class="flovatar-detail"
              x-data="collectibleData('{{$address}}', {{$collectibleId}}, window.templates, window.collectibleSaleOffer)"
@@ -85,13 +82,13 @@
                                     <li x-show="false">
                                         <a x-bind:href="combinationUrl()" class="btn btn-sm btn-lilac"><span class="inner"><span class="long-label">View in Builder</span> <span class="short-label">View in Builder</span></span></a>
                                     </li>
-                                    <li x-show="!isSale() && isOwned() && !showSale">
+                                    <li x-show="!isSale() && isOwned() && !showSale{{ \App\Support\DustMarket::enabled() ? ' && !$store.dust.live' : '' }}">
                                         <button @click.prevent.stop="showSale = true" x-bind:disabled="!loggedIn()" class="btn btn-sm btn-green"><span class="inner">Sell</span></button>
                                     </li>
                                     <li x-show="isSale() && isOwned() && !showSale">
                                         <button @click.prevent.stop="cancelSale" x-bind:disabled="!loggedIn()" class="btn btn-sm btn-green"><span class="inner">Cancel Sale</span></button>
                                     </li>
-                                    <li x-show="!isSale() && isOwned() && !showGift">
+                                    <li x-show="!isSale() && isOwned() && !showGift{{ \App\Support\DustMarket::enabled() ? ' && !$store.dust.live' : '' }}">
                                         <button @click.prevent.stop="showGift = true" x-bind:disabled="!loggedIn()" class="btn btn-sm btn-lilac"><span class="inner">Gift</span></button>
                                     </li>
                                     <li x-show="showGift">
@@ -109,6 +106,7 @@
                         </div>
                     </div>
 
+                    @include('partials.dust-market', ['dustKind' => 'collectible', 'dustId' => $collectibleId])
                     <div class="content-box" x-show="isSale() || (isOwned() && showSale)">
                         <div class="title-row">
                             <h2>Marketplace</h2>
@@ -214,55 +212,68 @@
                             </form>
                         </div>
                     </div>
-                    @if(config('services.google_maps.enabled'))
-                    <div class="content-box" x-show="isOwned || position()">
+                    @if(config('services.geo.enabled'))
+                    {{-- GEO Location editor: OpenStreetMap search (Photon via /api/v2/geo, Nominatim fallback on Enter), coordinates
+                         or click-on-map (Leaflet). Only lat/lon go on chain (setPosition, Đ10). resources/js/geo.js --}}
+                    <div class="content-box" x-show="isOwned() || position()">
                         <div class="title-row">
                             <h2>GEO Location</h2>
                         </div>
                         <div class="box">
-                            <form action="#">
-                                <ul class="input-list">
-                                    <li>
-                                        <div class="label-wrap">
-                                            <label for="name" class="sm">Location</label>
+                            <ul class="input-list">
+                                <li x-show="isOwned()">
+                                    <div class="label-wrap">
+                                        <label for="searchAddress" class="sm">Location</label>
+                                    </div>
+                                    <div class="input-col-wrap">
+                                        <div class="input-wrap" style="position:relative;">
+                                            <div class="price-tag">Ð10</div>
+                                            <input x-model="searchAddress" @input.debounce.500ms="geocodeAddress()" @keydown.enter.prevent="geocodeAddress(true)" @keydown.escape="geoSuggestions = []" type="text" class="input" id="searchAddress" autocomplete="off" placeholder="City, address -OR- lat, lon">
+                                            <ul class="geo-suggestions" x-show="geoSuggestions.length > 1" x-cloak @click.outside="geoSuggestions = []" style="position:absolute;left:0;right:0;top:100%;z-index:30;margin:4px 0 0;padding:4px 0;list-style:none;background:#fff;border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.18);max-height:240px;overflow:auto;">
+                                                <template x-for="(s, i) in geoSuggestions" :key="i">
+                                                    <li><a href="#" @click.prevent="geoPick(s)" x-text="s.label" style="display:block;padding:8px 14px;font-size:14px;line-height:1.3;color:#222;text-decoration:none;"></a></li>
+                                                </template>
+                                            </ul>
                                         </div>
-                                        <div class="input-col-wrap">
-                                            <div class="input-wrap">
-                                                <div class="price-tag">Ð10</div>
-                                                <input x-show="isOwned()" x-model="searchAddress" type="text" class="input" id="searchAddress" placeholder="Address -OR- Lat, Long" @input.debounce.500ms="geocodeAddress">
-                                            </div>
-                                            <div class="r-col">
+                                        <div class="r-col">
                                             <span class="help">
                                                 <a href="#">
                                                     <i class="icon-help"></i>
                                                 </a>
                                                 <div class="info-tooltip">
                                                     <strong>Location</strong>
-                                                    <p>Burn Ð10 to place your Psyche Likee on the map.</p>
+                                                    <p>Burn Ð10 to place your Psyche Likee on the map. Type an address (Enter searches harder), coordinates (lat, lon) or pick the spot on the map. Only the coordinates are stored on chain.</p>
                                                 </div>
                                             </span>
-                                                <button @click.prevent.stop="setPosition()" x-show="isOwned() && position() != searchAddress"  x-bind:disabled="!loggedIn()" type="submit" class="btn btn-icon btn-green">
-                                                    <span class="inner"><i class="icon-check"></i></span>
-                                                </button>
-                                            </div>
+                                            <button @click.prevent.stop="setPosition()" x-show="isOwned() && (collectibleLat != 0 || collectibleLon != 0) && position() != searchAddress"  x-bind:disabled="!loggedIn()" type="submit" class="btn btn-icon btn-green">
+                                                <span class="inner"><i class="icon-check"></i></span>
+                                            </button>
                                         </div>
-                                    </li>
-                                    <li x-show="foundAddress">
-                                        <label for="name" class="sm">&nbsp;</label>
-                                        <div class="input-wrap">
-                                        <span x-show="foundAddress" >
-                                            <p class="text-entry" x-text="foundAddress"></p>
-                                        </span>
-                                        </div>
-                                        <div class="r-col">
-                                        </div>
-                                    </li>
-                                </ul>
-                            </form>
+                                    </div>
+                                </li>
+                                <li x-show="foundAddress || geoBusy || geoError">
+                                    <label class="sm">&nbsp;</label>
+                                    <div class="input-wrap">
+                                        <p class="text-entry" x-show="foundAddress" x-text="foundAddress"></p>
+                                        <p x-show="geoBusy && !foundAddress" style="font-size:13px;opacity:.7;">Searching…</p>
+                                        <p x-show="geoError" x-text="geoError" style="font-size:13px;opacity:.8;margin-top:4px;"></p>
+                                    </div>
+                                    <div class="r-col">
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="input-wrap" style="width:100%;">
+                                        <a href="#" @click.prevent="geoToggleMap()" style="font-size:13px;text-decoration:underline;" x-text="geoMapOpen ? 'Hide map' : (isOwned() ? 'Pick on the map' : 'Show on the map')"></a>
+                                        <div x-show="geoMapOpen" x-cloak x-ref="geoMap" style="height:280px;border-radius:12px;margin-top:8px;overflow:hidden;"></div>
+                                        <p style="font-size:11px;opacity:.6;margin-top:6px;">Search &amp; map data &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors</p>
+                                    </div>
+                                </li>
+                            </ul>
                         </div>
                     </div>
+                    <script>window.GEO_CONFIG = @json(['tileUrl' => config('services.geo.tile_url'), 'tileAttribution' => config('services.geo.tile_attribution')]);</script>
                     @else
-                    {{-- Google Maps disabled (GOOGLE_MAPS_ENABLED=false): no location editor, only the stored on-chain position. --}}
+                    {{-- GEO_LOCATION_ENABLED=false: no location editor, only the stored on-chain position. --}}
                     <div class="content-box" x-show="position()">
                         <div class="title-row">
                             <h2>GEO Location</h2>

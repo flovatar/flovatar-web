@@ -188,7 +188,19 @@ window.transError = function(transaction){
     return '';
 }
 
+// Passkey sign-in (resources/js/passkey.js) feeds its account through the same path as an FCL wallet user.
+window.applyUser = function(user){ return updateUser(user); };
+
 async function updateUser(user){
+    // passkey account panel "Link to Flow Wallet / Dapper": the wallet is connected only to sign the link, it must not
+    // become the site user (resources/js/passkey.js linkWallet)
+    if(window.extLinking){ return; }
+    if(window.extSession && window.extSession.active){
+        // passkey sign-in (testnet): FCL's own (empty) emissions must not replace the passkey user;
+        // a real wallet connecting ends the passkey session on this page.
+        if(!user || !user.addr){ return; }
+        if(user.authType !== 'passkey'){ window.extSession = null; }
+    }
     console.log('update user');
     console.log(user);
     window.user = user;

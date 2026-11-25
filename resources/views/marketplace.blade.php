@@ -33,6 +33,13 @@
                             <option value="dapper">Dapper</option>
                         </select>
                         @endif
+                        @if(\App\Support\DustMarket::enabled())
+                        <select class="select-outline dust-currency-select" x-model="currency" x-show="!showDapper" aria-label="Currency">
+                            <option value="all">All currencies</option>
+                            <option value="flow">FLOW</option>
+                            <option value="dust">ĐUST</option>
+                        </select>
+                        @endif
                     </div>
                 </div>
 
