@@ -64,11 +64,11 @@
                             <button type="submit" class="btn btn-pink" :disabled="busy" data-passkey="signup" x-show="!existingEmail"><span class="inner" x-text="codeSentTo ? 'Confirm code & create my passkey' : 'Send me a code'">Send me a code</span></button>
                             <p class="passkey-info" x-show="existingEmail">You already have an account with this email: use <b>Sign in with my passkey</b> below. <a href="#" @click.prevent.stop="changeEmail()">Use another email</a></p>
                         </form>
+                        <p class="passkey-info" x-show="info" x-text="info"></p>
+                        <p class="passkey-error" x-show="error" x-text="error"></p>
                         <div class="passkey-or"><span>already have an account?</span></div>
                         <button type="button" class="btn" @click.prevent.stop="signIn()" :disabled="busy" data-passkey="signin"><span class="inner">Sign in with my passkey</span></button>
                         <p class="passkey-note">Your passkey from another device works too: choose "phone or tablet" in the prompt and scan the QR code.</p>
-                        <p class="passkey-info" x-show="info" x-text="info"></p>
-                        <p class="passkey-error" x-show="error" x-text="error"></p>
                         <p><a href="#" class="passkey-back" @click.prevent.stop="step = 'choice'; error = ''" x-show="!busy">&larr; Back</a></p>
                     </div>
                 </div>
