@@ -226,6 +226,7 @@ Alpine.data('passkeyAuth', () => ({
     signinOpen: false,
     step: 'choice',
     email: '',
+    emailError: '',
     busy: false,
     error: '',
     info: '',
@@ -241,6 +242,7 @@ Alpine.data('passkeyAuth', () => ({
     openSignin() {
         this.step = 'choice';
         this.error = '';
+        this.emailError = '';
         this.info = '';
         this.signinOpen = true;
     },
@@ -257,11 +259,21 @@ Alpine.data('passkeyAuth', () => ({
         this.error = '';
         try { await fn(); } catch (e) { this.error = errorText(e); console.log(e); } finally { this.busy = false; }
     },
+    validateEmail() {
+        const v = (this.email || '').trim();
+        if (!v) { this.emailError = 'Please enter your email address.'; }
+        else if (v.length > 190 || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)) { this.emailError = 'That doesn\'t look like a valid email address.'; }
+        else { this.emailError = ''; }
+        if (this.emailError && this.$refs.passkeyEmail) { this.$nextTick(() => this.$refs.passkeyEmail.focus()); }
+        return !this.emailError;
+    },
     signUp() {
+        this.error = '';
+        if (!this.validateEmail()) { return Promise.resolve(); }
         return this.run(async () => {
             if (!this.supported) { throw new Error('This browser does not support passkeys.'); }
             this.info = 'Creating your passkey…';
-            const options = await api('post', '/passkey/register/options', {email: this.email || null});
+            const options = await api('post', '/passkey/register/options', {email: this.email.trim()});
             const cred = await ceremony('create your passkey', () => createCredential(JSON.parse(JSON.stringify(options))));
             this.info = 'Creating your Flow account (≈15 s)…';
             const out = await api('post', '/passkey/register/verify', cred);

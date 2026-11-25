@@ -43,12 +43,17 @@
                         <template x-if="!supported">
                             <p class="passkey-error">This browser does not support passkeys. Try a recent Safari, Chrome, Edge or Firefox, or sign in with a wallet.</p>
                         </template>
-                        <div class="passkey-form">
-                            <label for="passkey-email">Email <span class="muted">(optional, for updates and recovery later)</span></label>
-                            <input id="passkey-email" type="email" x-model="email" autocomplete="email" placeholder="you@example.com" :disabled="busy">
-                            <button type="button" class="btn btn-pink" @click.prevent.stop="signUp()" :disabled="busy" data-passkey="signup"><span class="inner">Create my account</span></button>
-                        </div>
-                        <div class="passkey-or"><span>already have one?</span></div>
+                        <form class="passkey-form" novalidate @submit.prevent.stop="signUp()">
+                            <h3 class="passkey-form-title">New here? Create your account</h3>
+                            <label for="passkey-email">Your email <span class="req">required</span></label>
+                            <input id="passkey-email" x-ref="passkeyEmail" type="email" inputmode="email" required maxlength="190" x-model.trim="email" autocomplete="email" placeholder="you@example.com" :disabled="busy"
+                                   :class="{ 'is-invalid': emailError }" :aria-invalid="emailError ? 'true' : 'false'" aria-describedby="passkey-email-help passkey-email-error"
+                                   @input="emailError = ''" @blur="email && validateEmail()">
+                            <p id="passkey-email-error" class="passkey-field-error" x-show="emailError" x-text="emailError" role="alert"></p>
+                            <p id="passkey-email-help" class="passkey-field-help">We use it for important account updates and to help you recover your account. It is never shown publicly.</p>
+                            <button type="submit" class="btn btn-pink" :disabled="busy" data-passkey="signup"><span class="inner">Create my account</span></button>
+                        </form>
+                        <div class="passkey-or"><span>already have an account?</span></div>
                         <button type="button" class="btn" @click.prevent.stop="signIn()" :disabled="busy" data-passkey="signin"><span class="inner">Sign in with my passkey</span></button>
                         <p class="passkey-note">Your passkey from another device works too: choose "phone or tablet" in the prompt and scan the QR code.</p>
                         <p class="passkey-info" x-show="info" x-text="info"></p>

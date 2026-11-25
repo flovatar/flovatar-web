@@ -163,7 +163,16 @@ class PasskeyPocController extends Controller
 
     public function registerOptions(Request $request): JsonResponse
     {
-        $data = $request->validate(['email' => 'nullable|email:rfc|max:190']);
+        $email = strtolower(trim((string) $request->input('email', '')));
+        if ($email === '') {
+            return $this->fail('Please enter your email address to create your account.', 422);
+        }
+        if (strlen($email) > 190 || ! filter_var($email, FILTER_VALIDATE_EMAIL) || validator(['e' => $email], ['e' => 'email:rfc'])->fails()) {
+            return $this->fail('That doesn\'t look like a valid email address. Please check it and try again.', 422);
+        }
+        if (PasskeyAccount::whereRaw('LOWER(email) = ?', [$email])->where('status', 'active')->exists()) {
+            return $this->fail('An account with this email already exists. Use "Sign in with my passkey" instead.', 422);
+        }
         $ip = (string) $request->ip();
         $today = now()->startOfDay();
         if (PasskeyAccount::where('created_ip', $ip)->where('created_at', '>=', $today)->count() >= config('passkey.limits.accounts_per_ip_per_day')) {
@@ -173,7 +182,7 @@ class PasskeyPocController extends Controller
             return $this->fail('The demo has reached today\'s limit of new accounts. Please try again tomorrow.', 429);
         }
 
-        return response()->json($this->creationOptions($request, 'signup', $data['email'] ?? null));
+        return response()->json($this->creationOptions($request, 'signup', $email));
     }
 
     private function creationOptions(Request $request, string $mode, ?string $email, ?PasskeyAccount $account = null): array
@@ -238,6 +247,9 @@ class PasskeyPocController extends Controller
             [$res, $pub, $reg, $credentialId] = $this->verifyCreation($request, 'signup');
         } catch (Throwable $e) {
             return $this->fail('Passkey could not be verified: '.$e->getMessage(), 422, $e);
+        }
+        if (empty($reg['email'])) {
+            return $this->fail('Please enter your email address to create your account.', 422);
         }
         $account = PasskeyAccount::create(['email' => $reg['email'], 'status' => 'pending', 'created_ip' => (string) $request->ip()]);
         $cred = PasskeyCredential::create([

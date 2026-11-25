@@ -99,8 +99,8 @@
     <section class="card" id="step-1">
         <h2><span class="num">1</span> <span id="step1-title">Create your account</span></h2>
         <div id="signed-out">
-            <label for="email">Email <span class="hint">(optional)</span></label>
-            <input id="email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com">
+            <label for="email">Email <span class="hint">(required)</span></label>
+            <input id="email" type="email" required maxlength="190" inputmode="email" autocomplete="email" placeholder="you@example.com">
             <p class="hint">On testnet we only store your email next to your account so we can recognise test sign-ups. No email is sent and there is no code to enter. A real launch would confirm it with a one-time code.</p>
             <button class="btn full" id="btn-create">Create account</button>
             <div class="prompt"><span>🔐</span><span>Your device will ask to <b>save a passkey for {{ $rpId }}</b>. Confirm with Face ID, Touch ID, fingerprint or your PIN. On a computer without a fingerprint reader you'll get a <b>QR code</b>: scan it with your phone and approve there.</span></div>

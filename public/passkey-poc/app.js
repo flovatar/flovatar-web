@@ -150,7 +150,9 @@
     // ---------------------------------------------------------------- actions
     var doCreate = wrap(1, function () {
         setStatus(1, '<span class="spinner"></span> Asking your device for a passkey…', 'wait');
-        return api('POST', '/passkey/register/options', { email: $('email').value.trim() || null }).then(function (opts) {
+        var em = $('email').value.trim();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em)) { return Promise.reject(new Error('Please enter a valid email address.')); }
+        return api('POST', '/passkey/register/options', { email: em }).then(function (opts) {
             return ceremony(1, 'create your passkey', function () { return createCredential(JSON.parse(JSON.stringify(opts))); });
         }).then(function (att) {
             setStatus(1, '<span class="spinner"></span> Passkey saved. Creating your Flow account on testnet (about 10–20 seconds)…', 'wait');
