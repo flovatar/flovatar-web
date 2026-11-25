@@ -167,8 +167,8 @@ export function geoEditor(latKey, lonKey) {
             this.geoSetPoint(s.lat, s.lon, s.label);
         },
         geoToggleMap() {
-            mapOpen = !mapOpen;
-            if (!mapOpen) return;
+            this.geoMapOpen = !this.geoMapOpen;
+            if (!this.geoMapOpen) return;
             this.$nextTick(() => {
                 loadLeaflet().then(L => {
                     const el = this.$refs.geoMap;
@@ -204,7 +204,7 @@ export function geoEditor(latKey, lonKey) {
                     }
                 }).catch(() => {
                     this.geoError = 'The map could not be loaded. You can still type an address or coordinates.';
-                    mapOpen = false;
+                    this.geoMapOpen = false;
                 });
             });
         },
