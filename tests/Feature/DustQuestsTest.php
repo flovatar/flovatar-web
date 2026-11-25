@@ -309,6 +309,43 @@ class DustQuestsTest extends TestCase
         $this->as($a)->postJson('/quests/discord/claim')->assertStatus(422);
     }
 
+    /** The token exchange sends exactly what Discord expects (form body, same redirect_uri, our client) and the token is revoked. */
+    public function test_discord_callback_token_exchange_payload_and_failures(): void
+    {
+        Http::fake([
+            'discord.test/api/oauth2/token/revoke' => Http::response([]),
+            // Discord refuses a stale/replayed code (or a redirect_uri that is not registered) with 400 invalid_grant
+            'discord.test/api/oauth2/token' => fn ($r) => $r['code'] === 'old'
+                ? Http::response(['error' => 'invalid_grant', 'error_description' => 'Invalid "code" in request.'], 400)
+                : Http::response(['access_token' => 'tok-1', 'token_type' => 'Bearer', 'scope' => 'identify guilds']),
+            'discord.test/api/users/@me' => Http::response(['id' => '123456789012345678', 'username' => 'member']),
+            'discord.test/api/users/@me/guilds*' => Http::response([['id' => '895444910075961394']]),
+        ]);
+        $a = $this->account();
+        $this->as($a)->withSession(['quests.discord_state' => ['s' => 'st', 'a' => $a->id, 't' => time()]])
+            ->get('/quests/discord/callback?code=the-code&state=st')->assertRedirect('/quests#discord=ok');
+        Http::assertSent(fn ($r) => $r->url() === 'https://discord.test/api/oauth2/token' && $r->method() === 'POST'
+            && $r->isForm() && $r['grant_type'] === 'authorization_code' && $r['code'] === 'the-code'
+            && $r['client_id'] === 'cid' && $r['client_secret'] === 'csecret'
+            && $r['redirect_uri'] === 'https://testnet.flovatar.com/quests/discord/callback');
+        Http::assertSent(fn ($r) => str_starts_with($r->url(), 'https://discord.test/api/users/@me/guilds') && $r->hasHeader('Authorization', 'Bearer tok-1'));
+        Http::assertSent(fn ($r) => $r->url() === 'https://discord.test/api/oauth2/token/revoke' && $r['token'] === 'tok-1');
+        $this->assertSame(150, (int) QuestClaim::where('passkey_account_id', $a->id)->where('challenge_key', 'discord')->value('amount'));
+
+        // Discord refuses the code (expired / replayed / wrong redirect_uri): no link, no claim, friendly error
+        $b = $this->account();
+        $this->as($b)->withSession(['quests.discord_state' => ['s' => 'st3', 'a' => $b->id, 't' => time()]])
+            ->get('/quests/discord/callback?code=old&state=st3')->assertRedirect('/quests#discord=error');
+        // user pressed "Cancel" on Discord's consent page
+        $this->as($b)->withSession(['quests.discord_state' => ['s' => 'st4', 'a' => $b->id, 't' => time()]])
+            ->get('/quests/discord/callback?error=access_denied&state=st4')->assertRedirect('/quests#discord=cancelled');
+        // state older than 10 minutes
+        $this->as($b)->withSession(['quests.discord_state' => ['s' => 'st5', 'a' => $b->id, 't' => time() - 601]])
+            ->get('/quests/discord/callback?code=x&state=st5')->assertRedirect('/quests#discord=expired');
+        $this->assertSame(0, QuestDiscordLink::where('passkey_account_id', $b->id)->count());
+        $this->assertSame(0, QuestClaim::where('passkey_account_id', $b->id)->count());
+    }
+
     // ------------------------------------------------------------------ on-chain evidence (mocked REST)
 
     private function fakeTx(string $txId, string $authorizer, array $events, string $status = 'Sealed', string $error = ''): array
