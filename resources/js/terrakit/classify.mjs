@@ -50,14 +50,17 @@ function normKey(k) {
  * Which wallet manages an account, from its keys (+ the Dapper receiver flag). Heuristics, verified on mainnet
  * holders (KB notes/terrakit-check.md §3):
  *  - Blocto created secp256k1/SHA3_256 keys in a weight 999 + 1000 + 1 pattern (key rotations repeat the triple).
- *  - Flow Wallet creates secp256k1/SHA2_256 keys (weight 1000) and P256/SHA2_256 weight-500 backup keys. Importing a
- *    Blocto Recovery Kit into Flow Wallet revokes the Blocto keys and adds a secp256k1/SHA2_256 key (same address).
+ *  - Importing a Blocto Recovery Kit into Flow Wallet keeps the SAME keys (and address): Flow Wallet signs with the
+ *    Blocto key from the kit. So active Blocto keys alone can't tell "imported, works in Flow Wallet" from "not imported
+ *    yet": class 'blocto' is a neutral "Blocto-created account" with canSign 'unknown', never 'no'.
+ *  - Flow Wallet creates secp256k1/SHA2_256 keys (weight 1000) and P256/SHA2_256 weight-500 backup keys. Some ex-Blocto
+ *    accounts later rotated to such a key and revoked the Blocto keys (same address) → 'flowwallet' + formerBlocto.
  *  - Dapper accounts are custodial: P256/SHA2_256 keys, a weight-1000 key plus many weight-0 keys, and a DUC/FUT
  *    receiver at /public/dapperUtilityCoinReceiver or /public/flowUtilityTokenReceiver.
  *
  * Returns {class, canSign, formerBlocto, bloctoKeysActive, activeKeys, revokedKeys, totalWeight}
  *   class: 'flowwallet' | 'dapper' | 'blocto' | 'keyless' | 'other' | 'none'
- *   canSign: 'yes' | 'no' | 'unknown'
+ *   canSign: 'yes' | 'no' | 'unknown' — 'no' only for real negatives (no account, no active keys / weight < 1000)
  */
 export function classifyWallet(check) {
     const base = {formerBlocto: false, bloctoKeysActive: false, activeKeys: 0, revokedKeys: 0, totalWeight: 0};
@@ -91,7 +94,8 @@ export function classifyWallet(check) {
         return {...info, class: 'flowwallet', canSign: fwWeight >= 1000 ? 'yes' : 'unknown'};
     }
     if (info.bloctoKeysActive) {
-        return {...info, class: 'blocto', canSign: 'no'};
+        // same keys work in Flow Wallet once the Recovery Kit is imported: we can't see that on chain
+        return {...info, class: 'blocto', canSign: totalWeight >= 1000 ? 'unknown' : 'no'};
     }
     if (dapperReceiver || zeroWeightP256 >= 3) {
         return {...info, class: 'dapper', canSign: 'yes'};

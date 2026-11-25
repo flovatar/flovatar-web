@@ -64,8 +64,9 @@
                 </template>
                 <template x-if="wallet.class === 'blocto'">
                     <div>
-                        <p><b>This is a Blocto account.</b> Blocto closed its wallet service, so it can't sign with Blocto any more. Your items are still at this address on the blockchain. To use them, move the account to Flow Wallet with your <b>Blocto Recovery Kit</b>: you keep the same address and everything in it.</p>
-                        <p><a href="#tk-blocto-guide">How to import your Blocto Recovery Kit ↓</a></p>
+                        <p><b>Blocto-created account.</b> It works in Flow Wallet if you imported your <b>Blocto Recovery Kit</b>: the import keeps the same keys and the same address, with everything in it.</p>
+                        <p class="muted">Already imported it? Connect with Flow Wallet and you're all set. The blockchain looks the same before and after the import, so this page can't tell which one applies to you.</p>
+                        <p>Not yet? <a href="#tk-blocto-guide">How to import your Blocto Recovery Kit ↓</a> · <a href="https://wallet.flow.com/post/migrating-from-blocto-to-flow-wallet" target="_blank" rel="noopener">Flow's guide</a></p>
                     </div>
                 </template>
                 <template x-if="wallet.class === 'keyless'">
@@ -111,16 +112,16 @@
         {{-- Blocto Recovery Kit guide (always on the page; highlighted for Blocto accounts) --}}
         <div class="tk-panel tk-guide" id="tk-blocto-guide" :class="wallet && wallet.class === 'blocto' ? 'tk-guide-active' : ''">
             <h2>Blocto Recovery Kit → Flow Wallet</h2>
-            <p>Blocto closed its wallet service. If your TerraKit sits in a Blocto account, import that account into Flow Wallet. You keep the same address and everything in it.</p>
+            <p>Blocto closed its wallet service, and its users moved to Flow Wallet. If your TerraKit sits in an account you created with Blocto and you haven't imported it yet, import it into Flow Wallet. You keep the same keys, the same address and everything in it.</p>
             <ol>
                 <li>Find your <b>Blocto Recovery Kit</b> (the PDF Blocto emailed you when you turned on Non-Custodial Mode) and the <b>Recovery Password</b> you chose then.</li>
                 <li>Install the <a href="https://wallet.flow.com/" target="_blank" rel="noopener">Flow Wallet</a> browser extension.</li>
                 <li>Open Flow Wallet and choose <b>Import Wallet</b>.</li>
                 <li>Upload the Recovery Kit PDF (Flow Wallet 3.1.5 or later). On older versions, open the PDF, copy the JSON text inside it and paste it.</li>
                 <li>Enter your Recovery Password, then your Flow address, and click <b>Import</b>.</li>
-                <li>Come back here and check your address again: it should now show <b>Flow Wallet</b>.</li>
+                <li>Connect to Flovatar with Flow Wallet using that address. The address and its keys don't change, so this page keeps calling it a Blocto-created account.</li>
             </ol>
-            <p>Flow's official guide: <a href="https://flow.com/post/action-required-for-blocto-wallet-users---migrate-your-assets-before-blocto-closes-down" target="_blank" rel="noopener">Action required for Blocto Wallet users</a>.</p>
+            <p>Flow's guides: <a href="https://wallet.flow.com/post/migrating-from-blocto-to-flow-wallet" target="_blank" rel="noopener">Migrating from Blocto to Flow Wallet</a> · <a href="https://flow.com/post/action-required-for-blocto-wallet-users---migrate-your-assets-before-blocto-closes-down" target="_blank" rel="noopener">Action required for Blocto Wallet users</a>.</p>
             <p><b>No Recovery Kit, or lost the password?</b> We're looking at options for holders in this situation. We can't promise an outcome. Your items stay at your address on the blockchain in the meantime.</p>
             <p class="tk-safety">Never share your Recovery Kit, Recovery Password, seed phrase or private keys with anyone, including people who say they're from the Flovatar team. We will never ask for them.</p>
         </div>
@@ -138,11 +139,11 @@
             </details>
             <details>
                 <summary>Why does the wallet type matter?</summary>
-                <p>To use your vouchers you sign with the wallet that controls your address. Flow Wallet and Dapper Wallet work on Flovatar today. Blocto doesn't any more.</p>
+                <p>To use your vouchers you sign with the wallet that controls your address. Flow Wallet and Dapper Wallet work on Flovatar today. The Blocto app closed, but accounts created with Blocto work in Flow Wallet once their Recovery Kit is imported.</p>
             </details>
             <details>
                 <summary>I used Blocto. Are my vouchers gone?</summary>
-                <p>No. They're still at your address on the blockchain. Import your Blocto Recovery Kit into Flow Wallet (steps above) to sign with that address again.</p>
+                <p>No. They're still at your address on the blockchain. If you already imported your Blocto Recovery Kit into Flow Wallet, just connect with Flow Wallet. If not, import it (steps above) to sign with that address again.</p>
             </details>
             <details>
                 <summary>I use Dapper Wallet. Anything I should know?</summary>
