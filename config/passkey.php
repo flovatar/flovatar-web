@@ -31,7 +31,16 @@ return [
     ],
 
     // FLOW deposited into each new account on top of the account-creation minimum (storage headroom).
-    'account_fund' => env('PASSKEY_ACCOUNT_FUND', '0.01'),
+    // The site builders ask for >= 0.05 FLOW before minting (storage), so new accounts start above that.
+    'account_fund' => env('PASSKEY_ACCOUNT_FUND', '0.06'),
+
+    // Storage top-up for existing passkey accounts below the builders' minimum: the sponsor sends
+    // (target - balance) when balance < min, at most `topups_max` times per account.
+    'storage' => [
+        'min' => (float) env('PASSKEY_STORAGE_MIN', 0.05),
+        'target' => (float) env('PASSKEY_STORAGE_TARGET', 0.061),
+        'topups_max' => (int) env('PASSKEY_STORAGE_TOPUPS_MAX', 3),
+    ],
 
     // Abuse limits (the sponsor pays): accounts per IP per day, accounts per day in total, starter gifts per account.
     'limits' => [

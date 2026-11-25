@@ -122,6 +122,12 @@ function argsToJson(opts) {
     if (typeof opts.args !== 'function') { return []; }
     return opts.args(fcl.arg, t).map((a) => a.xform.asArgument(a.value));
 }
+// Builders need >= 0.05 FLOW for storage before minting: the sponsor tops up passkey accounts (server-capped).
+window.passkeyEnsureStorage = async function () {
+    if (!(window.passkeySession && window.passkeySession.active)) { return null; }
+    return api('post', '/passkey/storage/ensure', {});
+};
+
 window.passkeyMutate = async function (opts) {
     const template = await sha256hex(opts.cadence);
     const prep = await api('post', '/passkey/tx/template', {template, args: argsToJson(opts)}).catch((e) => { throw new Error(errorText(e)); });

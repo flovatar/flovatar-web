@@ -198,6 +198,22 @@ Alpine.data('flobotBuilderData', (templates) => ({
         return (this.templateIds[category] && this.componentIds[category]) ? this.componentIds[category] : null;
     },
     createFlobotClick(){
+        if(this.balance() < 0.05 && this.currentWallet != 'dapper' && window.passkeySession && window.passkeySession.active && !this.storageTopupTried){
+            // Passkey account: Flovatar sends the storage FLOW, then we continue.
+            this.storageTopupTried = true;
+            window.dispatch('loading-start');
+            window.passkeyEnsureStorage().then((r) => {
+                window.dispatch('loading-completed');
+                if (r && this.profile) { this.profile.balance = String(r.balance); }
+                this.createFlobotClick();
+            }).catch((e) => {
+                window.dispatch('loading-completed');
+                this.storageTopupTried = false;
+                const msg = (e && e.response && e.response.data && e.response.data.error) || 'Could not add storage FLOW. Please try again.';
+                window.dispatch('transaction-error', {message: msg});
+            });
+            return;
+        }
         if(this.balance() < 0.05 && this.currentWallet != 'dapper'){
             this.showMinBalance = true;
         } else {

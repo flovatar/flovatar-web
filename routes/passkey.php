@@ -29,4 +29,5 @@ Route::prefix('passkey')->name('passkey.')->group(function () {
     Route::post('tx/submit', [PasskeyPocController::class, 'txSubmit'])->name('tx.submit')->middleware('throttle:30,1');
     Route::get('tx/{txId}', [PasskeyPocController::class, 'txStatus'])->name('tx.status')->middleware('throttle:120,1');
     Route::post('gift', [PasskeyPocController::class, 'gift'])->name('gift')->middleware('throttle:5,1');
+    Route::post('storage/ensure', [PasskeyPocController::class, 'storageEnsure'])->name('storage.ensure')->middleware('throttle:5,1');
 });

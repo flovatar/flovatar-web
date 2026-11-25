@@ -611,6 +611,45 @@ class PasskeyPocController extends Controller
         }
     }
 
+    // ------------------------------------------------------------------ storage top-up (sponsor-signed)
+
+    /** Make sure a passkey account holds the builders' minimum FLOW for storage; the sponsor tops it up if needed. */
+    public function storageEnsure(Request $request): JsonResponse
+    {
+        [$account] = $this->requireLogin($request);
+        $min = (float) config('passkey.storage.min');
+        $target = max($min, (float) config('passkey.storage.target'));
+        $lock = Cache::lock('passkey:storage:'.$account->id, 120);
+        if (! $lock->get()) {
+            return $this->fail('A storage top-up is already on its way.', 409);
+        }
+        try {
+            $poc = $this->poc();
+            $balance = (float) ($poc->flow()->account($account->address)['balance'] ?? 0);
+            if ($balance >= $min) {
+                return response()->json(['toppedUp' => false, 'balance' => $balance]);
+            }
+            $done = $account->transactions()->where('kind', 'storage_topup')->where('status', '!=', 'failed')->count();
+            if ($done >= (int) config('passkey.storage.topups_max')) {
+                return $this->fail('Your account already received the free storage FLOW. Please add a little FLOW to your address to continue.', 409);
+            }
+            $amount = PasskeyPoc::ufix(number_format(ceil(($target - $balance) * 1e8) / 1e8, 8, '.', ''));
+            [$txId, $r] = $poc->sendAsSponsor('sponsor_topup_flow', [
+                ['type' => 'Address', 'value' => $account->address],
+                ['type' => 'UFix64', 'value' => $amount],
+            ], 'storage_topup', $account->id);
+            if ($r['error'] !== '') {
+                return $this->fail('The storage top-up failed: '.substr($r['error'], 0, 300), 502);
+            }
+
+            return response()->json(['toppedUp' => true, 'txId' => $txId, 'amount' => $amount, 'balance' => $balance + (float) $amount]);
+        } catch (Throwable $e) {
+            return $this->fail('The storage top-up could not be sent: '.$e->getMessage(), 502, $e);
+        } finally {
+            $lock->release();
+        }
+    }
+
     /** Series-1 core templates for the mini builder (cached). */
     public function templates(): JsonResponse
     {
