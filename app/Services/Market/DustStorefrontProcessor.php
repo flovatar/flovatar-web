@@ -14,6 +14,7 @@ use App\Services\Flow\FlowEventTypes;
 use App\Services\Flow\FlowRestClient;
 use App\Support\DustMarket;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Throwable;
 
 /**
@@ -161,7 +162,9 @@ class DustStorefrontProcessor
             $seller = $offer?->flow_address ?? $this->sellerFromEvents($listingId);
             $buyer = $this->buyerOf((string) $event->transaction_id);
             if ($item) {
-                Sale::firstOrCreate(
+                // the same event can be processed by two workers at once (stream dispatch + minutely flow:process):
+                // firstOrCreate is not atomic, so serialise per purchase transaction + listing
+                Cache::lock('dust-market:sale:'.$event->transaction_id.':'.$listingId, 20)->block(10, fn () => Sale::firstOrCreate(
                     [
                         'item_id' => $item->id,
                         'item_type' => $class,
@@ -175,7 +178,7 @@ class DustStorefrontProcessor
                         'is_dapper' => false,
                         'completed_at' => $event->event_date ?? Carbon::now(),
                     ]
-                );
+                ));
             }
         }
         if ($listingId) {

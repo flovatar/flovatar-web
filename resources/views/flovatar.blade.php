@@ -127,7 +127,7 @@
                                     <li x-show="isSale() && isOwned() && !showSale">
                                         <button @click.prevent.stop="cancelSale" x-bind:disabled="!loggedIn()" class="btn btn-sm btn-green"><span class="inner">Cancel Sale</span></button>
                                     </li>
-                                    <li x-show="!isSale() && isOwned() && !showGift">
+                                    <li x-show="!isSale() && isOwned() && !showGift{{ \App\Support\DustMarket::enabled() ? ' && !$store.dust.live' : '' }}">
                                         <button @click.prevent.stop="showGift = true" x-bind:disabled="!loggedIn()" class="btn btn-sm btn-lilac"><span class="inner">Gift</span></button>
                                     </li>
                                     <li x-show="showGift">

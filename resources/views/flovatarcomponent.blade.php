@@ -91,7 +91,7 @@
                                     <li x-show="showGift">
                                         <button @click.prevent.stop="showGift = false" x-bind:disabled="!loggedIn()" class="btn btn-icon btn-gray"><span class="inner"><i class="icon-close"></i></span></button>
                                     </li>
-                                    <li x-show="!isSale() && isOwned() && !showGift">
+                                    <li x-show="!isSale() && isOwned() && !showGift{{ \App\Support\DustMarket::enabled() ? ' && !$store.dust.live' : '' }}">
                                         <button @click.prevent.stop="showGift = true" x-bind:disabled="!loggedIn()" class="btn btn-sm btn-lilac"><span class="inner">Gift</span></button>
                                     </li>
                                 </ul>
@@ -343,7 +343,7 @@
                                 <a x-bind:href="getMarketplaceUrl()" class="btn btn-sm btn-lilac"><span class="inner">View in Marketplace</span></a>
                             </div>
                             <div class="btns-right">
-                                <div x-show="!isSale() && isOwned() && !showGift" class="btn-wrp">
+                                <div x-show="!isSale() && isOwned() && !showGift{{ \App\Support\DustMarket::enabled() ? ' && !$store.dust.live' : '' }}" class="btn-wrp">
                                     <button @click.prevent.stop="showGift = true" x-bind:disabled="!loggedIn()" class="btn btn-sm btn-lilac"><span class="inner">Gift</span></button>
                                 </div>
                                 <div x-show="!isSale() && isOwned() && !showSale" class="btn-wrp">

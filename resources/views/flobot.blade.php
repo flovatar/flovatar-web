@@ -145,7 +145,7 @@
                                 <a x-bind:href="combinationUrl()" class="btn btn-sm btn-lilac"><span class="inner">View in Builder</span></a>
                             </div>
                             <div class="btns-right">
-                                <div x-show="!isSale() && isOwned() && !showGift && !isDapperWallet()" class="btn-wrp">
+                                <div x-show="!isSale() && isOwned() && !showGift && !isDapperWallet(){{ \App\Support\DustMarket::enabled() ? ' && !$store.dust.live' : '' }}" class="btn-wrp">
                                     <button @click.prevent.stop="showGift = true" x-bind:disabled="!loggedIn()" class="btn btn-sm btn-lilac"><span class="inner">Gift</span></button>
                                 </div>
                                 <div x-show="!isSale() && isOwned() && !showSale{{ \App\Support\DustMarket::enabled() ? ' && !$store.dust.live' : '' }}" class="btn-wrp">
