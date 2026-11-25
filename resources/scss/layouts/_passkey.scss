@@ -95,11 +95,13 @@
     &:disabled { opacity: .7; }
   }
 
-  // Buttons: one full-width column; the site's .btn is drawn 5px to the right (3D edge), so keep both edges inside
-  .passkey-form .btn, .passkey-signin .btn, > .btn, .msg-box > div > .btn {
+  // Buttons: one full-width column. The site's .btn face (.inner) is drawn 5px right of the box (3D edge),
+  // so the box is 5px narrower: 3D edge flush with the inputs' left edge, face flush with their right edge.
+  .passkey-form .btn, .msg-box > div > .btn {
     display: block;
     width: calc(100% - 5px);
-    margin: 0 0 0 5px;
+    margin-left: 0 !important;
+    margin-right: 0;
     text-align: center;
   }
 
