@@ -383,8 +383,12 @@ Alpine.data('builderData', (templates) => ({
             svg += temp ? temp.svg : '';
         }
 
-        _.each(this.categories, (category) => {
-            if(this.templateIds[category] && category != 'background') {
+        // Same order as the minted image: core traits as baked by Flovatar.createFlovatar (body, clothing, hair,
+        // eyes, nose, mouth, facialHair), then the site order for Flobits (accessory, eyeglasses, hat).
+        // `this.categories` is the UI tab order and draws hair above facial hair, which the minted image doesn't.
+        const previewOrder = ['body', 'clothing', 'hair', 'eyes', 'nose', 'mouth', 'facialHair', 'accessory', 'eyeglasses', 'hat'];
+        _.each(previewOrder, (category) => {
+            if(this.templateIds[category]) {
                 let temp = _.find(this.templates, {'flow_id': parseInt(this.templateIds[category],10)});
                 svg += temp ? temp.svg : '';
             }
