@@ -32,3 +32,16 @@ New transaction files must be added to the allowlist explicitly to be available 
 Limits: `PASSKEY_ACCOUNTS_PER_IP_PER_DAY`, `PASSKEY_ACCOUNTS_PER_DAY`, `PASSKEY_TXS_PER_ACCOUNT_PER_HOUR`.
 Headless Worker: `/passkey*` is proxied to the origin (session). WebAuthn `PASSKEY_RP_ID` must be the page's host or a
 registrable suffix of it.
+
+## Hardening (email codes, recovery, wallet link, sponsor ops)
+- **Email one-time codes** (`EmailVerification`, `/passkey/email/{start,verify}`, mail via the app mailer/Resend): sign-up
+  needs a code-verified email; existing accounts get a "Verify your email" box + nudge after sign-in. Testnet automation
+  only: `PASSKEY_TEST_OTP_READ=true` + `php artisan passkey:test-otp delivered+x@resend.dev`.
+- **DB-loss recovery** (`AccountRecovery`, `P256`, `KeyIndexer`): an unknown passkey at sign-in is resolved from the
+  signature (P-256 public-key recovery → Flow key indexer → on-chain key check → full WebAuthn check) and its rows are
+  re-created (`recovered_at`, email to be verified again). `PASSKEY_RECOVERY_ENABLED`, `PASSKEY_RECOVERY_PER_IP`.
+- **Link to Flow Wallet / Dapper** (`WalletLink`, `/passkey/link/*`, `cadence/passkey/hc_*.cdc`): HybridCustody child
+  link — wallet account-proof, passkey-signed publish, wallet-signed claim. Keys are never touched.
+- **Origins**: `PASSKEY_ORIGINS` exact allowlist + `/.well-known/webauthn` (`WebAuthnOrigins`).
+- **Sponsor**: `passkey:sponsor-watch` (hourly, silent when OK), `passkey:sponsor-spend` (daily), `SponsorKey` with a file
+  or AWS KMS (`PASSKEY_SPONSOR_DRIVER=kms`) signer. Everything still refuses to run off testnet (`PasskeyPoc::isTestnet()`).
