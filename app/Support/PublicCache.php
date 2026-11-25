@@ -38,6 +38,7 @@ class PublicCache
         'admin', 'admin/*', 'sanctum/*',
         'api/v2/auth/*',
         'passkey', 'passkey/*',
+        'quests', 'quests/*',
     ];
 
     /** GET paths that never need a session, even for logged-in users (images, JSON). */

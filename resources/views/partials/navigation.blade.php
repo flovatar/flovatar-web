@@ -81,6 +81,9 @@
 @if(\App\Support\PasskeyLogin::enabled())
                         <li x-show="user && user.authType == 'passkey'"><a href="#" @click.prevent.stop="$dispatch('open-passkey-account')">Passkey account &amp; devices</a></li>
 @endif
+@if(\App\Support\DustQuests::enabled())
+                        <li x-show="user && user.authType == 'passkey'" class="{{ request()->routeIs('quests.page') ? 'active ' : '' }}"><a href="/quests" data-quests="nav">ĐUST Quests</a></li>
+@endif
                         <li x-show="!isDapperWallet()"><a href="https://app.increment.fi/swap?in=A.1654653399040a61.FlowToken&out=A.921ea449dffec68a.FlovatarDustToken" target="_blank">Buy ÐUST</a></li>
                         @if(config('flovatar.isTest'))
                             <li><a href="https://testnet-faucet.onflow.org/fund-account" target="_blank" data-modal >Top up wallet</a></li>

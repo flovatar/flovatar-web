@@ -114,6 +114,9 @@
                                 <dd><span x-text="fmt(account.flow_balance, 4)"></span> FLOW · <span x-text="fmt(dust)"></span> ĐUST</dd>
                             </dl>
 
+@if(\App\Support\DustQuests::enabled())
+                            @include('partials.quests-widget')
+@endif
                             <template x-if="!account.email_verified">
                                 <div class="passkey-verify" data-passkey="verify-email">
                                     <h3>Verify your email</h3>

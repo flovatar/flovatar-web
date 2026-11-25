@@ -332,3 +332,8 @@ Route::get('chat/{flovatarId}', [RedirectController::class, 'retiredChat'])
 if (config('passkey.enabled')) {
     require __DIR__.'/passkey.php';
 }
+
+// ĐUST Quests (testnet): one-time challenges for passkey accounts, off unless DUST_QUESTS_ENABLED=true (+ passkey sign-in).
+if (\App\Support\DustQuests::enabled()) {
+    require __DIR__.'/quests.php';
+}

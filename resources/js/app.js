@@ -33,6 +33,7 @@ require('./app/dust-builder');
 require('./app/showroom-collectible');
 require('./app/asteroid-builder');
 require('./app/dust-market');
+require('./quests'); // ĐUST Quests (inert unless window.DUST_QUESTS)
 
 window.Alpine = Alpine;
 

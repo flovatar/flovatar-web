@@ -43,6 +43,7 @@ const PROXY = [
   /^\/admin(\/|$)/, /^\/sanctum\//, /^\/livewire\//, /^\/filament\//, /^\/css\/filament\//, /^\/js\/filament\//,
   /^\/transactions\/0x[a-f0-9]{16}\/?$/, /^\/collection\/api\//,
   /^\/passkey(\/|$)/,                                                 // passkey sign-in + sponsored signing (session)
+  /^\/quests(\/|$)/,                                                  // ĐUST Quests (session; only where DUST_QUESTS_ENABLED)
   /^\/\.well-known\/webauthn$/,                                       // WebAuthn related origins (rp_id = this host)
 ];
 
