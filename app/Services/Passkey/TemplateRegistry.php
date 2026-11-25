@@ -276,7 +276,7 @@ class TemplateRegistry
         }
         $ok = match (true) {
             $type === 'String' => strlen($val) <= 4096,
-            // FCL pads strings to 8 decimals but sends JS numbers as toString() ("1"); the node accepts both
+            // FCL pads strings to 8 decimals but sends JS numbers as toString() ("1"), which the node rejects -> normalised below
             $type === 'UFix64' => (bool) preg_match('/^\d{1,11}(\.\d{1,8})?$/', $val),
             $type === 'Fix64' => (bool) preg_match('/^-?\d{1,11}(\.\d{1,8})?$/', $val),
             str_starts_with($type, 'U') || str_starts_with($type, 'Word') => (bool) preg_match('/^\d{1,78}$/', $val),
@@ -284,6 +284,9 @@ class TemplateRegistry
         };
         if (! $ok) {
             throw new RuntimeException("{$where}: bad {$type} value");
+        }
+        if (($type === 'UFix64' || $type === 'Fix64') && ! str_contains($val, '.')) {
+            $val .= '.0'; // the node rejects "1" (FCL sends JS numbers that way): normalise instead of paying for a failed tx
         }
 
         return ['type' => $type, 'value' => $val];
