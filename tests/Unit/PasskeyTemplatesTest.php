@@ -163,4 +163,15 @@ class PasskeyTemplatesTest extends TestCase
         // payload signer (passkey) and envelope signer (sponsor) are different accounts
         $this->assertSame([FlowTransaction::addr($user) => 0, FlowTransaction::addr($sponsor) => 1], $tx->signerIndex());
     }
+
+    public function test_mainnet_addresses_starting_with_a_letter_are_not_unresolved_aliases(): void
+    {
+        $reg = new TemplateRegistry([], [], ['0xFungibleToken' => '0xf233dcee88fe0abe', '0xFlowToken' => '0x1654653399040a61']);
+        $out = $reg->resolve("import FungibleToken from 0xFungibleToken\nimport FlowToken from 0xFlowToken\nimport MetadataViews from 0x1d7e57aa55817448\nimport X from 0xf233dcee88fe0abe\n");
+        $this->assertStringContainsString('from 0xf233dcee88fe0abe', $out);
+        $this->assertStringContainsString('from 0x1654653399040a61', $out);
+
+        $this->expectException(RuntimeException::class);
+        $reg->resolve("import Y from 0xUnknownAlias\n");
+    }
 }
