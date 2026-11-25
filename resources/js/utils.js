@@ -29,7 +29,10 @@ window.logout = function(){
     window.profile = null;
     window.dispatch('logged-out');
 
-    //window.location = '/logout';
+    // Also end the server (Laravel) session, without leaving the page.
+    // The nonce is fetched again only when the next login needs it (no origin request for anonymous visitors).
+    fetch('/logout', {credentials: 'same-origin', redirect: 'manual', cache: 'no-store'}).catch(function(){});
+    window.resetServerAuth();
 }
 
 window.getDiffString = function(start, end){

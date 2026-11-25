@@ -1,4 +1,13 @@
 <x-guest-layout>
+    @push('og')
+        @php($ogTemplate = ($templates ?? null) ? $templates->first() : null)
+        @if($ogTemplate)
+        @include('partials.og-item', ['ogType' => 'template', 'ogId' => $ogTemplate->flow_id, 'ogTitle' => 'Flobit #'.$componentId.' - '.$ogTemplate->name, 'ogUrl' => url('components/'.$componentId)])
+        @endif
+    @endpush
+    @if(\App\Support\Blocklist::isBlocked($address ?? null) || \App\Support\Blocklist::isFlagged('App\Models\FlovatarComponent', $componentId ?? null))
+        <div class="container">@include('partials.incident-notice')</div>
+    @endif
 
     <script>
         @if(isset($templates))
@@ -70,7 +79,7 @@
                                     <li class="grow">
                                         <a x-bind:href="getMarketplaceUrl()" class="btn btn-sm btn-lilac"><span class="inner">View in Marketplace</span></a>
                                     </li>
-                                    <li x-show="!isSale() && isOwned() && !showSale">
+                                    <li x-show="!isSale() && isOwned() && !showSale{{ \App\Support\DustMarket::enabled() ? ' && !$store.dust.live' : '' }}">
                                         <button @click.prevent.stop="showSale = true" x-bind:disabled="!loggedIn()" class="btn btn-sm btn-green"><span class="inner">Sell</span></button>
                                     </li>
                                     <li x-show="showSaleBtn()">
@@ -82,7 +91,7 @@
                                     <li x-show="showGift">
                                         <button @click.prevent.stop="showGift = false" x-bind:disabled="!loggedIn()" class="btn btn-icon btn-gray"><span class="inner"><i class="icon-close"></i></span></button>
                                     </li>
-                                    <li x-show="!isSale() && isOwned() && !showGift">
+                                    <li x-show="!isSale() && isOwned() && !showGift{{ \App\Support\DustMarket::enabled() ? ' && !$store.dust.live' : '' }}">
                                         <button @click.prevent.stop="showGift = true" x-bind:disabled="!loggedIn()" class="btn btn-sm btn-lilac"><span class="inner">Gift</span></button>
                                     </li>
                                 </ul>
@@ -104,6 +113,12 @@
                         </div>
                         <div class="box">
                             <ul class="stat-list">
+                                @if(($templates ?? null) && $templates->first() && $templates->first()->flow_id)
+                                <li>
+                                    <strong>Type</strong>
+                                    <span><a href="/flobits/{{ $templates->first()->flow_id }}">{{ $templates->first()->name }}</a></span>
+                                </li>
+                                @endif
                                 <li>
                                     <strong>Mint</strong>
                                     <span x-text="'#'+mint()"></span>
@@ -127,6 +142,7 @@
                             </ul>
                         </div>
                     </div>
+                    @include('partials.dust-market', ['dustKind' => 'flobit', 'dustId' => $componentId])
                     <div class="content-box" x-show="isSale() || (isOwned() && showSale)">
                         <div class="title-row">
                             <h2>Marketplace</h2>
@@ -162,15 +178,13 @@
                                         </div>
                                         <div class="logo-wrap" x-show="!isDapperSale()">
                                             <div class="logo">
-                                                <img src="/images/ico-blocto.png" width="40" alt="">
+                                                <img src="/images/icon-flow.svg" width="40" alt="">
                                             </div>
-                                            <div class="logo">
-                                                <img src="/images/ico-lilico.png" width="40" alt="">
-                                            </div>
-                                            <span>Blocto / Lilico</span>
+                                            <span>Flow Wallet</span>
                                         </div>
                                     </div>
                                 </li>
+@include('partials.dust-swap-pay-dust', ['swapKind' => 'flobit'])
                                 <li x-show="!isSale() && isOwned() && showSale">
                                     <strong>Sale Price</strong>
                                     <div class="col-r" x-show="isOwned() && !isDapperSale()">
@@ -186,6 +200,26 @@
                             </ul>
                         </div>
                     </div>
+                    @php($dlTemplate = ($templates ?? null) ? $templates->first() : null)
+                    @if($dlTemplate && $dlTemplate->flow_id)
+                    <div class="content-box downloads-box">
+                        <div class="title-row">
+                            <h2>Downloads</h2>
+                        </div>
+                        <div class="box">
+                            <ul class="content-list">
+                                <li>
+                                    <strong>2D Assets</strong>
+                                    <div class="col-r">
+                                        <div class="input-panel download-panel">
+                                            @include('partials.render-downloads', ['dlType' => 'template', 'dlId' => $dlTemplate->flow_id, 'dlName' => 'Flobit-'.$componentId])
+                                        </div>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -270,13 +304,10 @@
                                 <div class="mp-label"  x-show="!isDapperSale()">
                                     <div class="icons">
                                         <span class="ico-wrap">
-                                            <img src="/images/ico-blocto.png" width="40" alt="">
-                                        </span>
-                                        <span class="ico-wrap">
-                                            <img src="/images/ico-lilico.png" width="40" alt="">
+                                            <img src="/images/icon-flow.svg" width="40" alt="">
                                         </span>
                                     </div>
-                                    <span>Blocto / Lilico</span>
+                                    <span>Flow Wallet</span>
                                 </div>
                             </dd>
                         </dl>
@@ -313,7 +344,7 @@
                                 <a x-bind:href="getMarketplaceUrl()" class="btn btn-sm btn-lilac"><span class="inner">View in Marketplace</span></a>
                             </div>
                             <div class="btns-right">
-                                <div x-show="!isSale() && isOwned() && !showGift" class="btn-wrp">
+                                <div x-show="!isSale() && isOwned() && !showGift{{ \App\Support\DustMarket::enabled() ? ' && !$store.dust.live' : '' }}" class="btn-wrp">
                                     <button @click.prevent.stop="showGift = true" x-bind:disabled="!loggedIn()" class="btn btn-sm btn-lilac"><span class="inner">Gift</span></button>
                                 </div>
                                 <div x-show="!isSale() && isOwned() && !showSale" class="btn-wrp">

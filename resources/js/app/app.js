@@ -11,7 +11,6 @@ Alpine.data('appData', () => ({
     waitingSeal: false,
     sealCompleted: false,
     open: false,
-    showMoonpay: false,
     showSubscription: true,
     sealingPack: false,
     packPurchased: false,
@@ -30,7 +29,7 @@ Alpine.data('appData', () => ({
     userCheckLoading: true,
     showWalletModal: false,
     showBlacklistModal: false,
-    currentWallet: Alpine.$persist('blocto'),
+    currentWallet: Alpine.$persist('flow'),
     isVipUser: false,
     remainingMinutesToSale: 0,
     fubPreviewMode: false,
@@ -55,15 +54,9 @@ Alpine.data('appData', () => ({
     },
     loadLoggedUser(user){
         this.user = user;
-        if(user && user.addr && user.services && user.services.length > 0){
-            let provider = user.services[0].uid;
-            if(provider.search('dapper') >= 0){
-                this.currentWallet = 'dapper';
-                window.currentWallet = 'dapper';
-            } else {
-                this.currentWallet = 'blocto';
-                window.currentWallet = 'blocto';
-            }
+        if(user && user.addr){
+            this.currentWallet = window.detectWallet(user);
+            window.currentWallet = this.currentWallet;
         }
 
     },
@@ -140,10 +133,6 @@ Alpine.data('appData', () => ({
     },
     submitSubscription() {
         window.sendSubscription(this.emailSubscription);
-    },
-    moonpaySignature: '',
-    moonpayUrl(){
-        return window.moonpayDomain + window.moonpayParams + '&apiKey=' + window.moonpayPublicKey + '&walletAddress=' + this.address() + '&signature=' + this.moonpaySignature;
     },
     startAccountInit(){
         this.showInitPopup = false;

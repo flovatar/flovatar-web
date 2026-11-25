@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {{-- No CSRF token here: pages are edge-cached. JS fetches one from /csrf-token (resources/js/bootstrap.js). --}}
 
     <title>{{ config('app.name', 'Flovatar') }}</title>
 
@@ -16,12 +16,23 @@
     <meta name="theme-color" content="#5f3faf">
 
     <meta name="description" content="Flovatar is a next generation NFT creativity platform where people can become creator and make their characters with any combination they like." />
+    @if(\App\Support\Headless::building())
+    @if((\App\Support\Headless::context()['page'] ?? null) !== '404')
+    <link rel="canonical" href="{{ \App\Support\Headless::canonicalUrl() }}" />
+    @endif
+    @else
     <link rel="canonical" href="https://flovatar.com/" />
+    @endif
     <meta property="og:locale" content="en_US" />
     <meta property="og:type" content="website" />
+    @php($ogItem = trim($__env->yieldPushContent('og')))
+    @if($ogItem !== '')
+    {{-- item page: per-item title/url/image (static render on R2, see App\Support\ItemImages) --}}
+    {!! $ogItem !!}
+    @else
     <meta property="og:title" content="Flovatar" />
     <meta property="og:description" content="Flovatar is a next generation NFT creativity platform where people can become creator and make their characters with any combination they like." />
-    <meta property="og:url" content="https://flovatar.com/" />
+    <meta property="og:url" content="{{ \App\Support\Headless::building() ? \App\Support\Headless::canonicalUrl() : 'https://flovatar.com/' }}" />
     <meta property="og:site_name" content="Flovatar" />
     <meta property="article:modified_time" content="2023-03-08T02:29:49+00:00" />
     <meta property="og:image" content="https://flovatar.com/images/share.png" />
@@ -29,6 +40,7 @@
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content="https://flovatar.com/images/share.png" />
+    @endif
     <meta name="twitter:site" content="@flovatar" />
 
     <!-- Styles -->
@@ -48,18 +60,42 @@
         var svgOpenFlobot = '{!! config('flovatar.svgOpenFlobot') !!}';
         var svgOpenAsteroid = '{!! config('flovatar.svgOpenAsteroid') !!}';
         var svgClose = '{!! config('flovatar.svgClose') !!}';
-        var moonpayDomain = '{!! config('flovatar.moonpayDomain') !!}';
-        var moonpayParams = '{!! config('flovatar.moonpayParams') !!}';
-        var moonpayPublicKey = '{!! config('flovatar.moonpayPublicKey') !!}';
         var packPrice = {{ config('flovatar.price') }};
         var packPrice2 = {{ config('flovatar.price2') }};
-        var vipCookieVal = '{{ session('vipcookie', '') }}';
+        var vipCookieVal = '{{ \App\Support\PublicCache::isStateless(request()) ? '' : session('vipcookie', '') }}';
         var dustEnabled = {{ config('flovatar.dustEnabled') ? 'true' : 'false' }};
     </script>
+    @if(\App\Support\Headless::building())
+    {{-- static page on R2 (headless:build): runtime config for resources/js/headless.js --}}
+    <script>window.HEADLESS = @json(\App\Support\Headless::bootstrap());</script>
+    @endif
+@if(\App\Support\DustMarket::enabled())
+    {{-- ĐUST marketplace (testnet): static-safe runtime config for resources/js/app/dust-market.js --}}
+    <script>window.DUST_MARKET = @json(\App\Support\DustMarket::bootstrap());</script>
+@endif
+@if(\App\Support\DustSwap::enabled())
+    {{-- ĐUST ⇄ FLOW swap (testnet): static-safe runtime config for resources/js/app/dust-swap.js --}}
+    <script>window.DUST_SWAP = @json(\App\Support\DustSwap::bootstrap());</script>
+@endif
+@if(\App\Support\PasskeyLogin::enabled())
+    {{-- testnet passkey sign-in: static-safe runtime config for resources/js/passkey.js --}}
+    <script>window.PASSKEY_LOGIN = @json(\App\Support\PasskeyLogin::bootstrap());</script>
+@endif
+@if(\App\Support\DustQuests::enabled())
+    {{-- ĐUST Quests (testnet): static-safe runtime config for resources/js/quests.js --}}
+    <script>window.DUST_QUESTS = @json(\App\Support\DustQuests::bootstrap());</script>
+@endif
+@php($fxBundles = \App\Support\Stealth::bundles())
+@if($fxBundles)
+    <script>window.__FX = @json($fxBundles);</script>
+@foreach($fxBundles as $fxCode)
+    <link rel="stylesheet" href="/fx/{{ $fxCode }}.css?id={{ \App\Support\Stealth::assetVersion($fxCode.'.css') }}">
+@endforeach
+@endif
     <script src="{{ mix('js/app.js') }}" defer></script>
-    <script defer data-domain="flovatar.com" src="https://plausible.io/js/plausible.js"></script>
 </head>
 <body class="{{request()->routeIs('home', 'builder', 'builder-psyche', 'flobot.builder', 'builder.flobot', 'pack', 'pack.buy', 'pack.login', 'fub', 'fub.sale', 'fub.test', 'land.sale') ? 'header-transparent' : ''}} {{request()->routeIs('fub.test') ? 'blueprint' : ''}}">
+@include('partials.env-banner')
 <div id="wrapper"
      x-bind:class="currentSkinClass()"
      x-data="appData"
@@ -72,7 +108,6 @@
      @waiting-seal.window="loading = false; waitingSeal = true;"
      @loading-completed.window="loading = false; waitingSeal = false; sealCompleted = true; setTimeout(()=>sealCompleted=false,3000);"
      @subscribed-email.window="showSubscription = false"
-     @moonpay-signed.window="moonpaySignature = $event.detail.signature"
      @pack-sealing.window="sealingPack = true"
      @pack-purchased.window="packPurchased = true"
      @user-not-initialized.window="showInitPopup = true;"
@@ -107,6 +142,9 @@
     @endif
 
     @include('partials/modals')
+@if(\App\Support\PasskeyLogin::enabled())
+        @include('partials/passkey-auth')
+@endif
 
 
     <!-- transaction loader -->
@@ -121,6 +159,5 @@
 
 @stack('modals')
 
-@livewireScripts
 </body>
 </html>

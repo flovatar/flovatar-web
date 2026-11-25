@@ -17,7 +17,7 @@ class MarketplaceController extends FilteredController
 {
     public function __invoke()
     {
-        $templates = $this->getAllTemplates()->makeHidden(['flow_metadata', 'svg']);
+        $templates = $this->templatesLean('all');
 
         $stats = $this->getStats();
 

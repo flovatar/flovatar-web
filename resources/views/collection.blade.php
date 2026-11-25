@@ -1,4 +1,11 @@
 <x-guest-layout>
+    @php($headlessShell = \App\Support\Headless::shell())
+    @if($headlessShell)
+        {{-- static shell (headless): wallet comes from the URL at runtime (resources/js/headless.js) --}}
+        <div class="container" x-data x-show="window.HEADLESS_ROUTE.blocked" x-cloak>@include('partials.incident-notice')</div>
+    @elseif(\App\Support\Blocklist::isBlocked($address ?? null))
+        <div class="container">@include('partials.incident-notice')</div>
+    @endif
     <script>
         @if(isset($templates))
             window.templates = @json($templates);
@@ -10,8 +17,14 @@
 
 
     <div
+        @if($headlessShell)
+        x-data="collectionData(window.HEADLESS_ROUTE.address, window.HEADLESS_ROUTE.name, window.templates, {{ config('flovatar.dustEnabled') ? 'true' : 'false' }}, {{ config('flovatar.dustPerDayScore') }})"
+        x-init="initCollection($dispatch, window.HEADLESS_ROUTE.address, window.HEADLESS_ROUTE.name, {{ config('flovatar.dustEnabled') ? 'true' : 'false' }})"
+        @else
         x-data="collectionData('{{$address}}', '{{$addressName}}', window.templates, {{ config('flovatar.dustEnabled') ? 'true' : 'false' }}, {{ config('flovatar.dustPerDayScore') }})"
         x-init="initCollection($dispatch, '{{$address}}', '{{$addressName}}', {{ config('flovatar.dustEnabled') }})"
+        @endif
+        @server-auth.window="serverAuthenticated = !!$event.detail.authenticated"
         @collections-loaded.window="loadCollections($event.detail.collections)"
         @collections-pack-loaded.window="loadCollectionsPack($event.detail.collections)"
         @collections-flovatar-loaded.window="loadCollectionsFlovatar($event.detail.collections)"
@@ -146,6 +159,30 @@
                 </div>
                 @endif
 
+                @if(\App\Support\DustMarket::enabled())
+                {{-- ĐUST marketplace: this wallet's ĐUST storefront listings, read on chain --}}
+                <div class="dust-listings-section" x-data="dustListings('')" x-show="dustRows.length > 0" x-cloak>
+                    <div class="title-row">
+                        <h2>Listed for ĐUST</h2>
+                    </div>
+                    <table>
+                        <thead><tr><th>Item</th><th>Price</th><th>Status</th><th></th></tr></thead>
+                        <tbody>
+                        <template x-for="row in dustRows" :key="row.listingId">
+                            <tr x-bind:class="row.valid ? '' : 'dust-dead'">
+                                <td><a x-bind:href="row.url" x-text="row.label"></a></td>
+                                <td class="currency-dust" x-text="fmt(row.price)"></td>
+                                <td x-text="row.valid ? 'For sale' : (row.purchased ? 'Sold' : (row.expired ? 'Expired' : 'Item moved'))"></td>
+                                <td>
+                                    <button x-show="row.valid && mine() && !dapper()" @click.prevent.stop="cancel(row)" class="btn btn-sm btn-red"><span class="inner">Cancel</span></button>
+                                    <button x-show="!row.valid && user && !dapper()" @click.prevent.stop="cleanup(row)" class="btn btn-sm btn-lilac"><span class="inner">Clean up</span></button>
+                                </td>
+                            </tr>
+                        </template>
+                        </tbody>
+                    </table>
+                </div>
+                @endif
                 <div class="collection">
                     <div class="title-row">
                         <h2>Your Collection</h2>
@@ -203,46 +240,49 @@
                 </div>
                 @endif
 
-                <div x-show="activeTab == 'flovatar'">
+                <div x-show="activeTab == 'flovatar'" data-grid="flovatar">
                     @include('partials.filters-collection-flovatar')
                     <div class="flovatar-card-list">
-                        <template x-for="flovatar in filteredFlovatars()" :key="flovatar.id">
+                        <template x-for="flovatar in paged('flovatar')" :key="flovatar.id">
                             @include('partials.flovatar')
                         </template>
                     </div>
+                    @include('partials.collection-pager', ['tab' => 'flovatar'])
                     <div x-show="flovatars.length == 0 && flovatarSales.length == 0">
                         <span class="no-results-msg">No Flovatars yet. <a href="/builder" class="underline">Go create some!</a></span>
                     </div>
                 </div>
 
 
-                <div x-show="activeTab == 'flobot'">
+                <div x-show="activeTab == 'flobot'" data-grid="flobot">
                     @include('partials.filters-collection-flobot')
                     <div class="flovatar-card-list">
-                        <template x-for="flobot in filteredFlobots()" :key="flobot.id">
+                        <template x-for="flobot in paged('flobot')" :key="flobot.id">
                             @include('partials.flobot')
                         </template>
                     </div>
+                    @include('partials.collection-pager', ['tab' => 'flobot'])
                     <div x-show="flobots.length == 0">
                         <span class="no-results-msg">No Flobots yet. <a href="/builder/flobot" class="underline">Go create some!</a></span>
                     </div>
                 </div>
 
 
-                <div x-show="activeTab == 'collectible'">
+                <div x-show="activeTab == 'collectible'" data-grid="collectible">
                     @include('partials.filters-collection-collectible')
                     <div class="flovatar-card-list">
-                        <template x-for="collectible in filteredCollectibles()" :key="collectible.id">
+                        <template x-for="collectible in paged('collectible')" :key="collectible.id">
                             @include('partials.collectible')
                         </template>
                     </div>
+                    @include('partials.collection-pager', ['tab' => 'collectible'])
                     <div x-show="collectibles.length == 0">
                         <span class="no-results-msg">No Psyche Likee yet. <a href="/builder/dust" class="underline">Go create some!</a></span>
                     </div>
                 </div>
 
 
-                <div x-show="activeTab == 'spark'">
+                <div x-show="activeTab == 'spark'" data-grid="spark">
                     @include('partials.filters-collection-booster')
                     <div class="flovatar-card-list">
                         <div class="col" x-show="groupCategory('spark', 'common') && sparkCount>0">
@@ -326,32 +366,34 @@
                             </a>
                         </div>
 
-                        <template x-for="component in filteredSparkBooster()" :key="component.id">
+                        <template x-for="component in paged('spark')" :key="component.id">
                             @include('partials.component-collection')
                         </template>
                     </div>
+                    @include('partials.collection-pager', ['tab' => 'spark'])
                     <div x-show="componentsSparkBooster().length == 0">
                         <span class="no-results-msg">No Spark or Boosters here. <a href="/marketplace" class="underline">Go get some!</a></span>
                     </div>
                 </div>
 
 
-                <div x-show="activeTab == 'flobit'">
+                <div x-show="activeTab == 'flobit'" data-grid="flobit">
                     @include('partials.filters-collection-flobit')
                     <div class="flovatar-card-list">
 
 
-                        <template x-for="component in filteredFlobits()" :key="(component && component.id) ? component.id : ((component && component.templateId && component.name) ? component.name+component.templateId : component)">
+                        <template x-for="component in paged('flobit')" :key="(component && component.id) ? component.id : ((component && component.templateId && component.name) ? component.name+component.templateId : component)">
                             @include('partials.component-collection')
                         </template>
                     </div>
+                    @include('partials.collection-pager', ['tab' => 'flobit'])
                     <div x-show="componentsFlobit().length == 0">
                         <span class="no-results-msg">No Flobits here. <a href="/marketplace" class="underline">Go get some!</a></span>
                     </div>
                 </div>
 
 
-                <div x-show="activeTab == 'terrakit'">
+                <div x-show="activeTab == 'terrakit'" data-grid="terrakit">
                     @include('partials.filters-collection-terrakit')
                     <div class="flovatar-card-list">
                         <template x-for="flobit in componentsStackedTerraKit()" :key="flobit.templateId">
@@ -376,10 +418,11 @@
                                 </a>
                             </div>
                         </template>
-                        <template x-for="component in filteredTerrakit()" :key="component.id">
+                        <template x-for="component in paged('terrakit')" :key="component.id">
                             @include('partials.component-collection')
                         </template>
                     </div>
+                    @include('partials.collection-pager', ['tab' => 'terrakit'])
 
                     <div x-show="componentsTerraKit().length == 0">
                         <span class="no-results-msg">No TerraKit NFTs here. <a href="/marketplace" class="underline">Go get some!</a></span>
@@ -401,17 +444,13 @@
                 <div x-show="activeTab == 'sportvatar'" x-show="loggedIn()">
                     <div class="flovatar-card-list">
 
-                        @if(!Auth::check())
-                            <button x-show="loggedIn()" @click.prevent.stop="if(loggedIn()){window.createSignature('{{ $signature }}')}" class="btn-o">Verify Account to Redeem the Packs</button>
-                        @endif
-                        @if(Auth::check())
-                            <button @click.prevent.stop="getSportvatarCodes()" x-show="!sportpacks || !sportpacks.length" class="btn-o btn-show-pack-code">Show Pack codes</button>
-                        @endif
-                        <template x-for="sportpack in sportpacks" :key="sportpack.flow_id">
-                            <div class="pack-code">
-                                <a target="_blank" x-bind:href="'https://sportvatar.com/pack/claim/'+sportpack.flow_id+'-'+sportpack.signature" x-text="'Sportvatar Pack #'+sportpack.flow_id"></a>
-                            </div>
-                        </template>
+                        {{-- Server login state comes from /login/nonce (serverAuthenticated): this page is edge-cached. --}}
+                        <button x-show="loggedIn() && !serverAuthenticated" @click.prevent.stop="if(loggedIn()){window.createSignature(window.loginMessage)}" class="btn-o">Verify Account to Redeem the Packs</button>
+                        <button @click.prevent.stop="getSportvatarCodes()" x-show="serverAuthenticated && (!sportpacks || !sportpacks.length)" class="btn-o btn-show-pack-code">Show my Sportvatar packs</button>
+                        <div x-show="sportpacks && sportpacks.length" class="pack-code">
+                            <p x-text="'You have ' + sportpacks.length + ' free Sportvatar pack' + (sportpacks.length == 1 ? '' : 's') + ' to claim. Old pack codes no longer work: connect this same wallet on Sportvatar to claim, no code needed.'"></p>
+                            <a target="_blank" rel="noopener" href="{{ rtrim(config('flovatar.sportvatarUrl'), '/') }}/pack/claim" class="btn-o">Claim on Sportvatar</a>
+                        </div>
                     </div>
                 </div>
 

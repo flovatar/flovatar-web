@@ -14,7 +14,7 @@ class FlobotShowroomController extends FilteredController
     public function __invoke()
     {
 
-        $templates = $this->getFlobotTemplates()->makeHidden(['flow_metadata', 'svg']);
+        $templates = $this->templatesLean('flobot');
 
         return view('flobot-showroom')->with(['templates' => $templates]);
     }

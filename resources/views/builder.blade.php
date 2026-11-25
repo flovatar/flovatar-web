@@ -1,4 +1,8 @@
 <x-guest-layout>
+    @isset($templatesScript)
+    {{-- window.templates (with SVGs) from a versioned, long-cacheable script --}}
+    <script src="{{ $templatesScript }}"></script>
+    @endisset
     <script>
         @if(isset($templates))
             window.templates = @json($templates);
@@ -303,8 +307,8 @@
                 <div class="modal-inner">
                     <div class="msg-box error">
                         <h2>Not enough Storage</h2>
-                        <p>Please make sure to have at lease 0,05 FLOW in your wallet to have enough storage space in your account for your Flovatar.</p>
-                        <span class="note">You can read about <a href="https://docs.onflow.org/concepts/storage/" target="_blank" class="link">Storage on Flow here</a>.</span>
+                        <p>Please make sure to have at least 0.05 FLOW in your wallet to have enough storage space in your account for your Flovatar.</p>
+                        <span class="note">You can read about <a href="https://developers.flow.com/build/cadence/basics/fees#storage" target="_blank" class="link">Storage on Flow here</a>.</span>
                         <div class="btn-hold">
                             <button @click.prevent.stop="showMinBalance = false" class="btn btn-sm btn-red"><span class="inner">OK</span></button>
                         </div>

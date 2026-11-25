@@ -27,7 +27,6 @@ use \App\Http\Controllers\DownloadController;
 use \App\Http\Controllers\TwitterController;
 use \App\Http\Controllers\LoginController;
 use \App\Http\Controllers\SubscriberController;
-use \App\Http\Controllers\MoonpayController;
 use \App\Http\Controllers\GraffleController;
 use \App\Http\Controllers\SearchController;
 use \App\Http\Controllers\SearchTransactionController;
@@ -49,7 +48,6 @@ use \App\Http\Controllers\AsteroidTemplateImageController;
 use \App\Http\Controllers\DustBuilderController;
 use \App\Http\Controllers\DustSeriesBuilderController;
 use \App\Http\Controllers\DustTokenController;
-use \App\Http\Controllers\GptController;
 
 /*
 |--------------------------------------------------------------------------
@@ -76,8 +74,10 @@ Route::get('fub-test', FubTestController::class)->name('fub.test');
 Route::post('builder/search', BuilderSalesController::class)->name('builder.search');
 Route::post('flobot/builder/search', FlobotBuilderSalesController::class)->name('flobot.builder.search');
 Route::post('subscribe', [SubscriberController::class,'store'])->name('subscribe')->middleware('throttle:5,1');
-Route::post('moonpay/sign', [MoonpayController::class,'sign'])->name('moonpay.sign');
-Route::post('graffle', GraffleController::class)->name('grafflepost');
+// Legacy Graffle webhook: replaced by the built-in indexer (flow:catchup / flow:stream).
+if(config('services.graffle.enabled')){
+    Route::post('graffle', GraffleController::class)->name('grafflepost');
+}
 Route::get('search', SearchController::class)->name('search');
 Route::post('search', SearchController::class)->name('searchpost');
 Route::get('marketplace', MarketplaceController::class)->name('marketplace');
@@ -98,6 +98,11 @@ Route::get('collection/api/{address}', [CollectionApiController::class,'address'
 Route::get('templates/svg/{templateId}.svg', [DownloadController::class,'templateSvg'])
     ->whereNumber('templateId')
     ->name('templatesvg');
+
+// Template list with SVGs as a versioned, long-cacheable script (builders, Flovatar/Flobot pages)
+Route::get('templates/data/{set}.js', \App\Http\Controllers\TemplateDataController::class)
+    ->where('set', 'series1|flobot|dust|dust2')
+    ->name('templates.data');
 
 
 Route::get('api/image/{flovatarId}', [FlovatarImageController::class,'svg'])
@@ -151,6 +156,16 @@ Route::get('api/image/png/nobg/{flovatarId}', [FlovatarImageController::class,'p
     ->whereNumber('flovatarId')
     ->name('flovatarimageapipngnobg');
 
+Route::get('api/image/jpg/{flovatarId}', [FlovatarImageController::class,'jpg'])
+    ->whereNumber('flovatarId')
+    ->name('flovatarimageapijpg');
+// Static renders (resvg -> R2): full.png | full.jpg | nobg.png | thumb.jpg | og.jpg
+Route::get('api/image/r/{type}/{flowId}/{variant}', \App\Http\Controllers\RenderedImageController::class)
+    ->where('type', 'flovatar|flobot|collectible|template')
+    ->whereNumber('flowId')
+    ->where('variant', 'full\.png|full\.jpg|nobg\.png|thumb\.jpg|og\.jpg|anim\.gif|anim\.mp4')
+    ->name('renderedimage');
+
 Route::get('api/image/mp4/{flovatarId}', [FlovatarImageController::class,'mp4'])
     ->whereNumber('flovatarId')
     ->name('flovatarimageapimp4');
@@ -172,6 +187,9 @@ Route::view('privacy', 'privacy')->name('privacy');
 
 Route::get('pack/login', [PackController::class,'login'])->name('pack.login');
 
+// Pack sales and reservations are disabled until they reopen with packs v2 (docs/PACK-SIGNING.md)
+// (FLOVATAR_PACK_SALES_ENABLED); the 'packsales' middleware answers with a notice.
+Route::middleware('packsales')->group(function () {
 if(config('flovatar.isTest')){
     Route::get('pack', [PackController::class,'buyAll'])->name('pack.buy');
     Route::post('pack/reserve', [PackController::class,'reserve'])->name('pack.reserve')->middleware(['auth:sanctum', 'throttle:20,1']);
@@ -187,6 +205,7 @@ if(config('flovatar.isTest')){
     Route::post('sportpacks', [PackController::class,'sport'])->name('pack.sport')->middleware(['auth:sanctum', 'verified']);
 
 }
+});
 
 
 Route::get('flovatars/json/{flovatarId}', [JsonController::class, 'flovatar']);
@@ -232,6 +251,11 @@ Route::get('flovatars/{flovatarId}/{address}/download/png', [DownloadController:
     ->where('address','0x([a-f0-9]{16})')
     ->name('flovatar-download-png');
 
+// Flobit TYPE page (one per template; prebuilt by headless:build, docs/HEADLESS.md)
+Route::get('flobits/{templateId}', \App\Http\Controllers\FlobitTypeController::class)
+    ->whereNumber('templateId')
+    ->name('flobit-type');
+
 Route::get('components/{componentId}/{address}', FlovatarComponentController::class)
     ->whereNumber('componentId')
     ->where('address','0x([a-f0-9]{16})')
@@ -259,8 +283,18 @@ Route::get('api/dust/total-available', DustTokenController::class)
 
 Route::get('/login', [LoginController::class,'login'])->name('login');
 Route::get('/login/nonce', [LoginController::class,'nonce'])->name('login.nonce')->middleware('throttle:60,1');
+Route::get('/csrf-token', [LoginController::class,'csrfToken'])->name('csrf.token')->middleware('throttle:60,1');
 Route::post('/login', [LoginController::class,'submit'])->name('login.submit')->middleware('throttle:10,1');
 Route::get('/logout', [LoginController::class,'logout'])->name('logout-get');
+
+// Headless API v2 auth (session + CSRF like /login; the Worker proxies it on the frontend's own origin).
+Route::prefix('api/v2/auth')->group(function () {
+    Route::get('nonce', [\App\Http\Controllers\Api\V2\AuthController::class, 'nonce'])->name('api.v2.auth.nonce')->middleware('throttle:60,1');
+    Route::get('csrf', [\App\Http\Controllers\Api\V2\AuthController::class, 'csrfToken'])->name('api.v2.auth.csrf')->middleware('throttle:60,1');
+    Route::get('me', [\App\Http\Controllers\Api\V2\AuthController::class, 'me'])->name('api.v2.auth.me');
+    Route::post('login', [\App\Http\Controllers\Api\V2\AuthController::class, 'loginJson'])->name('api.v2.auth.login')->middleware('throttle:10,1');
+    Route::post('logout', [\App\Http\Controllers\Api\V2\AuthController::class, 'logoutJson'])->name('api.v2.auth.logout');
+});
 
 
 Route::get('twitter/login', [TwitterController::class,'login'])->name('twitter.login');
@@ -284,12 +318,39 @@ Route::view('my-collection', 'my-collection')->name('my-collection');
 Route::view('explore', 'explore')->name('explore');
 Route::view('dust', 'dust')->name('dust');
 Route::view('story', 'story')->name('story');
+// Not-found page of the static headless site (stored as 404.html by headless:build).
+Route::view('__headless_404', 'headless.404')->name('headless.404');
 
 
-Route::get('chat', [GptController::class,'index'])->name('chat.index');
-Route::get('chat/{flovatarId}', [GptController::class,'show'])->name('chat.show')->middleware('throttle:30,1');
-Route::post('chat/send', [GptController::class,'sendMessage'])->name('chat.send')->middleware('throttle:10,1');
-Route::post('chat/check', [GptController::class,'checkThread'])->name('chat.check')->middleware('throttle:60,1');
-Route::post('chat/checkaddress', [GptController::class,'checkThreadByAddress'])->name('chat.checkByAddress')->middleware('throttle:20,1');
-Route::post('chat/tts', [GptController::class,'tts'])->name('chat.tts')->middleware('throttle:6,1');
-Route::post('chat/update', [GptController::class,'update'])->name('chat.update')->middleware(['auth:sanctum', 'throttle:5,1']);
+// FlovaChat (OpenAI/ElevenLabs) was retired in 2026-11. Old shared chat links go to the
+// Flovatar page (which shows the retirement notice); the former chat API endpoints are gone (404).
+Route::redirect('chat', '/', 301);
+Route::get('chat/{flovatarId}', [RedirectController::class, 'retiredChat'])
+    ->where('flovatarId', '(?!(send|check|checkaddress|tts|update)$)[^/]+');
+
+// Stealth/on features (App\Support\Stealth, config/stealth.php): routes exist when the feature's mode is stealth or on
+// (config only, route:cache safe); the `stealth:<feature>` middleware 404s every request the feature is not visible to
+// (stealth = only requests with the stealth cookie / an admin wallet session; StealthRoutes 404s anonymous ones even
+// before the session starts).
+
+// Passkey (WebAuthn / FLIP-264) sign-in: PASSKEY_MODE (legacy PASSKEY_POC_ENABLED); testnet, or mainnet only with the
+// KMS sponsor configured (PasskeyPoc::networkReady(), fail closed).
+if (\App\Support\Stealth::active('passkey') && \App\Services\Passkey\PasskeyPoc::networkReady()) {
+    Route::middleware('stealth:passkey')->group(__DIR__.'/passkey.php');
+}
+
+// ĐUST Quests: DUST_QUESTS_MODE (legacy DUST_QUESTS_ENABLED) + passkey sign-in + payouts ready (mainnet: rewards server).
+// The HMAC payout API (quests/payout/*) is exempt from the stealth gate (the worker authenticates itself).
+if (\App\Support\DustQuests::active()) {
+    Route::middleware('stealth:quests')->group(__DIR__.'/quests.php');
+}
+
+// TerraKit wallet check (read-only, chain-first): TERRAKIT_CHECK_MODE (legacy TERRAKIT_CHECK_ENABLED).
+if (\App\Support\TerrakitCheck::active()) {
+    Route::middleware('stealth:terrakit')->group(__DIR__.'/terrakit.php');
+}
+
+// Stealth gate: /__stealth/{secret} sets the signed fl_s cookie (STEALTH_SECRET in .env; ?off=1 clears it).
+// Lazy feature bundles /fx/{code}.js|css (webpack chunks kept OUT of public/, served only to requests that see the feature).
+Route::get('__stealth/{token}', [\App\Http\Controllers\StealthController::class, 'enter'])->where('token', '[A-Za-z0-9_\-]{1,200}');
+Route::get('fx/{file}', \App\Http\Controllers\FxAssetController::class)->where('file', '[a-z]{1,8}\.(js|css)');

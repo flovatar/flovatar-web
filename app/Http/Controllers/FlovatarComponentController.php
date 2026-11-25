@@ -24,11 +24,13 @@ class FlovatarComponentController extends Controller
             })->orderBy('id', 'asc')->get();
         });
 
-        $templateId = $templates ? $templates->first()->id : 0;
+        // unknown Flobit -> 404 (was a 500: first() on an empty collection)
+        abort_unless($templates && $templates->isNotEmpty(), 404);
+        $templateId = $templates->first()->id;
 
         $sales = Cache::remember('flovatar-component-sales-'.$templateId, now()->addMinutes(60), function() use ($templateId) {
             $components = FlovatarComponent::select('id')->whereFlovatarTemplateId($templateId)->get()->flatten();
-            $sales = Sale::select(
+            $sales = Sale::notBlocked()->notDust()->select(
                 [
                     DB::raw('DATE_FORMAT(created_at, "%c/%d/%Y") as date'),
                     DB::raw('MAX(created_at) as maxdate'),
@@ -55,7 +57,7 @@ class FlovatarComponentController extends Controller
         });
         $saleoffers = Cache::remember('flovatar-component-saleoffers-'.$templateId, now()->addMinutes(60), function() use ($templateId) {
             $components = FlovatarComponent::select('id')->whereFlovatarTemplateId($templateId)->get()->flatten();
-            $saleoffers = SaleOffer::select(
+            $saleoffers = SaleOffer::notBlocked()->notDust()->select(
                 [
                     DB::raw('DATE_FORMAT(created_at, "%c/%d") as date'),
                     DB::raw('MAX(created_at) as maxdate'),

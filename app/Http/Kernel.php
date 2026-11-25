@@ -14,8 +14,14 @@ class Kernel extends HttpKernel
      * @var array
      */
     protected $middleware = [
+        // Runs defer() callbacks after the response is sent (Cache::flexible background refresh)
+        \Illuminate\Foundation\Http\Middleware\InvokeDeferredCallbacks::class,
         // \App\Http\Middleware\TrustHosts::class,
         \App\Http\Middleware\TrustProxies::class,
+        // Visitor IP + origin-host noindex for requests proxied by the headless Worker (before any throttle)
+        \App\Http\Middleware\HeadlessProxyRequest::class,
+        // Stealth features: anonymous requests to their routes get a plain 404 before sessions/throttles (App\Support\Stealth)
+        \App\Http\Middleware\StealthRoutes::class,
         \App\Http\Middleware\PreventRequestsDuringMaintenance::class,
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
         \App\Http\Middleware\TrimStrings::class,
@@ -29,10 +35,13 @@ class Kernel extends HttpKernel
      */
     protected $middlewareGroups = [
         'web' => [
+            // Outermost: Cache-Control for the Cloudflare edge cache (App\Support\PublicCache)
+            \App\Http\Middleware\PublicCacheHeaders::class,
             \App\Http\Middleware\EncryptCookies::class,
             \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
-            \Illuminate\Session\Middleware\StartSession::class,
-            \Laravel\Jetstream\Http\Middleware\AuthenticateSession::class,
+            // No session for anonymous public GETs (edge-cacheable), Laravel's otherwise
+            \App\Http\Middleware\StartSession::class,
+            \Illuminate\Session\Middleware\AuthenticateSession::class,
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
@@ -60,9 +69,11 @@ class Kernel extends HttpKernel
         'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
         'password.confirm' => \Illuminate\Auth\Middleware\RequirePassword::class,
         'signed' => \Illuminate\Routing\Middleware\ValidateSignature::class,
-        'throttle' => \Illuminate\Routing\Middleware\ThrottleRequestsWithRedis::class,
+        'throttle' => \App\Http\Middleware\ThrottleRequestsPerRoute::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'queueit' => \App\Http\Middleware\QueueIt::class,
+        'packsales' => \App\Http\Middleware\EnsurePackSalesEnabled::class,
+        'stealth' => \App\Http\Middleware\EnsureStealthVisible::class,
     ];
 
 }

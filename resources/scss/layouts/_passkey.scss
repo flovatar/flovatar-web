@@ -1,0 +1,266 @@
+// ---------------------------------------------------------===
+// passkey sign-in (testnet, PASSKEY_LOGIN_ENABLED) — markup only rendered when enabled
+// ---------------------------------------------------------===
+
+.passkey-modal.modal-wrapper {
+  z-index: 1000; // above the transaction loading overlay
+
+  .msg-box {
+    width: 100%;
+    background: #18022b;
+    color: white;
+    padding: 40px 50px 40px;
+    text-align: left;
+    font-size: 18px;
+
+    @include media('<tablet') {
+      padding: 36px 18px 28px;
+    }
+
+    h2, h3 {
+      color: white;
+    }
+
+    h3 {
+      font-size: 20px;
+      margin: 22px 0 8px;
+    }
+
+    a {
+      color: #f7c6ff;
+      text-decoration: underline;
+    }
+
+    .heading {
+      margin-bottom: 24px;
+    }
+  }
+
+  .btn-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+
+    li + li {
+      margin-top: 16px;
+    }
+
+    .btn-grad {
+      width: 100%;
+      position: relative;
+      padding: 15px 20px 15px 88px;
+      justify-content: flex-start;
+      text-align: left;
+      color: white;
+    }
+
+    .ico-wrap {
+      position: absolute;
+      left: 24px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 56px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .lbl small {
+      display: block;
+      font: 400 14px/1.3 sans-serif;
+      text-transform: none;
+      opacity: .9;
+    }
+  }
+
+  // Inputs: white field, dark text (the site's global input style is transparent with black text → invisible here)
+  input[type=email], input[type=text], input[inputmode=numeric], .passkey-input {
+    display: block;
+    width: 100%;
+    height: 52px;
+    margin: 0;
+    padding: 0 16px;
+    border: 2px solid #fff;
+    border-radius: 8px;
+    background: #fff !important;
+    color: #180830 !important;
+    -webkit-text-fill-color: #180830;
+    font: 500 18px/1.2 'Roboto Condensed', Roboto, Arial, sans-serif; // 16px+ avoids iOS zoom
+    box-shadow: none;
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+
+    &::placeholder { color: #8a7d99; -webkit-text-fill-color: #8a7d99; opacity: 1; }
+    &:focus { border-color: #50d1ff; box-shadow: 0 0 0 3px rgba(80, 209, 255, .35); }
+    &.is-invalid { border-color: #ff5a5a; box-shadow: 0 0 0 3px rgba(255, 90, 90, .3); }
+    &:disabled { opacity: .7; }
+  }
+
+  // Buttons: one full-width column. The site's .btn face (.inner) is drawn 5px right of the box (3D edge),
+  // so the box is 5px narrower: 3D edge flush with the inputs' left edge, face flush with their right edge.
+  .passkey-form .btn, .msg-box > div > .btn {
+    display: block;
+    width: calc(100% - 5px);
+    margin-left: 0 !important;
+    margin-right: 0;
+    text-align: center;
+  }
+
+  .passkey-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin: 0;
+
+    .passkey-form-title { margin: 0 0 18px; font-size: 20px; line-height: 1.2; }
+    label { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 17px; font-weight: 700; text-align: left; }
+    .req { padding: 2px 7px; border-radius: 4px; background: rgba(255, 255, 255, .18); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .05em; }
+    .passkey-field-error { margin: 8px 0 0; color: #ff9b9b; font-size: 14px; line-height: 1.4; text-align: left; }
+    .passkey-field-help { margin: 8px 0 0; color: rgba(255, 255, 255, .78); font-size: 14px; line-height: 1.45; text-align: left; }
+    .passkey-field-help a.is-disabled { opacity: .6; pointer-events: none; text-decoration: none; }
+    .passkey-code { display: flex; flex-direction: column; gap: 0; margin-top: 18px; }
+    .passkey-code input { text-align: center; letter-spacing: .45em; padding-left: calc(16px + .45em); font: 700 24px/1 'Roboto Mono', ui-monospace, Menlo, Consolas, monospace; }
+    > .btn, .btn { margin-top: 20px; }
+  }
+
+  @include media('<tablet') {
+    .passkey-form .btn .inner, .msg-box > div > .btn .inner { font-size: 19px; line-height: 1.15; }
+  }
+
+  .passkey-verify {
+    margin: 12px 0;
+    padding: 12px;
+    border-radius: 8px;
+    background: rgba(255, 238, 80, .08);
+    border: 1px solid rgba(255, 238, 80, .35);
+
+    h3 { margin-top: 0; }
+    .passkey-form { flex-direction: row; flex-wrap: wrap; align-items: center; }
+    .passkey-form input { flex: 1 1 180px; min-width: 0; }
+  }
+
+  .passkey-linked { word-break: break-all; }
+
+  .btn[disabled] {
+    opacity: .5;
+    pointer-events: none;
+  }
+
+  // "already have an account?" divider with rules on both sides
+  .passkey-or {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 26px 0 16px;
+    color: rgba(255, 255, 255, .75);
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+
+    &::before, &::after { content: ''; flex: 1; height: 1px; background: rgba(255, 255, 255, .22); }
+  }
+
+  .passkey-back {
+    display: inline-block;
+    margin-top: 8px;
+    font-size: 15px;
+    text-decoration: none !important;
+    opacity: .85;
+    &:hover { opacity: 1; }
+  }
+
+  .passkey-note {
+    font-size: 14px;
+    line-height: 1.45;
+    opacity: .85;
+    margin-top: 12px;
+  }
+
+  .passkey-info {
+    font-size: 15px;
+    color: #b6f5c8;
+    margin-top: 12px;
+  }
+
+  .passkey-error {
+    font-size: 15px;
+    color: #ff9d9d;
+    margin-top: 12px;
+  }
+
+  .passkey-action {
+    font-weight: 600;
+    margin: 10px 0 18px;
+  }
+
+  .muted {
+    opacity: .7;
+  }
+
+  .mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    word-break: break-all;
+  }
+
+  .passkey-dl {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 6px 14px;
+    font-size: 15px;
+
+    dt {
+      opacity: .7;
+    }
+
+    dd {
+      margin: 0;
+    }
+
+    @include media('<tablet') {
+      grid-template-columns: 1fr;
+
+      dt {
+        margin-top: 6px;
+      }
+    }
+  }
+
+  .passkey-devices, .passkey-txs {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: 15px;
+
+    li {
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, .1);
+    }
+  }
+
+  .chip {
+    display: inline-block;
+    font-size: 12px;
+    padding: 1px 8px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, .15);
+    margin-left: 6px;
+
+    &.warn {
+      background: #b5651d;
+    }
+  }
+
+  .btn-hold {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+}
+
+// the approval sheet can open on top of the account panel (add device)
+.passkey-confirm.modal-wrapper {
+  z-index: 1010;
+}
+
+#main-nav .user-info .auth-type {
+  text-transform: none;
+}

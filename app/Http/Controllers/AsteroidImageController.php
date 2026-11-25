@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\ExportImage;
+use App\Models\Asteroid;
 use App\Models\DustCollectible;
 use App\Models\DustAccessory;
 use App\Models\DustTemplate;
@@ -24,12 +25,12 @@ class AsteroidImageController extends Controller
     }
 
     public function gif($collectibleId){
-        return Storage::disk('s3')->download('/asteroid/gif/'.$collectibleId.'.gif');
+        return $this->imageFromStorage('/asteroid/gif/'.$collectibleId.'.gif');
     }
     public function png($collectibleId){
-        return Storage::disk('s3')->download('/asteroid/png/'.$collectibleId.'.png');
+        return $this->imageFromStorage('/asteroid/png/'.$collectibleId.'.png');
     }
     public function mp4($collectibleId){
-        return Storage::disk('s3')->download('/asteroid/mp4/'.$collectibleId.'.mp4');
+        return $this->imageFromStorage('/asteroid/mp4/'.$collectibleId.'.mp4');
     }
 }

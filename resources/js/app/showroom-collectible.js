@@ -121,7 +121,7 @@ Alpine.data('showroomCollectibleData', (templates) => ({
         if(this.minMint && this.maxMint && this.minMint > this.maxMint){
             this.minMint = this.maxMint;
         }
-        axios.post('/showroom/dust-collectible/search', this.getSearchParams()).then(function (response) {
+        window.searchApi('/showroom/dust-collectible/search', this.getSearchParams()).then(function (response) {
             self.handleSearchResults(response.data);
         })
             .catch(function (error) {
@@ -136,7 +136,7 @@ Alpine.data('showroomCollectibleData', (templates) => ({
     loadNextPage(){
         if(this.nextPage) {
             let self = this;
-            axios.post('/showroom/dust-collectible/search', this.getSearchParams()).then(function (response) {
+            window.searchApi('/showroom/dust-collectible/search', this.getSearchParams()).then(function (response) {
                 self.handleNextResults(response.data);
             })
                 .catch(function (error) {
@@ -191,6 +191,9 @@ Alpine.data('showroomCollectibleData', (templates) => ({
     },
     getFlobotPrice(flobot){
         if(flobot.sale_offers && flobot.sale_offers.length>0){
+            if(window.isDustRow && window.isDustRow(flobot.sale_offers[0])){
+                return window.formatDust(flobot.sale_offers[0].price); // ĐUST marketplace
+            }
             return window.formatPrice(flobot.sale_offers[0].price)+' <span>Flow</span>';
         } else {
             return null;

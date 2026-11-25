@@ -1,17 +1,6 @@
 
 
 
-<div id="moonpay-modal" x-show="showMoonpay" class="modal-wrapper jshidden">
-    <div class="modal-content">
-        <div class="modal-inner">
-            <button  @click.prevent.stop="showMoonpay=false" class="close-moonpay"><span class="icon-close"></span></button>
-            <template x-if="address() && showMoonpay">
-                <iframe x-bind:src="moonpayUrl()" class="w-full h-full rounded-xl"></iframe>
-            </template>
-        </div>
-    </div>
-</div>
-
 
 <div id="init-account-modal" class="modal-wrapper jshidden" x-show="showInitPopup">
     <div class="modal-content">
@@ -104,11 +93,11 @@
                 </div>
                 <ul class="btn-list">
                     <li>
-                        <button @click.prevent.stop="chooseWallet('blocto')" class="btn-grad btn-grad-blue">
+                        <button @click.prevent.stop="chooseWallet('flow')" class="btn-grad btn-grad-blue">
                             <span class="ico-wrap">
-                                <img src="/images/ico-blocto.png" width="56" alt="">
+                                <img src="/images/icon-flow.svg" width="56" alt="">
                             </span>
-                            Connect Blocto
+                            Connect Flow Wallet
                         </button>
                     </li>
                     <li>
@@ -117,14 +106,6 @@
                                 <img src="/images/ico-dapper.png" width="56" alt="">
                             </span>
                             Connect Dapper
-                        </button>
-                    </li>
-                    <li>
-                        <button @click.prevent.stop="chooseWallet('lilico')" class="btn-grad btn-grad-orange">
-                            <span class="ico-wrap">
-                                <img src="/images/ico-lilico.png" width="56" alt="">
-                            </span>
-                            Connect Lilico
                         </button>
                     </li>
                 </ul>

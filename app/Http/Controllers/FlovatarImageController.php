@@ -30,22 +30,27 @@ class FlovatarImageController extends Controller
         });
         return $flovatarSvg ? response($flovatarSvg)->header('Content-Type', 'image/svg+xml') : abort(404);
     }
+    // GIF/MP4: the browser render (agent box) when present, else the legacy export (prod only)
     public function gif($flovatarId){
-        return Storage::disk('s3')->download('/flovatar/gif/'.$flovatarId.'.gif');
+        return RenderedImageController::respond('flovatar', (int) $flovatarId, 'anim.gif');
     }
     public function gifNoBg($flovatarId){
-        return Storage::disk('s3')->download('/flovatar/gif/'.$flovatarId.'-nobg.gif');
+        return $this->imageFromStorage('/flovatar/gif/'.$flovatarId.'-nobg.gif');
     }
+    // PNG/JPG: the new static render on R2 (RenderedImageController), legacy export as fallback (prod only)
     public function png($flovatarId){
-        return Storage::disk('s3')->download('/flovatar/png/'.$flovatarId.'.png');
+        return RenderedImageController::respond('flovatar', (int) $flovatarId, 'full.png');
     }
     public function pngNoBg($flovatarId){
-        return Storage::disk('s3')->download('/flovatar/png/'.$flovatarId.'-nobg.png');
+        return RenderedImageController::respond('flovatar', (int) $flovatarId, 'nobg.png');
+    }
+    public function jpg($flovatarId){
+        return RenderedImageController::respond('flovatar', (int) $flovatarId, 'full.jpg');
     }
     public function mp4($flovatarId){
-        return Storage::disk('s3')->download('/flovatar/mp4/'.$flovatarId.'.mp4');
+        return RenderedImageController::respond('flovatar', (int) $flovatarId, 'anim.mp4');
     }
     public function mp4NoBg($flovatarId){
-        return Storage::disk('s3')->download('/flovatar/mp4/'.$flovatarId.'-nobg.mp4');
+        return $this->imageFromStorage('/flovatar/mp4/'.$flovatarId.'-nobg.mp4');
     }
 }

@@ -49,12 +49,26 @@ class ProcessGraffleEvents extends BaseJob
 
         $check = false;
 
+        // ĐUST marketplace (NFTStorefrontV2 listings paid in FlovatarDustToken) + Listing.ResourceDestroyed of any
+        // currency: handled before the legacy branches, which treat every storefront listing as a Dapper listing.
+        $dustMarket = new \App\Services\Market\DustStorefrontProcessor();
+        if ($dustMarket->handles($event)) {
+            if ($dustMarket->process($event)) {
+                $this->event->update(['synced' => true]);
+                \App\Support\HeadlessRegen::fromEvent($event->type, $event->flow_metadata);
+            }
+            return;
+        }
+
 
         if($event->type == $this->getEventAddress('FlovatarCreated')){
             if(isset($event->flow_metadata['metadata']) && isset($event->flow_metadata['metadata']['creatorAddress'])) {
                 $newFlovatar = $this->syncFlovatarFromFlowAddress($event->flow_metadata['id'], $event->flow_metadata['metadata']['creatorAddress']);
                 if($newFlovatar){
                     $check = true;
+                    if(!$newFlovatar->flow_address){
+                        $newFlovatar->update(['flow_address' => $event->flow_metadata['metadata']['creatorAddress']]);
+                    }
                     $this->updateTemplatesBurnCount($newFlovatar);
                     ExportAllImages::dispatch($event->flow_metadata['id']);
                 } else {
@@ -69,6 +83,11 @@ class ProcessGraffleEvents extends BaseJob
                 $newFlobot = $this->syncFlobotFromFlowAddress($event->flow_metadata['id'], $event->flow_metadata['metadata']['creatorAddress']);
                 if($newFlobot){
                     $check = true;
+                    // found in the creator's collection: that is the owner (the Flobot contract emits no Deposit event;
+                    // later transfers arrive as NonFungibleToken.Deposited)
+                    if(!$newFlobot->flow_address){
+                        $newFlobot->update(['flow_address' => $event->flow_metadata['metadata']['creatorAddress']]);
+                    }
                     $this->updateFlobotTemplatesBurnCount($newFlobot);
                     ExportAllImages::dispatch($event->flow_metadata['id'], 'flobot');
                 } else {
@@ -125,7 +144,9 @@ class ProcessGraffleEvents extends BaseJob
             } else {
                 info('Flovatar Updated event skipped because Flovatar was not found!!!!');
             }
-        } else if($event->type == $this->getEventAddress('FlobotDeposit')){
+        } else if($event->type == $this->getEventAddress('FlobotDeposit') || $this->isStandardFlobotDeposit($event)){
+            // Flobot.Deposit is declared but never emitted by the Cadence 1.0 contract: transfers/mints arrive as the
+            // standard NonFungibleToken.Deposited {type: A.x.Flobot.NFT, id, to}
             $flobot = Flobot::whereFlowId($event->flow_metadata['id'])->first();
             if(!$flobot){
                 $flobot = $this->syncFlobotFromFlowAddress($event->flow_metadata['id'], $event->flow_metadata['to']);
@@ -249,6 +270,7 @@ class ProcessGraffleEvents extends BaseJob
                             'price' => $price,
                             'is_completed' => false,
                             'is_dapper' => $isDapper,
+                            'currency' => $isDapper ? 'DUC' : 'FLOW',
                             'listing_id' => $listingId
                         ]
                     );
@@ -286,7 +308,8 @@ class ProcessGraffleEvents extends BaseJob
                                     'flow_metadata' => $flovatar->flow_metadata,
                                     'flow_address' => $event->flow_metadata['address'],
                                     'price' => $price,
-                                    'is_completed' => false
+                                    'is_completed' => false,
+                                    'currency' => 'FLOW'
                                 ]
                             );
 
@@ -301,7 +324,8 @@ class ProcessGraffleEvents extends BaseJob
                             'flow_metadata' => $flovatar->flow_metadata,
                             'flow_address' => $event->flow_metadata['address'],
                             'price' => $price,
-                            'is_completed' => false
+                            'is_completed' => false,
+                            'currency' => 'FLOW'
                         ]);
                         $check = true;
                     }
@@ -374,7 +398,8 @@ class ProcessGraffleEvents extends BaseJob
                             'is_dapper' => $isDapper
                         ],
                         [
-                            'completed_at' => Carbon::now()
+                            'completed_at' => $event->event_date ?? Carbon::now(),
+                            'currency' => $isDapper ? 'DUC' : 'FLOW'
                         ]
                     );
                     $check = true;
@@ -429,6 +454,7 @@ class ProcessGraffleEvents extends BaseJob
                             'price' => $price,
                             'is_completed' => false,
                             'is_dapper' => $isDapper,
+                            'currency' => $isDapper ? 'DUC' : 'FLOW',
                             'listing_id' => $listingId
                         ]
                     );
@@ -477,7 +503,8 @@ class ProcessGraffleEvents extends BaseJob
                                     'flow_metadata' => $component->flow_metadata,
                                     'flow_address' => $event->flow_metadata['address'],
                                     'price' => $price,
-                                    'is_completed' => false
+                                    'is_completed' => false,
+                                    'currency' => 'FLOW'
                                 ]
                             );
 
@@ -491,7 +518,8 @@ class ProcessGraffleEvents extends BaseJob
                             'flow_metadata' => $component->flow_metadata,
                             'flow_address' => $event->flow_metadata['address'],
                             'price' => $price,
-                            'is_completed' => false
+                            'is_completed' => false,
+                            'currency' => 'FLOW'
                         ]);
                         $check = true;
                     }
@@ -570,7 +598,8 @@ class ProcessGraffleEvents extends BaseJob
                             'is_dapper' => $isDapper
                         ],
                         [
-                            'completed_at' => Carbon::now()
+                            'completed_at' => $event->event_date ?? Carbon::now(),
+                            'currency' => $isDapper ? 'DUC' : 'FLOW'
                         ]
                     );
                     $check = true;
@@ -617,6 +646,7 @@ class ProcessGraffleEvents extends BaseJob
                             'price' => $price,
                             'is_completed' => false,
                             'is_dapper' => $isDapper,
+                            'currency' => $isDapper ? 'DUC' : 'FLOW',
                             'listing_id' => $listingId
                         ]
                     );
@@ -656,7 +686,8 @@ class ProcessGraffleEvents extends BaseJob
             if(!$collectible || !$saleOffer){
                 info('NOT FOUND COMPONENT FROM EVENT');
             } else {
-                $nftAddress = ($isDapper && $saleOffer) ? $saleOffer->flow_address : $event->flow_metadata['from'];
+                // NFTStorefrontV2 events carry no from/to; the seller is the listing owner.
+                $nftAddress = $saleOffer->flow_address;
                 if (!$collectible) {
                     $collectible = $this->syncCollectibleFromFlowAddress($nftId, $nftAddress);
                 }
@@ -675,13 +706,14 @@ class ProcessGraffleEvents extends BaseJob
                             'item_id' => $collectible->id,
                             'item_type' => 'App\Models\DustCollectible',
                             'price' => $price,
-                            'flow_buyer_address' => ($isDapper) ? $event->flow_metadata['storefrontAddress'] : $event->flow_metadata['to'],
+                            'flow_buyer_address' => $event->flow_metadata['to'] ?? $event->flow_metadata['storefrontAddress'],
                             'flow_seller_address' => $nftAddress,
                             'transaction_id' => $event->transaction_id,
                             'is_dapper' => $isDapper
                         ],
                         [
-                            'completed_at' => Carbon::now()
+                            'completed_at' => $event->event_date ?? Carbon::now(),
+                            'currency' => $isDapper ? 'DUC' : 'FLOW'
                         ]
                     );
                     $check = true;
@@ -724,6 +756,7 @@ class ProcessGraffleEvents extends BaseJob
                             'price' => $price,
                             'is_completed' => false,
                             'is_dapper' => $isDapper,
+                            'currency' => $isDapper ? 'DUC' : 'FLOW',
                             'listing_id' => $listingId
                         ]
                     );
@@ -756,7 +789,8 @@ class ProcessGraffleEvents extends BaseJob
             if(!$collectible || !$saleOffer){
                 info('NOT FOUND COMPONENT FROM EVENT');
             } else {
-                $nftAddress = ($isDapper && $saleOffer) ? $saleOffer->flow_address : $event->flow_metadata['from'];
+                // NFTStorefrontV2 events carry no from/to; the seller is the listing owner.
+                $nftAddress = $saleOffer->flow_address;
                 if (!$collectible) {
                     $collectible = $this->syncFlobotFromFlowAddress($nftId, $nftAddress);
                 }
@@ -775,13 +809,14 @@ class ProcessGraffleEvents extends BaseJob
                             'item_id' => $collectible->id,
                             'item_type' => 'App\Models\Flobot',
                             'price' => $price,
-                            'flow_buyer_address' => ($isDapper) ? $event->flow_metadata['storefrontAddress'] : $event->flow_metadata['to'],
+                            'flow_buyer_address' => $event->flow_metadata['to'] ?? $event->flow_metadata['storefrontAddress'],
                             'flow_seller_address' => $nftAddress,
                             'transaction_id' => $event->transaction_id,
                             'is_dapper' => $isDapper
                         ],
                         [
-                            'completed_at' => Carbon::now()
+                            'completed_at' => $event->event_date ?? Carbon::now(),
+                            'currency' => $isDapper ? 'DUC' : 'FLOW'
                         ]
                     );
                     $check = true;
@@ -932,31 +967,36 @@ class ProcessGraffleEvents extends BaseJob
             $event->type == $this->getEventAddress('WalletWithdrawDust') ||
             $event->type == $this->getEventAddress('FlovatarClaimedCommunityDust')) {
 
-            $claimedDust = Storage::exists('claimed-dust.txt') ? Storage::get('claimed-dust.txt') : 0;
+            // Locked read-modify-write: the counter file is shared by all workers.
+            \Illuminate\Support\Facades\Cache::lock('dust-counter-claimed', 30)->block(30, function () use ($event) {
+                $claimedDust = Storage::exists('claimed-dust.txt') ? Storage::get('claimed-dust.txt') : 0;
 
-            if(!$claimedDust){
-                $claimedDust = 0.0;
-            } else {
-                $claimedDust = floatval($claimedDust);
-            }
+                if(!$claimedDust){
+                    $claimedDust = 0.0;
+                } else {
+                    $claimedDust = floatval($claimedDust);
+                }
 
-            $claimedDust += floatval($event->flow_metadata['amount']);
+                $claimedDust += floatval($event->flow_metadata['amount']);
 
-            Storage::put('claimed-dust.txt', $claimedDust);
+                Storage::put('claimed-dust.txt', $claimedDust);
+            });
             $check = true;
 
         } else if($event->type == $this->getEventAddress('DustTokensBurned')) {
-            $burnedDust = Storage::exists('burned-dust.txt') ? Storage::get('burned-dust.txt') : 0;
+            \Illuminate\Support\Facades\Cache::lock('dust-counter-burned', 30)->block(30, function () use ($event) {
+                $burnedDust = Storage::exists('burned-dust.txt') ? Storage::get('burned-dust.txt') : 0;
 
-            if(!$burnedDust){
-                $burnedDust = 0.0;
-            } else {
-                $burnedDust = floatval($burnedDust);
-            }
+                if(!$burnedDust){
+                    $burnedDust = 0.0;
+                } else {
+                    $burnedDust = floatval($burnedDust);
+                }
 
-            $burnedDust += floatval($event->flow_metadata['amount']);
+                $burnedDust += floatval($event->flow_metadata['amount']);
 
-            Storage::put('burned-dust.txt', $burnedDust);
+                Storage::put('burned-dust.txt', $burnedDust);
+            });
             $check = true;
         } else {
 
@@ -967,9 +1007,21 @@ class ProcessGraffleEvents extends BaseJob
 
         if($check){
             $this->event->update(['synced' => true]);
+            // headless static site: re-render the affected item page (also covers query-builder deletes/updates
+            // of listings, which fire no model events)
+            \App\Support\HeadlessRegen::fromEvent($event->type, $event->flow_metadata);
         }
 
 
 
+    }
+
+    /** NonFungibleToken.Deposited of a Flobot NFT into an account collection. */
+    protected function isStandardFlobotDeposit($event): bool
+    {
+        return \App\Services\Flow\FlowEventTypes::isStandardNft((string) $event->type)
+            && str_ends_with((string) $event->type, '.NonFungibleToken.Deposited')
+            && ($event->flow_metadata['type'] ?? null) === $this->getFlobotNFTAddress()
+            && ! empty($event->flow_metadata['to']);
     }
 }

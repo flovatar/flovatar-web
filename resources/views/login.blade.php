@@ -46,14 +46,10 @@
     <script>
         var svgOpen = '{!! config('flovatar.svgOpen') !!}';
         var svgClose = '{!! config('flovatar.svgClose') !!}';
-        var moonpayDomain = '{!! config('flovatar.moonpayDomain') !!}';
-        var moonpayParams = '{!! config('flovatar.moonpayParams') !!}';
-        var moonpayPublicKey = '{!! config('flovatar.moonpayPublicKey') !!}';
         var packPrice = {{ config('flovatar.price') }};
         var packPrice2 = {{ config('flovatar.price2') }};
     </script>
     <script src="{{ mix('js/app.js') }}" defer></script>
-    <script defer data-domain="flovatar.com" src="https://plausible.io/js/plausible.js"></script>
 
     <script>
         var userAgent = navigator.userAgent || navigator.vendor || window.opera;
@@ -98,6 +94,7 @@
     </script>
 </head>
 <body class="{{request()->routeIs('home', 'builder') ? 'header-transparent ' : ''}}">
+@include('partials.env-banner')
 <div id="wrapper"
      x-bind:class="jsLoaded ? 'jsloaded' : ''"
      x-data="appData"
@@ -110,7 +107,6 @@
      @waiting-seal.window="loading = false; waitingSeal = true;"
      @loading-completed.window="loading = false; waitingSeal = false; sealCompleted = true; setTimeout(()=>sealCompleted=false,3000);"
      @subscribed-email.window="showSubscription = false"
-     @moonpay-signed.window="moonpaySignature = $event.detail.signature"
      @pack-sealing.window="sealingPack = true"
      @pack-purchased.window="packPurchased = true"
      @user-not-initialized.window="showInitPopup = true;"
@@ -140,7 +136,7 @@
                                 <dd x-text="balance()+' Flow'"></dd>
                             </dl>
                             <ul class="sub-nav">
-                                <li><a href="#" @click.prevent.default="logout()" class="link-logout">Logout <i class="icon-arrow-circle"></i></a></li>
+                                <li><a href="#" @click.prevent="logout()" class="link-logout">Logout <i class="icon-arrow-circle"></i></a></li>
                             </ul>
                         </div>
 
@@ -179,6 +175,5 @@
 
 @stack('modals')
 
-@livewireScripts
 </body>
 </html>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Flovatar;
 use App\Models\User;
 use App\Models\Whitelist;
+use App\Support\PasskeyLogin;
 use Auth;
 use Flow;
 use Illuminate\Http\Request;
@@ -31,11 +32,34 @@ class LoginController extends AuthController
      * (fcl.accountProof.resolver) and the message for signUserMessage.
      */
     public function nonce() {
+        $address = $this->authenticatedFlowAddress();
+        $this->syncLoginMarker($address !== null);
+
+        $payload = [
+            'nonce' => $this->getAccountProofNonce(),
+            'message' => $this->getMessage(),
+            // Server-side login state for the front end: pages are edge-cached and
+            // contain nothing user specific.
+            'authenticated' => $address !== null,
+            'address' => $address,
+        ];
+        if(PasskeyLogin::enabled()){
+            // 'passkey' | 'wallet' | null (testnet passkey sign-in, see App\Support\PasskeyLogin)
+            $payload['auth_type'] = PasskeyLogin::authType(request(), $address);
+        }
+
         return response()
-            ->json([
-                'nonce' => $this->getAccountProofNonce(),
-                'message' => $this->getMessage(),
-            ])
+            ->json($payload)
+            ->header('Cache-Control', 'no-store, private');
+    }
+
+    /**
+     * CSRF token for the front end (axios interceptor in resources/js/bootstrap.js).
+     * Cached pages carry no token; this starts the session.
+     */
+    public function csrfToken(Request $request) {
+        return response()
+            ->json(['token' => $request->session()->token()])
             ->header('Cache-Control', 'no-store, private');
     }
 
@@ -74,6 +98,12 @@ class LoginController extends AuthController
     public function logout() {
         Auth::logout();
         Session::flush();
+        $this->syncLoginMarker(false);
+        $stealth = \App\Support\Stealth::cookiePayload(request());
+        if($stealth && ($stealth['k'] ?? null) === 'a'){
+            // admin-wallet stealth cookie ends with the session (the secret-URL cookie stays)
+            \Illuminate\Support\Facades\Cookie::queue(\App\Support\Stealth::forgetCookie());
+        }
         return Redirect::to('/')->with('notice', 'You\'ve successfully logged out!');
     }
 

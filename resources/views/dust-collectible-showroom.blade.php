@@ -26,9 +26,9 @@
                         <template x-for="collectible in collectibles" :key="collectible.id">
 
                             <div class="col">
-                                <a x-bind:href="'/collectibles/'+collectible.flow_id+'/'+collectible.flow_address" class="card" x-bind:class="getRarityColor(collectible)">
+                                <a x-bind:href="window.itemUrl('collectibles', collectible.flow_id, collectible.flow_address)" class="card" x-bind:class="getRarityColor(collectible)">
                                     <div class="img-hold">
-                                        <img x-bind:src="'/api/image/collectible/'+collectible.flow_id" />
+                                        <img x-bind:src="collectible.list_thumb || '/api/image/collectible/'+collectible.flow_id" />
                                     </div>
                                     <div class="wrap">
                                         <dl>

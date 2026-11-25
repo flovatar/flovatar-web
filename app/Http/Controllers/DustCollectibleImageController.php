@@ -24,12 +24,12 @@ class DustCollectibleImageController extends Controller
     }
 
     public function gif($collectibleId){
-        return Storage::disk('s3')->download('/dust/collectible/gif/'.$collectibleId.'.gif');
+        return $this->imageFromStorage('/dust/collectible/gif/'.$collectibleId.'.gif');
     }
     public function png($collectibleId){
-        return Storage::disk('s3')->download('/dust/collectible/png/'.$collectibleId.'.png');
+        return $this->imageFromStorage('/dust/collectible/png/'.$collectibleId.'.png');
     }
     public function mp4($collectibleId){
-        return Storage::disk('s3')->download('/dust/collectible/mp4/'.$collectibleId.'.mp4');
+        return $this->imageFromStorage('/dust/collectible/mp4/'.$collectibleId.'.mp4');
     }
 }

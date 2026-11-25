@@ -1,4 +1,5 @@
 import Alpine from "alpinejs";
+import {geoEditor} from "../geo";
 
 Alpine.data('flovatarData', (address, flovatarId, templates, flovatarSales, flovatarSaleOffer, dustPerDayScore) => ({
     templates: templates,
@@ -7,7 +8,7 @@ Alpine.data('flovatarData', (address, flovatarId, templates, flovatarSales, flov
     flovatarSales: flovatarSales,
     flovatarSaleOffer: flovatarSaleOffer,
     dustPerDayScore: dustPerDayScore,
-    geocoder: null,
+    ...geoEditor('flovatarLat', 'flovatarLon'), // GEO Location editor (OpenStreetMap), resources/js/geo.js
     isLoading: true,
     flovatar: null,
     sale: null,
@@ -43,30 +44,6 @@ Alpine.data('flovatarData', (address, flovatarId, templates, flovatarSales, flov
             this.currentPriceChange = this.currentPrice;
         }
 
-        if(google) {
-            self.geocoder = new google.maps.Geocoder();
-        }
-
-    },
-    geocodeAddress(){
-        let self = this;
-        if(this.geocoder) {
-            this.geocoder.geocode({address: this.searchAddress}, (results, status) => {
-                if (status === "OK" && results.length > 0) {
-                    // Display response in the console
-                    //console.log(results);
-                    self.foundAddress = results[0].formatted_address;
-                    let pos = results[0].geometry.location;
-                    self.flovatarLat = pos.lat();
-                    self.flovatarLon = pos.lng();
-                } else {
-                    self.foundAddress = '';
-                    self.flovatarLat = 0;
-                    self.flovatarLon = 0;
-                    //alert("Geocode error: " + status);
-                }
-            });
-        }
     },
     isDapperSale(){
         return (this.flovatarSaleOffer);
@@ -249,23 +226,23 @@ Alpine.data('flovatarData', (address, flovatarId, templates, flovatarSales, flov
         }
         return this.meta() ? this.meta().metadata.name : '';
     },
-    story(){
-        if(this.isFlovatar()){
-            return this.meta() && this.meta().bio.story ? this.meta().bio.story : '';
+    // bio lives on FlovatarData; FLOW-marketplace sale data (listed Flovatar) has none -> '' instead of a TypeError
+    bioValue(key){
+        const m = this.meta();
+        if(!m){
+            return '';
         }
-        return this.meta() ? this.meta().metadata.bio.story : '';
+        const bio = this.isFlovatar() ? m.bio : ((m.metadata && m.metadata.bio) || m.bio);
+        return bio && bio[key] ? bio[key] : '';
+    },
+    story(){
+        return this.bioValue('story');
     },
     unlocked3d(){
-        if(this.isFlovatar()){
-            return this.meta() && this.meta().bio['3d'] ? this.meta().bio['3d'] : '';
-        }
-        return this.meta() ? this.meta().metadata.bio['3d'] : '';
+        return this.bioValue('3d');
     },
     position(){
-        if(this.isFlovatar()){
-            return this.meta() && this.meta().bio['position'] ? this.meta().bio['position'] : '';
-        }
-        return this.meta() ? this.meta().bio['position'] : '';
+        return this.bioValue('position');
     },
     mint(){
         return this.meta() ? this.meta().metadata.mint : '';
@@ -623,8 +600,9 @@ Alpine.data('flovatarData', (address, flovatarId, templates, flovatarSales, flov
     }
 }));
 
-window.initFlovatar = function(dispatch, address, flovatarId){
+window.initFlovatar = async function(dispatch, address, flovatarId){
     window.dispatch = dispatch;
+    address = await window.resolveItemOwner('flovatar', flovatarId, address); // headless: owner confirmed on chain
     window.getFlovatar(address, flovatarId);
     window.getFlovatarSale(address, flovatarId);
     if(window.dustEnabled) {

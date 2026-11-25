@@ -9,15 +9,9 @@ return [
     'dustPackLive' => env('FLOVATAR_DUST_PACK_LIVE', false),
     'price' => env('FLOVATAR_PRICE', 9.00),
     'price2' => env('FLOVATAR_PRICE_2', 35.00),
-    'moonpayUrl' => env('MOONPAY_URL', ''),
 
 
     'signer' => env('FLOW_SIGNER', 'testnet-account'),
-
-    'moonpayDomain' => env('MOONPAY_DOMAIN', 'https://buy-staging.moonpay.com'),
-    'moonpayParams' => env('MOONPAY_PARAMS', '?baseCurrencyCode=usd&currencyCode=FLOW'),
-    'moonpayPublicKey' => env('MOONPAY_PUBLIC_KEY', ''),
-    'moonpaySecretKey' => env('MOONPAY_SECRET_KEY', ''),
 
     'dustPerDayScore' => env('DUST_PER_DAY_SCORE', 0.91447),
 
@@ -68,5 +62,90 @@ return [
     'dapperEnabled' => env('DAPPER_ENABLED', false),
     'flobitSaleEnabled' => env('FLOBIT_SALE_ENABLED', false),
     'dustEnabled' => env('DUST_ENABLED', false),
-    'chatEnabled' => env('CHAT_ENABLED', false)
+    // 'daemon' (default): flow:stream + queue workers run under Supervisor.
+    // 'scheduled': no daemons; the scheduler polls the chain and drains the queues every minute (testnet / low-RAM).
+    'indexerMode' => env('FLOW_INDEXER_MODE', 'daemon'),
+
+    /*
+    | Relaunch feature flags (2026-11).
+    | Pack sales and reservations stay disabled (FLOVATAR_PACK_SALES_ENABLED=false); routes answer
+    | with `packSalesNotice` instead. The Go pack-signing tool (/go) was replaced by the pure-PHP
+    | App\Services\Flow\UserMessageSigner (see docs/PACK-SIGNING.md).
+    */
+    // Exported images (gif/png/mp4/svg) live on the CDN bucket behind images.flovatar.com.
+    'imagesUrl' => env('FLOVATAR_IMAGES_URL', 'https://images.flovatar.com'),
+    'imageProxy' => env('FLOVATAR_IMAGE_PROXY', 'redirect'),
+    // Re-rendering images needs webgif + headless Chromium + ffmpeg and writes to the s3 disk.
+    // Off until that pipeline is restored on the new server (jobs return immediately).
+    'imageExportEnabled' => env('FLOVATAR_IMAGE_EXPORT_ENABLED', false),
+
+    'packSalesEnabled' => env('FLOVATAR_PACK_SALES_ENABLED', false),
+    'packSalesNotice' => env('FLOVATAR_PACK_SALES_NOTICE', 'Pack sales are paused while the shop is being moved to a new server. Packs you already own are safe on the blockchain.'),
+
+    /*
+    | Pack signing (docs/PACK-SIGNING.md).
+    | packSignerKeyFile: dedicated signer private key (64 hex chars, `flow keys generate` format),
+    |   outside the repository, chmod 600. Never an account key of the mainnet contract account.
+    | packV1SigningEnabled: legacy v1 signing (signature over the pack randomString checked against
+    |   ACCOUNT KEY 0 of the pack owner). v1 needs the contract account's own key on the server, so it
+    |   must stay false on mainnet; it exists for testnet only.
+    | packsV2*: v2 authorisations checked by the pack verifier inside FlovatarPack (recipient-bound,
+    |   expiring, epoch-revocable). packsV2Epoch must equal FlovatarPack.getVerifierEpoch().
+    */
+    'packSignerKeyFile' => env('PACK_SIGNER_KEY_FILE'),
+    'packV1SigningEnabled' => (bool) env('FLOVATAR_PACK_V1_SIGNING', false),
+    'packsV2Enabled' => (bool) env('FLOVATAR_PACKS_V2', false),
+    // Where Flovatar holders claim their free Sportvatar packs (reboot.sportvatar.com until the DNS switch)
+    'sportvatarUrl' => env('SPORTVATAR_URL', 'https://sportvatar.com'),
+    'packsV2Epoch' => (int) env('FLOVATAR_PACK_EPOCH', 1),
+    'packsV2Ttl' => (int) env('FLOVATAR_PACK_AUTH_TTL', 900),
+
+    /*
+    | Addresses involved in the 2026-11-16 incident. Listings and sales of these
+    | addresses (and NFTs recorded in flagged_items) are hidden from marketplace views,
+    | stats and search, and their pages show a warning. Comma separated.
+    */
+    'blockedAddresses' => array_values(array_filter(array_map(
+        fn ($a) => strtolower(trim($a)),
+        explode(',', (string) env('FLOVATAR_BLOCKED_ADDRESSES', '0x0c7deb7a0c9cb424'))
+    ))),
+    'blockedNotice' => env('FLOVATAR_BLOCKED_NOTICE', 'This wallet or item is linked to the 2026-11-16 security incident. It is hidden from the marketplace while the team reviews it.'),
+
+    /*
+    | ĐUST marketplace (KB notes/dust-marketplace.md): buy/sell any Flovatar item for ĐUST through the standard
+    | NFTStorefrontV2. Default OFF: with the flag off the indexer ignores ĐUST listings, every public query excludes
+    | currency DUST and no ĐUST UI is rendered (prod unchanged). Testnet .env only for now.
+    | Creator royalties: paid only when the creator has a ĐUST receiver (Luca 2026-11-25, fixed in the Cadence).
+    | Dapper wallets get no ĐUST features at all (Luca 2026-11-25).
+    */
+    'dustMarket' => [
+        'enabled' => (bool) env('DUST_MARKET_ENABLED', false),
+        // listing lifetime chosen by the site's sell box (seconds)
+        'listingTtl' => (int) env('DUST_MARKET_LISTING_TTL', 60 * 60 * 24 * 365),
+        'customId' => 'flovatar-dust',
+    ],
+
+    /*
+    | ĐUST ⇄ FLOW auto-swap through IncrementFi (KB notes/dust-swap.md): "pay with FLOW" for ĐUST listings, "pay with
+    | ĐUST" for FLOW listings (self-custody Flow Wallet only), live rate chip, quick-swap widget on /dust. Default OFF;
+    | testnet .env only for now. Increment is a third party: every address is config (per network, env-overridable) and
+    | the browser hides the swap whenever a quote script fails. Testnet uses OUR copy of Increment's contracts
+    | (Increment's own testnet deployment has no ĐUST pair). Rates are read on chain in the browser (chain-first).
+    */
+    'dustSwap' => [
+        'enabled' => (bool) env('DUST_SWAP_ENABLED', false),
+        'router' => env('DUST_SWAP_ROUTER', env('FLOW_NETWORK') === 'mainnet' ? '0xa6850776a94e6551' : '0x84e6590ef1493ae7'),
+        // SwapConfig + SwapInterfaces + SwapError
+        'swapConfig' => env('DUST_SWAP_CONFIG', env('FLOW_NETWORK') === 'mainnet' ? '0xb78ef7afa52ff906' : '0x84e6590ef1493ae7'),
+        'factory' => env('DUST_SWAP_FACTORY', env('FLOW_NETWORK') === 'mainnet' ? '0xb063c16cac85dbd1' : '0x84e6590ef1493ae7'),
+        // the ĐUST/FLOW pair: the browser checks that SwapFactory returns exactly this pair, else the swap stays hidden
+        'pair' => env('DUST_SWAP_PAIR', env('FLOW_NETWORK') === 'mainnet' ? '0xa06c38beec9cf0e8' : '0x76d585e079b73059'),
+        'slippageDefault' => (float) env('DUST_SWAP_SLIPPAGE_DEFAULT', 1.0),
+        'slippageMax' => (float) env('DUST_SWAP_SLIPPAGE_MAX', 3.0),
+        'impactWarn' => (float) env('DUST_SWAP_IMPACT_WARN', 2.0),
+        'impactBlock' => (float) env('DUST_SWAP_IMPACT_BLOCK', 10.0),
+        // pool FLOW below this → the rate chip says "low liquidity"
+        'lowLiquidityFlow' => (float) env('DUST_SWAP_LOW_LIQUIDITY_FLOW', env('FLOW_NETWORK') === 'mainnet' ? 1000 : 5),
+        'deadlineSeconds' => (int) env('DUST_SWAP_DEADLINE_SECONDS', 300),
+    ],
 ];

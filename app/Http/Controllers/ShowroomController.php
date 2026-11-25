@@ -13,7 +13,7 @@ class ShowroomController extends FilteredController
 {
     public function __invoke()
     {
-        $templates = $this->getTemplates()->makeHidden(['flow_metadata', 'svg']);
+        $templates = $this->templatesLean('series1');
 
         return view('showroom')->with(['templates' => $templates]);
     }

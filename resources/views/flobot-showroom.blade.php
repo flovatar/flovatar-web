@@ -26,9 +26,9 @@
                         <template x-for="flobot in flobots" :key="flobot.id">
 
                             <div class="col">
-                                <a x-bind:href="'/flobots/'+flobot.flow_id+'/'+flobot.flow_address" class="card" x-bind:class="flobot.flow_metadata.metadata.rarity">
+                                <a x-bind:href="window.itemUrl('flobots', flobot.flow_id, flobot.flow_address)" class="card" x-bind:class="flobot.flow_metadata.metadata.rarity">
                                     <div class="img-hold">
-                                        <img x-bind:src="'/api/image/flobot/'+flobot.flow_id" />
+                                        <img x-bind:src="flobot.list_thumb || '/api/image/flobot/'+flobot.flow_id" />
                                     </div>
                                     <div class="wrap">
                                         <dl>

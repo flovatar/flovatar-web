@@ -15,6 +15,9 @@ return [
 
     'name' => env('APP_NAME', 'Laravel'),
 
+    // Optional banner shown on every page (staging/testnet only, e.g. "TESTNET"). Leave empty on production.
+    'banner' => env('APP_BANNER'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Environment
@@ -174,9 +177,6 @@ return [
         // App\Providers\BroadcastServiceProvider::class,
         App\Providers\EventServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
-        App\Providers\FortifyServiceProvider::class,
-        App\Providers\JetstreamServiceProvider::class,
-        Georgehadjisavva\ElevenLabsClient\Providers\ElevenLabsClientServiceProvider::class,
 
     ],
 

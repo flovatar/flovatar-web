@@ -34,14 +34,14 @@ class Flobot extends Model
         }
 
         $flowMeta = $this->flow_metadata;
-        $tempBackground = isset($flowMeta['backgroundId']) ? FlovatarTemplate::whereFlowId($flowMeta['backgroundId'])->first() : '';
-        $tempBackground = $tempBackground ? $tempBackground->svg : '';
+        $tempBackground = isset($flowMeta['backgroundId']) ? \App\Support\TemplateSvgs::get($flowMeta['backgroundId']) : '';
         $tempAccessories = isset($flowMeta['accessories']) ? $flowMeta['accessories'] : [];
         $accessorySvg = '';
         foreach($tempAccessories as $tempAccessory){
-            $curAccessory = FlovatarTemplate::whereFlowId($flowMeta['accessoryId'])->first();
+            // (sic) reads accessoryId like before; memoised lookup instead of a query per call
+            $curAccessory = isset($flowMeta['accessoryId']) ? \App\Support\TemplateSvgs::get($flowMeta['accessoryId']) : '';
             if($curAccessory){
-                $accessorySvg = $curAccessory ? $curAccessory->svg : '';
+                $accessorySvg = $curAccessory;
             }
         }
 
@@ -59,9 +59,10 @@ class Flobot extends Model
         $tempAccessories = isset($flowMeta['accessories']) ? $flowMeta['accessories'] : [];
         $accessorySvg = '';
         foreach($tempAccessories as $tempAccessory){
-            $curAccessory = FlovatarTemplate::whereFlowId($flowMeta['accessoryId'])->first();
+            // (sic) reads accessoryId like before; memoised lookup instead of a query per call
+            $curAccessory = isset($flowMeta['accessoryId']) ? \App\Support\TemplateSvgs::get($flowMeta['accessoryId']) : '';
             if($curAccessory){
-                $accessorySvg = $curAccessory ? $curAccessory->svg : '';
+                $accessorySvg = $curAccessory;
             }
         }
 

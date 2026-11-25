@@ -42,6 +42,12 @@ class SignPacks extends Command
 
         info('Sign Packs');
 
+        if (!config('flovatar.packSalesEnabled') || !config('flovatar.packV1SigningEnabled')) {
+            $this->warn('v1 pack signing is disabled (FLOVATAR_PACK_SALES_ENABLED / FLOVATAR_PACK_V1_SIGNING). '
+                . 'v1 needs account key 0 of the pack owner on the server: testnet only. See docs/PACK-SIGNING.md.');
+            return 1;
+        }
+
         $packs = Pack::whereNotNull('secret')->whereNull('signature')->get();
 
         $this->info('Signing '.$packs->count().' Packs');

@@ -1,5 +1,5 @@
 <div class="col">
-    <a x-bind:href="'/flobots/'+flobot.id+'/'+address" class="card" x-bind:class="flobot.metadata.rarity">
+    <a x-bind:href="window.itemUrl('flobots', flobot.id, address)" class="card" x-bind:class="flobot.metadata.rarity">
         <div class="img-hold">
             <div>
                 <img x-bind:src="'/api/image/flobot/'+flobot.id">

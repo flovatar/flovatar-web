@@ -1,0 +1,33 @@
+# Cloudflare Worker serving the headless Flovatar frontend (static HTML/JS/CSS on R2 + same-origin proxy to Laravel).
+# Deploy (needs a token with Workers Scripts:Edit + Workers R2 Storage:Read, or `wrangler login`):
+#   cd headless/worker && npx wrangler@4 deploy            # testnet (default env)
+#   npx wrangler@4 deploy --env production                 # prod, later (flovatar.com cutover)
+# Docs: docs/HEADLESS.md
+name = "flovatar-headless"
+main = "worker.js"
+compatibility_date = "2025-09-01"
+workers_dev = true
+preview_urls = false
+
+[vars]
+SITE_PREFIX = "testnet/site/"
+ORIGIN = "https://testnet.flovatar.com"
+BUCKET_URL = "https://headless-reboot.flovatar.com"
+NOINDEX = "true"
+
+[[r2_buckets]]
+binding = "SITE"
+bucket_name = "flovatar-web"
+
+# Custom domain for the testnet frontend (add after the DNS record exists, or use the dashboard):
+# routes = [ { pattern = "next-testnet.flovatar.com", custom_domain = true } ]
+
+[env.production]
+# flovatar.com (Luca, dashboard: notes/headless-prod-cutover.md). Attached as a ROUTE flovatar.com/* in front of the
+# existing proxied A record (not a Custom Domain): failure mode "fail open" falls back to the classic site, rollback =
+# remove the route. www.flovatar.com stays on the origin (nginx 301 www -> apex).
+name = "flovatar-headless-prod"
+workers_dev = false
+vars = { SITE_PREFIX = "site/", ORIGIN = "https://api.flovatar.com", BUCKET_URL = "https://headless-reboot.flovatar.com", NOINDEX = "false" }
+r2_buckets = [ { binding = "SITE", bucket_name = "flovatar-web" } ]
+# routes = [ { pattern = "flovatar.com/*", zone_name = "flovatar.com" } ]

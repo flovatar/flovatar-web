@@ -37,7 +37,7 @@
                     <li><a href="https://twitter.com/C_3PFLO" target="_blank">C-3PFLO</a></li>
                     <li><a href="/showroom">Showroom</a></li>
                     <li><a href="https://wiki.flovatar.com/" target="_blank">Flova Wiki</a></li>
-                    <li><a href="https://stage.flovatar.com/treasure-hunting">Treasure Hunt</a></li>
+                    <li><a href="/treasure-hunting">Treasure Hunt</a></li>
                     <li><a href="https://github.com/crash13override/flovatar" target="_blank">Github</a></li>
                 </ul>
             </div>

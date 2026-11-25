@@ -264,6 +264,22 @@ Alpine.data('builderData', (templates) => ({
         return (this.templateIds[category] && this.componentIds[category]) ? this.componentIds[category] : null;
     },
     createFlovatarClick(){
+        if(this.balance() < 0.05 && this.currentWallet != 'dapper' && window.extSession && window.extSession.active && !this.storageTopupTried){
+            // Passkey account: Flovatar sends the storage FLOW, then we continue.
+            this.storageTopupTried = true;
+            window.dispatch('loading-start');
+            window.extEnsureStorage().then((r) => {
+                window.dispatch('loading-completed');
+                if (r && this.profile) { this.profile.balance = String(r.balance); }
+                this.createFlovatarClick();
+            }).catch((e) => {
+                window.dispatch('loading-completed');
+                this.storageTopupTried = false;
+                const msg = (e && e.response && e.response.data && e.response.data.error) || 'Could not add storage FLOW. Please try again.';
+                window.dispatch('transaction-error', {message: msg});
+            });
+            return;
+        }
         if(this.balance() < 0.05 && this.currentWallet != 'dapper'){
             this.showMinBalance = true;
         } else {
@@ -383,8 +399,12 @@ Alpine.data('builderData', (templates) => ({
             svg += temp ? temp.svg : '';
         }
 
-        _.each(this.categories, (category) => {
-            if(this.templateIds[category] && category != 'background') {
+        // Same order as the minted image: core traits as baked by Flovatar.createFlovatar (body, clothing, hair,
+        // eyes, nose, mouth, facialHair), then the site order for Flobits (accessory, eyeglasses, hat).
+        // `this.categories` is the UI tab order and draws hair above facial hair, which the minted image doesn't.
+        const previewOrder = ['body', 'clothing', 'hair', 'eyes', 'nose', 'mouth', 'facialHair', 'accessory', 'eyeglasses', 'hat'];
+        _.each(previewOrder, (category) => {
+            if(this.templateIds[category]) {
                 let temp = _.find(this.templates, {'flow_id': parseInt(this.templateIds[category],10)});
                 svg += temp ? temp.svg : '';
             }

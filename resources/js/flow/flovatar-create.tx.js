@@ -1,4 +1,4 @@
-import * as fcl from "@onflow/fcl"
+import * as fcl from "./fcl-tx"
 import * as t from "@onflow/types"
 
 export async function flovatarCreateTx(spark, body, hair, facialHair, eyes, nose, mouth, clothing, accessory, hat, eyeglasses, background, rareBoost, epicBoost, legendaryBoost) {

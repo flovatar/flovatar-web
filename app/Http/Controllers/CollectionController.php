@@ -8,16 +8,15 @@ use App\Models\FlovatarTemplate;
 use App\Models\Pack;
 use Illuminate\Http\Request;
 use Cache;
-use Auth;
 
 class CollectionController extends AuthController
 {
     public function __invoke($address)
     {
-        $templates = $this->getAllTemplates();
-        $templatesDust = $this->getDustTemplates()->makeHidden(['flow_metadata', 'svg']);
-        $signature = Auth::check() ? '' : $this->getMessage();
+        // Lean lists: the page reads the wallet's NFTs on chain (FCL) and only needs template names/categories.
+        $templates = $this->templatesLean('all');
+        $templatesDust = $this->getDustTemplatesLean();
 
-        return view('collection')->with(['templates' => $templates, 'templatesDust' => $templatesDust, 'address' => $address, 'addressName' => '', 'signature' => $signature]);
+        return view('collection')->with(['templates' => $templates, 'templatesDust' => $templatesDust, 'address' => $address, 'addressName' => '']);
     }
 }

@@ -31,21 +31,21 @@ class FlobotImageController extends Controller
         return $flobotSvg ? response($flobotSvg)->header('Content-Type', 'image/svg+xml') : abort(404);
     }
     public function gif($flovatarId){
-        return Storage::disk('s3')->download('/flobot/gif/'.$flovatarId.'.gif');
+        return $this->imageFromStorage('/flobot/gif/'.$flovatarId.'.gif');
     }
     public function gifNoBg($flovatarId){
-        return Storage::disk('s3')->download('/flobot/gif/'.$flovatarId.'-nobg.gif');
+        return $this->imageFromStorage('/flobot/gif/'.$flovatarId.'-nobg.gif');
     }
     public function png($flovatarId){
-        return Storage::disk('s3')->download('/flobot/png/'.$flovatarId.'.png');
+        return $this->imageFromStorage('/flobot/png/'.$flovatarId.'.png');
     }
     public function pngNoBg($flovatarId){
-        return Storage::disk('s3')->download('/flobot/png/'.$flovatarId.'-nobg.png');
+        return $this->imageFromStorage('/flobot/png/'.$flovatarId.'-nobg.png');
     }
     public function mp4($flovatarId){
-        return Storage::disk('s3')->download('/flobot/mp4/'.$flovatarId.'.mp4');
+        return $this->imageFromStorage('/flobot/mp4/'.$flovatarId.'.mp4');
     }
     public function mp4NoBg($flovatarId){
-        return Storage::disk('s3')->download('/flobot/mp4/'.$flovatarId.'-nobg.mp4');
+        return $this->imageFromStorage('/flobot/mp4/'.$flovatarId.'-nobg.mp4');
     }
 }

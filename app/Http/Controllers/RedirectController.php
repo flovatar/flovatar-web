@@ -20,27 +20,39 @@ class RedirectController extends Controller
         if(!$flovatar){
             $flovatar = Flovatar::where('name', $flovatarId)->first();
         }
-        return $flovatar ? redirect('/flovatars/'.$flovatar->flow_id.'/'.$flovatar->flow_address) : abort(404);
+        return $this->toOwnerUrl('flovatars', $flovatar);
     }
-    public function chat()
+    /** FlovaChat was retired: send old /chat/{id|name} links to the Flovatar page. */
+    public function retiredChat($flovatarId)
     {
-        $flovatar = Flovatar::inRandomOrder()->firstOrFail();
-        return $flovatar->name ? redirect('/chat/'.$flovatar->name) : redirect('/chat/'.$flovatar->flow_id);
+        return redirect('/flovatars/'.rawurlencode($flovatarId), 301);
     }
+
     public function flobot($flobotId)
     {
         $flobot = Flobot::where('flow_id', $flobotId)->first();
-        return $flobot ? redirect('/flobots/'.$flobot->flow_id.'/'.$flobot->flow_address) : abort(404);
+        return $this->toOwnerUrl('flobots', $flobot);
     }
 
     public function component($componentId)
     {
         $component = FlovatarComponent::where('flow_id', $componentId)->first();
-        return $component ? redirect('/components/'.$component->flow_id.'/'.$component->flow_address) : abort(404);
+        return $this->toOwnerUrl('components', $component);
     }
     public function collectible($collectibleId)
     {
         $collectible = DustCollectible::where('flow_id', $collectibleId)->first();
-        return $collectible ? redirect('/collectibles/'.$collectible->flow_id.'/'.$collectible->flow_address) : abort(404);
+        return $this->toOwnerUrl('collectibles', $collectible);
+    }
+
+    /**
+     * Canonical owner URL. Items without a known owner (e.g. a Flobit equipped inside a Flovatar, or an indexer gap)
+     * 404 instead of redirecting to '/{segment}/{id}/' which the router collapses back to '/{segment}/{id}' (redirect loop).
+     */
+    private function toOwnerUrl(string $segment, $item)
+    {
+        abort_unless($item && $item->flow_address, 404);
+
+        return redirect('/'.$segment.'/'.$item->flow_id.'/'.$item->flow_address);
     }
 }

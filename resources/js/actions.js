@@ -21,7 +21,6 @@ import {flovatarRemoveBackgroundTx} from './flow/flovatar-remove-background.tx';
 import {flovatarSetNameTx} from './flow/flovatar-set-name.tx';
 import {flovatarSetPositionTx} from './flow/flovatar-set-position.tx';
 import {flovatarUnlock3dTx} from './flow/flovatar-unlock-3d.tx';
-import {flovatarUnlockChatTx} from './flow/flovatar-unlock-chat.tx';
 import {flovatarAddStoryTx} from './flow/flovatar-add-story.tx';
 import {flobotAddBackgroundTx} from './flow/flobot-add-background.tx';
 import {flobotRemoveBackgroundTx} from './flow/flobot-remove-background.tx';
@@ -54,6 +53,7 @@ import {getCollectionsByNameFlovatarIdsScript} from './flow/get-collections-by-n
 import {getCollectionsFlovatarSaleScript} from './flow/get-collections-flovatar-sale.script';
 import {getCollectionsByNameFlovatarSaleScript} from './flow/get-collections-by-name-flovatar-sale.script';
 import {getCollectionsComponentScript} from './flow/get-collections-component.script';
+import {forceBatched, getCollectionBatched, getCollectionBatchedByName, getPacksList} from "./flow/get-collections-batch.script";
 import {getCollectionsByNameComponentScript} from './flow/get-collections-by-name-component.script';
 import {getCollectionsComponentSaleScript} from './flow/get-collections-component-sale.script';
 import {getCollectionsByNameComponentSaleScript} from './flow/get-collections-by-name-component-sale.script';
@@ -86,6 +86,8 @@ import {initMetadataViewsTx} from './flow/init-metadata-views.tx';
 import {isMetadataInitializedScript} from './flow/is-metadata-initialized.script';
 import {packBuyTx} from './flow/pack-buy.tx';
 import {packBuyDapperTx} from './flow/pack-buy-dapper.tx';
+import {packBuyV2Tx} from './flow/pack-buy-v2.tx';
+import {packBuyDapperV2Tx} from './flow/pack-buy-dapper-v2.tx';
 import {packOpenTx} from './flow/pack-open.tx';
 import {flovatarSendGiftTx} from './flow/flovatar-send-gift.tx';
 import {flobotSendGiftTx} from './flow/flobot-send-gift.tx';
@@ -142,6 +144,22 @@ window.profile = null;
 window.dispatch = null;
 window.currentWallet = null;
 
+/**
+ * Which wallet is connected: 'dapper' or 'flow'. Looks at every FCL service (FCL >= 1.10 no longer guarantees
+ * that services[0] is the authn service), the authn endpoint and the provider address.
+ */
+window.detectWallet = function(user){
+    const services = (user && user.services) ? user.services : [];
+    const isDapper = services.some(function(s){
+        const uid = (s.uid || '').toLowerCase();
+        const endpoint = (s.endpoint || '').toLowerCase();
+        const provider = (s.provider && s.provider.address) ? s.provider.address.toLowerCase() : '';
+        return uid.indexOf('dapper') >= 0 || endpoint.indexOf('meetdapper.com') >= 0
+            || provider === '0xead892083b3e2c6c' || provider === '0x82ec283f88a62e65';
+    });
+    return isDapper ? 'dapper' : 'flow';
+}
+
 window.blacklistedAddresses = [
     '0x2b3733faa486deb3',
     '0x34f8fd310486de0f',
@@ -170,12 +188,30 @@ window.transError = function(transaction){
     return '';
 }
 
+// Passkey sign-in (resources/js/passkey.js) feeds its account through the same path as an FCL wallet user.
+window.applyUser = function(user){ return updateUser(user); };
+
 async function updateUser(user){
+    // passkey account panel "Link to Flow Wallet / Dapper": the wallet is connected only to sign the link, it must not
+    // become the site user (resources/js/passkey.js linkWallet)
+    if(window.extLinking){ return; }
+    if(window.extSession && window.extSession.active){
+        // passkey sign-in (testnet): FCL's own (empty) emissions must not replace the passkey user;
+        // a real wallet connecting ends the passkey session on this page.
+        if(!user || !user.addr){ return; }
+        if(user.authType !== 'passkey'){ window.extSession = null; }
+    }
     console.log('update user');
     console.log(user);
     window.user = user;
 
     if(user.addr) {
+        // Connected wallet (fresh connect or stored FCL session): load the login nonce + server login state now
+        // (anonymous visitors never call /login/nonce).
+        window.ensureLoginNonce();
+        // Decide the wallet here, before choosing which init check / transactions to use
+        window.currentWallet = window.detectWallet(user);
+        console.log('wallet: ' + window.currentWallet);
 
         let isBlacklisted = _.find(window.blacklistedAddresses, (item) => {
             return item == user.addr;
@@ -185,7 +221,6 @@ async function updateUser(user){
             window.dispatch('user-blacklisted', {});
             window.logout();
         } else {
-            jQuery('#moonpay-modal').removeClass('hidden');
             window.dispatch('user-loaded', {user: user});
 
             //TODO CADENCE 1.0 !!!
@@ -199,13 +234,8 @@ async function updateUser(user){
                 } else {
                     await isInitializedScript(user.addr).then(checkInitUser);
                 }
-                //window.getMoonpaySignature(user.addr);
             } else {
-                if(window.dustEnabled){
-                    await isInitializedDapperDustScript(user.addr).then(checkInitUser);
-                } else {
-                    await isInitializedDapperScript(user.addr).then(checkInitUser);
-                }
+                await isInitializedDapperScript(user.addr).then(checkInitUser);
             }
 
         }
@@ -255,12 +285,8 @@ window.loadInitUser = async function(){
         window.dispatch('loading-start');
         let txId = null;
         if(window.currentWallet == 'dapper'){
-            if(window.dustEnabled){
-                //txId = await initAccountDapperTx();
-                txId = await initAccountDapperDustTx();
-            } else {
-                txId = await initAccountDapperTx();
-            }
+            // Dapper: no DUST collections (DUST is not supported on Dapper)
+            txId = await initAccountDapperTx();
         } else {
             if(window.dustEnabled){
                 txId = await initAccountDustTx();
@@ -397,6 +423,7 @@ window.createSignature = async function(message){
     window.dispatch('loading-start');
 
     try{
+        await window.ensureLoginNonce();
         const user = await fcl.currentUser().snapshot();
         const proof = window.findAccountProof(user);
 
@@ -460,21 +487,6 @@ window.sendSubscription = function(email) {
 
 
 
-window.getMoonpaySignature = function(address) {
-    if(address) {
-        //console.log('request moonpay signature');
-        axios.post('/moonpay/sign', {
-            address: address
-        })
-            .then(function (response) {
-                window.dispatch('moonpay-signed', {signature: response.data});
-                //console.log(response);
-            })
-            .catch(function (error) {
-                console.log(error);
-            });
-    }
-}
 
 window.getSportvatarCodes = function() {
     axios.post('/sportpacks', { })
@@ -577,60 +589,56 @@ window.getCollectionsByName = async function(addressName){
         window.dispatch('collections-loaded', {collections: data});
     });
 }
-window.getCollectionsPack = async function(address){
-    await getCollectionsPackScript(address).then(function(data){
-        console.log('collections pack loaded');
-        //console.log(data);
-        window.dispatch('collections-pack-loaded', {collections: data});
-    });
+/**
+ * Collection loaders. Each tries the whole-collection script first (one round trip; enough for >99% of wallets) and
+ * falls back to ID batches (flow/get-collections-batch.script.js) when the access node refuses it, i.e. wallets beyond
+ * the script computation limit (mainnet, 2026-11-24: ~800 Flovatars / ~2,000 Flobits / ~2,500 collectibles per
+ * script; the Flovatar admin wallet holds 22k Flobits). `?batched=1` on the page URL forces the batched path.
+ */
+async function collectionWithFallback(label, whole, batched) {
+    if (forceBatched()) {
+        return batched();
+    }
+    try {
+        return await whole();
+    } catch (error) {
+        console.log(label + ' collection too big for one script, loading in batches');
+        return batched();
+    }
 }
-window.getCollectionsByNamePack = async function(addressName){
-    await getCollectionsByNamePackScript(addressName).then(function(data){
-        console.log('collections pack loaded');
-        //console.log(data);
-        window.dispatch('collections-pack-loaded', {collections: data});
-    });
-}
-
-window.getCollectionsFlovatar = async function(address){
-    await getCollectionsFlovatarScript(address).then(function(data){
-        console.log('collections flovatar loaded');
-        //console.log(data);
-        window.dispatch('collections-flovatar-loaded', {collections: data});
-    })
-    .catch(function (error) {
-        //console.log(error);
-        console.log('failed to load Flovatar collection');
-        window.dispatch('collections-flovatar-failed', {});
-    });
-}
-
-window.getCollectionsFlobot = async function(address){
-    await getCollectionsFlobotScript(address).then(function(data){
-        console.log('collections flobot loaded');
-        //console.log(data);
-        window.dispatch('collections-flobot-loaded', {collections: data});
-    })
-        .catch(function (error) {
-            //console.log(error);
-            console.log('failed to load Flobot collection');
-            window.dispatch('collections-flobot-failed', {});
+function collectionLoader(label, event, failedEvent, whole, batched) {
+    return async function(who){
+        await collectionWithFallback(label, () => whole(who), () => batched(who)).then(function(data){
+            console.log('collections ' + label + ' loaded');
+            window.dispatch(event, {collections: data});
+        }).catch(function (error) {
+            console.log('failed to load ' + label + ' collection');
+            if (failedEvent) {
+                window.dispatch(failedEvent, {});
+            }
         });
+    }
 }
 
-window.getCollectionsCollectible = async function(address){
-    await getCollectionsCollectibleScript(address).then(function(data){
-        console.log('collections collectible loaded');
-        //console.log(data);
-        window.dispatch('collections-collectible-loaded', {collections: data});
-    })
-        .catch(function (error) {
-            //console.log(error);
-            console.log('failed to load Collectible collection');
-            window.dispatch('collections-collectible-failed', {});
-        });
-}
+window.getCollectionsPack = collectionLoader('pack', 'collections-pack-loaded', null,
+    getCollectionsPackScript, getPacksList);
+window.getCollectionsByNamePack = collectionLoader('pack', 'collections-pack-loaded', null,
+    getCollectionsByNamePackScript, (name) => getCollectionBatchedByName('pack', name));
 
+window.getCollectionsFlovatar = collectionLoader('flovatar', 'collections-flovatar-loaded', 'collections-flovatar-failed',
+    getCollectionsFlovatarScript, (address) => getCollectionBatched('flovatar', address));
+window.getCollectionsByNameFlovatar = collectionLoader('flovatar', 'collections-flovatar-loaded', 'collections-flovatar-failed',
+    getCollectionsByNameFlovatarScript, (name) => getCollectionBatchedByName('flovatar', name));
+
+window.getCollectionsFlobot = collectionLoader('flobot', 'collections-flobot-loaded', 'collections-flobot-failed',
+    getCollectionsFlobotScript, (address) => getCollectionBatched('flobot', address));
+window.getCollectionsByNameFlobot = collectionLoader('flobot', 'collections-flobot-loaded', 'collections-flobot-failed',
+    getCollectionsByNameFlobotScript, (name) => getCollectionBatchedByName('flobot', name));
+
+window.getCollectionsCollectible = collectionLoader('collectible', 'collections-collectible-loaded', 'collections-collectible-failed',
+    getCollectionsCollectibleScript, (address) => getCollectionBatched('collectible', address));
+window.getCollectionsByNameCollectible = collectionLoader('collectible', 'collections-collectible-loaded', 'collections-collectible-failed',
+    getCollectionsByNameCollectibleScript, (name) => getCollectionBatchedByName('collectible', name));
 
 window.getCollectionsFlovatarIds = async function(address){
     await getCollectionsFlovatarIdsScript(address).then(function(data){
@@ -639,46 +647,6 @@ window.getCollectionsFlovatarIds = async function(address){
         window.dispatch('collections-flovatar-ids-loaded', {collections: data});
     });
 }
-
-window.getCollectionsByNameFlovatar = async function(addressName){
-    await getCollectionsByNameFlovatarScript(addressName).then(function(data){
-        console.log('collections flovatar loaded');
-        //console.log(data);
-        window.dispatch('collections-flovatar-loaded', {collections: data});
-    })
-    .catch(function (error) {
-        //console.log(error);
-        console.log('failed to load Flovatar collection');
-        window.dispatch('collections-flovatar-failed', {});
-    });
-}
-
-window.getCollectionsByNameFlobot = async function(addressName){
-    await getCollectionsByNameFlobotScript(addressName).then(function(data){
-        console.log('collections flobot loaded');
-        //console.log(data);
-        window.dispatch('collections-flobot-loaded', {collections: data});
-    })
-        .catch(function (error) {
-            //console.log(error);
-            console.log('failed to load Flobot collection');
-            window.dispatch('collections-flobot-failed', {});
-        });
-}
-
-window.getCollectionsByNameCollectible = async function(addressName){
-    await getCollectionsByNameCollectibleScript(addressName).then(function(data){
-        console.log('collections collectible loaded');
-        //console.log(data);
-        window.dispatch('collections-collectible-loaded', {collections: data});
-    })
-        .catch(function (error) {
-            //console.log(error);
-            console.log('failed to load Collectible collection');
-            window.dispatch('collections-collectible-failed', {});
-        });
-}
-
 window.getCollectionsByNameFlovatarIds = async function(addressName){
     await getCollectionsByNameFlovatarIdsScript(addressName).then(function(data){
         console.log('collections flovatar ids loaded');
@@ -687,49 +655,20 @@ window.getCollectionsByNameFlovatarIds = async function(addressName){
     });
 }
 
-window.getCollectionsFlovatarSale = async function(address){
-    await getCollectionsFlovatarSaleScript(address).then(function(data){
-        console.log('collections flovatar sale loaded');
-        //console.log(data);
-        window.dispatch('collections-flovatar-sale-loaded', {collections: data});
-    });
-}
-window.getCollectionsByNameFlovatarSale = async function(addressName){
-    await getCollectionsByNameFlovatarSaleScript(addressName).then(function(data){
-        console.log('collections flovatar sale loaded');
-        //console.log(data);
-        window.dispatch('collections-flovatar-sale-loaded', {collections: data});
-    });
-}
+window.getCollectionsFlovatarSale = collectionLoader('flovatar sale', 'collections-flovatar-sale-loaded', null,
+    getCollectionsFlovatarSaleScript, (address) => getCollectionBatched('flovatarSale', address));
+window.getCollectionsByNameFlovatarSale = collectionLoader('flovatar sale', 'collections-flovatar-sale-loaded', null,
+    getCollectionsByNameFlovatarSaleScript, (name) => getCollectionBatchedByName('flovatarSale', name));
 
-window.getCollectionsComponent = async function(address){
-    await getCollectionsComponentScript(address).then(function(data){
-        console.log('collections component loaded');
-        //console.log(data);
-        window.dispatch('collections-component-loaded', {collections: data});
-    });
-}
-window.getCollectionsByNameComponent = async function(addressName){
-    await getCollectionsByNameComponentScript(addressName).then(function(data){
-        console.log('collections component loaded');
-        //console.log(data);
-        window.dispatch('collections-component-loaded', {collections: data});
-    });
-}
-window.getCollectionsComponentSale = async function(address){
-    await getCollectionsComponentSaleScript(address).then(function(data){
-        console.log('collections component sale loaded');
-        //console.log(data);
-        window.dispatch('collections-component-sale-loaded', {collections: data});
-    });
-}
-window.getCollectionsByNameComponentSale = async function(addressName){
-    await getCollectionsByNameComponentSaleScript(addressName).then(function(data){
-        console.log('collections component sale loaded');
-        //console.log(data);
-        window.dispatch('collections-component-sale-loaded', {collections: data});
-    });
-}
+window.getCollectionsComponent = collectionLoader('component', 'collections-component-loaded', null,
+    getCollectionsComponentScript, (address) => getCollectionBatched('component', address));
+window.getCollectionsByNameComponent = collectionLoader('component', 'collections-component-loaded', null,
+    getCollectionsByNameComponentScript, (name) => getCollectionBatchedByName('component', name));
+
+window.getCollectionsComponentSale = collectionLoader('component sale', 'collections-component-sale-loaded', null,
+    getCollectionsComponentSaleScript, (address) => getCollectionBatched('componentSale', address));
+window.getCollectionsByNameComponentSale = collectionLoader('component sale', 'collections-component-sale-loaded', null,
+    getCollectionsByNameComponentSaleScript, (name) => getCollectionBatchedByName('componentSale', name));
 
 
 window.getComponent = async function(address, componentId){
@@ -819,7 +758,8 @@ window.reservePack = function(packType, address){
     console.log('reserve pack');
     console.log(packType);
     axios.post('/pack/reserve', {
-        type: packType
+        type: packType,
+        wallet: window.currentWallet
     }).then(function (response) {
             //console.log(response);
             if(response.data && response.data.packId && response.data.signature){
@@ -829,7 +769,8 @@ window.reservePack = function(packType, address){
                 price = (packType == 'flobit') ? 39.0 : price;
                 price = (packType == 'terrakit') ? 49.0 : price;
                 price = (packType == 'dustpack') ? 3000.0 : price;
-                window.buyPack(response.data.packId, price, response.data.signature)
+                // Packs v2: the authorisation also carries an expiry (verifier inside FlovatarPack)
+                window.buyPack(response.data.packId, price, response.data.signature, response.data.version == 2 ? response.data.expiry : null)
             } else {
                 window.dispatch('reserve-failed');
                 console.log(response);
@@ -851,14 +792,15 @@ window.preReservePack = function(packType){
     console.log('reserve pack');
     console.log(packType);
     axios.post('/pack/reserve', {
-        type: packType
+        type: packType,
+        wallet: window.currentWallet
     }).then(function (response) {
         //console.log(response);
         if(response.data && response.data.packId && response.data.signature){
             let price = (packType == 'deluxe') ? window.packPrice2 : window.packPrice;
             price = (packType == 'flobit') ? 39.0 : price;
             price = (packType == 'terrakit') ? 49.0 : price;
-            window.dispatch('pack-pre-reserved', {signature: response.data.signature, id: response.data.packId, price: price});
+            window.dispatch('pack-pre-reserved', {signature: response.data.signature, id: response.data.packId, price: price, expiry: response.data.version == 2 ? response.data.expiry : null});
         } else {
             window.dispatch('pre-reserve-failed');
             console.log(response);
@@ -871,13 +813,18 @@ window.preReservePack = function(packType){
 }
 
 
-window.buyPack = async function(packId, price, signature){
+window.buyPack = async function(packId, price, signature, expiry = null){
     //saleAddress, tokenId, amount, secret
     console.log('purchasing pack');
     window.dispatch('loading-start');
     try{
         let txId = null;
-        if(window.currentWallet == 'dapper') {
+        if(expiry) {
+            // Packs v2 (FlovatarPack.purchasePack): authorisation bound to this wallet, with expiry
+            txId = (window.currentWallet == 'dapper')
+                ? await packBuyDapperV2Tx(packId, price, expiry, signature)
+                : await packBuyV2Tx(packId, price, expiry, signature);
+        } else if(window.currentWallet == 'dapper') {
             txId = await packBuyDapperTx(process.env.MIX_DAPPER_MERCHANT, packId, price, signature, process.env.MIX_CONTRACT_FLOW);
         } else {
             txId = await packBuyTx(process.env.MIX_CONTRACT_FLOW, packId, price, signature);
@@ -1561,7 +1508,7 @@ window.buyCollectibleSale = async function(saleAddress, tokenId, amount, saleId)
                     //console.log(transaction);
                     window.dispatch('fcollectible-sale-purchased');
                     window.dispatch('loading-completed');
-                    window.location = '/collectibles/'+tokenId+'/'+window.user.addr;
+                    window.location = window.itemUrlAfterTx('collectibles', tokenId, window.user.addr);
                 } else {
                     window.dispatch('transaction-error', {message: window.transError(transaction)});
                 }
@@ -1656,7 +1603,7 @@ window.buyFlobotSale = async function(saleAddress, tokenId, amount, saleId){
                     //console.log(transaction);
                     window.dispatch('flobot-sale-purchased');
                     window.dispatch('loading-completed');
-                    window.location = '/flobots/'+tokenId+'/'+window.user.addr;
+                    window.location = window.itemUrlAfterTx('flobots', tokenId, window.user.addr);
                 } else {
                     window.dispatch('transaction-error', {message: window.transError(transaction)});
                 }
@@ -2125,31 +2072,6 @@ window.flovatarUnlock3d = async function(flovatarId){
     }
 }
 
-window.flovatarUnlockChat = async function(flovatarId){
-    console.log('flovatar unlock chat start');
-    window.dispatch('loading-start');
-    try{
-        let txId = await flovatarUnlockChatTx(flovatarId);
-        console.log('flovatar unlock chat finish');
-        window.dispatch('waiting-seal');
-        const unsub = await fcl.tx(txId).subscribe(transaction => {
-            if (fcl.tx.isSealed(transaction)) {
-                if(!window.transError(transaction)){
-                    console.log('flovatar unlock chat sealed');
-                    //console.log(transaction);
-                    window.dispatch('flovatar-chat-unlocked');
-                    window.dispatch('loading-completed');
-                    window.getFlovatar(window.user.addr, flovatarId);
-                } else {
-                    window.dispatch('transaction-error', {message: window.transError(transaction)});
-                }
-                unsub();
-            }
-        });
-    } catch(error){
-        window.dispatch('transaction-error', {message: error});
-    }
-}
 
 
 window.collectibleSetName = async function(collectibleId, name){
@@ -2246,7 +2168,7 @@ window.flovatarSendGift = async function(flovatarId, address){
                     //console.log(transaction);
                     window.dispatch('flovatar-gift-sent');
                     window.dispatch('loading-completed');
-                    window.location = '/flovatars/'+flovatarId+'/'+address;
+                    window.location = window.itemUrlAfterTx('flovatars', flovatarId, address);
                 } else {
                     window.dispatch('transaction-error', {message: window.transError(transaction)});
                 }
@@ -2273,7 +2195,7 @@ window.flobotSendGift = async function(flobotId, address){
                     //console.log(transaction);
                     window.dispatch('flobot-gift-sent');
                     window.dispatch('loading-completed');
-                    window.location = '/flobots/'+flobotId+'/'+address;
+                    window.location = window.itemUrlAfterTx('flobots', flobotId, address);
                 } else {
                     window.dispatch('transaction-error', {message: window.transError(transaction)});
                 }
@@ -2300,7 +2222,7 @@ window.collectibleSendGift = async function(collectibleId, address){
                     //console.log(transaction);
                     window.dispatch('collectible-gift-sent');
                     window.dispatch('loading-completed');
-                    window.location = '/collectibles/'+collectibleId+'/'+address;
+                    window.location = window.itemUrlAfterTx('collectibles', collectibleId, address);
                 } else {
                     window.dispatch('transaction-error', {message: window.transError(transaction)});
                 }
@@ -2332,7 +2254,7 @@ window.buyFlovatarSale = async function(saleAddress, tokenId, amount, saleId){
                     //console.log(transaction);
                     window.dispatch('flovatar-sale-purchased');
                     window.dispatch('loading-completed');
-                    window.location = '/flovatars/'+tokenId+'/'+window.user.addr;
+                    window.location = window.itemUrlAfterTx('flovatars', tokenId, window.user.addr);
                 } else {
                     window.dispatch('transaction-error', {message: window.transError(transaction)});
                 }
@@ -2558,39 +2480,4 @@ window.upgradeFlobits = async function(idArr){
 
 
 
-window.sendChatMessage = function(address, id, message) {
-    if(address && id && message) {
-        console.log('send chat message');
-        axios.post('/chat/send', {
-            address: address,
-            id: id,
-            message: message
-        })
-            .then(function (response) {
-                window.dispatch('chat-message-sent', {response: response});
-                //console.log(response);
-            })
-            .catch(function (error) {
-                console.log(error);
-            });
-    }
-}
-
-
-window.checkThreadStatus = function(threadId, runId) {
-    if(threadId && runId) {
-        console.log('check thread status');
-        axios.post('/chat/check', {
-            threadId: threadId,
-            runId: runId
-        })
-            .then(function (response) {
-                window.dispatch('chat-thread-checked', {response: response});
-                //console.log(response);
-            })
-            .catch(function (error) {
-                console.log(error);
-            });
-    }
-}
 

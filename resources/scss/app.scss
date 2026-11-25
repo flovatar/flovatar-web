@@ -1,33 +1,10 @@
-$breakpoints: (
-    'xs-phone': 320px,
-    'sm-phone': 375px,
-    'phone': 480px,
-    'tablet': 768px,
-    'laptop': 900px,
-    'desktop': 1024px,
-    'widescreen': 1280px,
-    'largescreen': 1500px,
-    'xl-screen': 2000px
-);
-
-// keywords
-$media-expressions: (
-    'screen': 'screen',
-    'print': 'print',
-    'handheld': 'handheld',
-    'landscape': '(orientation: landscape)',
-    'portrait': '(orientation: portrait)',
-    'retina2x': '(-webkit-min-device-pixel-ratio: 1.5), (min-resolution: 144dpi)',
-    'retina3x': '(-webkit-min-device-pixel-ratio: 2.5), (min-resolution: 240dpi)'
-);
-
-// ligatured operators ≥ ≤
-
+@import 'base/breakpoints';
 
 @import 'base/functions';
 @import 'base/variables';
 @import 'base/mixins';
 @import 'base/helpers';
+// Feature styles (passkey, ĐUST market/swap/quests, TerraKit check) are separate lazy bundles: resources/scss/fx/*.scss
 @import 'base/tooltips';
 
 @import 'vendors/fonts';

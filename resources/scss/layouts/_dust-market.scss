@@ -1,0 +1,19 @@
+// ĐUST marketplace (KB notes/dust-marketplace.md): only rendered when DUST_MARKET_ENABLED.
+[x-cloak] { display: none !important; }
+
+.dust-market-box {
+    .dust-price { font-weight: 700; letter-spacing: .02em; }
+    .dust-note { display: block; font-size: 13px; line-height: 1.4; opacity: .8; margin-top: 4px; }
+    .col-r { flex-wrap: wrap; gap: 8px; }
+}
+
+.dust-market-flobot { margin-top: 24px; margin-bottom: 24px; }
+
+.currency-dust { color: #f5c542; }
+
+.dust-listings-section {
+    margin: 24px 0;
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid rgba(255, 255, 255, .1); }
+    .dust-dead { opacity: .6; }
+}

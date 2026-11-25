@@ -14,7 +14,7 @@
                 <li><strong class="title">GETTING STARTED</strong></li>
                 <li><a href="/get-started">About Flovatar</a></li>
                 <li><a href="/get-started#builder">Building a Flovatar</a></li>
-                <li><a href="/get-started#blocto">Set up a Blocto Wallet</a></li>
+                <li><a href="/get-started#blocto">Set up a Flow Wallet</a></li>
                 <li><a href="/get-started#flow">Get Flow Currency</a></li>
             </ul>
             <ul class="footer-links">

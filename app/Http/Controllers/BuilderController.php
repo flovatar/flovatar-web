@@ -14,7 +14,8 @@ class BuilderController extends Controller
     public function __invoke()
     {
 
-        $templates = $this->getTemplates();
-        return view('builder')->with(['templates' => $templates]);
+        // Template SVGs come from a separate cacheable script (TemplateDataController)
+        $templatesScript = $this->templatesScriptUrl('series1');
+        return view('builder')->with(['templatesScript' => $templatesScript]);
     }
 }

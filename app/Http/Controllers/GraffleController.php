@@ -41,7 +41,9 @@ class GraffleController extends Controller
                 ]
             );
 
-            ProcessGraffleEvents::dispatch($event);
+            if($event->exists){ // not stored when below the events archive watermark
+                ProcessGraffleEvents::dispatch($event);
+            }
 
             return 'ok';
         } else {

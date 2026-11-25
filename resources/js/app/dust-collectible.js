@@ -1,11 +1,12 @@
 import Alpine from "alpinejs";
+import {geoEditor} from "../geo";
 
 Alpine.data('collectibleData', (address, collectibleId, templates, collectibleSaleOffer) => ({
     templates: templates,
     address: address,
     collectibleSaleOffer: collectibleSaleOffer,
     isLoading: true,
-    geocoder: null,
+    ...geoEditor('collectibleLat', 'collectibleLon'), // GEO Location editor (OpenStreetMap), resources/js/geo.js
     collectible: null,
     collectibleId: collectibleId,
     sale: null,
@@ -27,9 +28,6 @@ Alpine.data('collectibleData', (address, collectibleId, templates, collectibleSa
         if(this.collectibleSaleOffer) {
             this.currentPrice = parseFloat(this.collectibleSaleOffer.price);
             this.currentPriceChange = this.currentPrice;
-        }
-        if(google){
-            this.geocoder = new google.maps.Geocoder();
         }
     },
     loadCollectible(collectible){
@@ -68,26 +66,6 @@ Alpine.data('collectibleData', (address, collectibleId, templates, collectibleSa
             return this.currentOwnerName+'.find';
         }
         return this.address;
-    },
-    geocodeAddress(){
-        let self = this;
-        if(this.geocoder){
-            this.geocoder.geocode({ address: this.searchAddress }, (results, status) => {
-                if (status === "OK" && results.length > 0) {
-                    // Display response in the console
-                    //console.log(results);
-                    self.foundAddress = results[0].formatted_address;
-                    let pos = results[0].geometry.location;
-                    self.collectibleLat = pos.lat();
-                    self.collectibleLon = pos.lng();
-                } else {
-                    self.foundAddress = '';
-                    self.collectibleLat = 0;
-                    self.collectibleLon = 0;
-                    //alert("Geocode error: " + status);
-                }
-            });
-        }
     },
     isDapperSale(){
         return (this.collectibleSaleOffer);
@@ -255,7 +233,8 @@ Alpine.data('collectibleData', (address, collectibleId, templates, collectibleSa
     }
 }));
 
-window.initCollectible = function(dispatch, address, collectibleId){
+window.initCollectible = async function(dispatch, address, collectibleId){
     window.dispatch = dispatch;
+    address = await window.resolveItemOwner('collectible', collectibleId, address); // headless: owner confirmed on chain
     window.getDustCollectible(address, collectibleId);
 }

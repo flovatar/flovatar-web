@@ -1,5 +1,15 @@
 <x-guest-layout>
+    @push('og')
+        @include('partials.og-item', ['ogType' => 'flobot', 'ogId' => $flobotId, 'ogTitle' => 'Flobot #'.$flobotId, 'ogUrl' => url('flobots/'.$flobotId)])
+    @endpush
+    @if(\App\Support\Blocklist::isBlocked($address ?? null) || \App\Support\Blocklist::isFlagged('App\Models\Flobot', $flobotId ?? null))
+        <div class="container">@include('partials.incident-notice')</div>
+    @endif
 
+    @isset($templatesScript)
+    {{-- window.templates (with SVGs) from a versioned, long-cacheable script --}}
+    <script src="{{ $templatesScript }}"></script>
+    @endisset
     <script>
         @if(isset($templates))
             window.templates = @json($templates);
@@ -14,6 +24,7 @@
     <div
         x-data="flobotData('{{$address}}', window.templates, window.flobotSales, window.flobotSaleOffer)"
         x-init="initFlobot($dispatch, '{{$address}}', {{$flobotId}})"
+        @item-owner-resolved.window="address = $event.detail.address"
         @flobot-loaded.window="loadFlobot($event.detail.flobot)"
         @flobot-sale-loaded.window="loadSale($event.detail.sale)"
         @flobot-sale-created.window="console.log('sale created!')"
@@ -72,6 +83,7 @@
                                 <dd>
                                     <div class="input-panel">
                                         <a target="_blank" x-bind:download="'Flobot-'+mint()+'.svg'" x-bind:href="'/api/image/flobot/'+mint()" class="btn btn-sm btn-lilac"><span class="inner">SVG</span></a>
+                                        @include('partials.render-downloads', ['dlType' => 'flobot', 'dlId' => $flobotId, 'dlName' => 'Flobot-'.$flobotId])
                                     </div>
                                 </dd>
                             </dl>
@@ -93,13 +105,10 @@
                                 <div class="mp-label"  x-show="!isDapperSale()">
                                     <div class="icons">
                                         <span class="ico-wrap">
-                                            <img src="/images/ico-blocto.png" width="40" alt="">
-                                        </span>
-                                        <span class="ico-wrap">
-                                            <img src="/images/ico-lilico.png" width="40" alt="">
+                                            <img src="/images/icon-flow.svg" width="40" alt="">
                                         </span>
                                     </div>
-                                    <span>Blocto / Lilico</span>
+                                    <span>Flow Wallet</span>
                                 </div>
                             </dd>
                         </dl>
@@ -136,10 +145,10 @@
                                 <a x-bind:href="combinationUrl()" class="btn btn-sm btn-lilac"><span class="inner">View in Builder</span></a>
                             </div>
                             <div class="btns-right">
-                                <div x-show="!isSale() && isOwned() && !showGift && !isDapperWallet()" class="btn-wrp">
+                                <div x-show="!isSale() && isOwned() && !showGift && !isDapperWallet(){{ \App\Support\DustMarket::enabled() ? ' && !$store.dust.live' : '' }}" class="btn-wrp">
                                     <button @click.prevent.stop="showGift = true" x-bind:disabled="!loggedIn()" class="btn btn-sm btn-lilac"><span class="inner">Gift</span></button>
                                 </div>
-                                <div x-show="!isSale() && isOwned() && !showSale" class="btn-wrp">
+                                <div x-show="!isSale() && isOwned() && !showSale{{ \App\Support\DustMarket::enabled() ? ' && !$store.dust.live' : '' }}" class="btn-wrp">
                                     <button @click.prevent.stop="showSale = true" x-bind:disabled="!loggedIn()" class="btn btn-sm btn-green"><span class="inner">Sell</span></button>
                                 </div>
                                 <div x-show="showSaleBtn()" class="btn-wrp">
@@ -158,6 +167,9 @@
 
 
 
+        @if(\App\Support\DustMarket::enabled())
+        <div class="container dust-market-flobot">@include('partials.dust-market', ['dustKind' => 'flobot', 'dustId' => $flobotId])</div>
+        @endif
         <!-- Customize Flobits -->
         <div class="customize-flobits" x-show="isOwned() && !isSale()">
             <div class="container">

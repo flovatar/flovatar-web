@@ -154,7 +154,7 @@ Alpine.data('salesData', (templates, address, stats) => ({
         if(this.minPrice && this.maxPrice && this.minPrice > this.maxPrice){
             this.minPrice = this.maxPrice;
         }
-        axios.post('/transactions/search', this.getSearchParams()).then(function (response) {
+        window.searchApi('/transactions/search', this.getSearchParams()).then(function (response) {
             self.handleSearchResults(response.data);
         })
             .catch(function (error) {
@@ -169,7 +169,7 @@ Alpine.data('salesData', (templates, address, stats) => ({
     loadNextPage(){
         if(this.nextPage) {
             let self = this;
-            axios.post('/transactions/search', this.getSearchParams()).then(function (response) {
+            window.searchApi('/transactions/search', this.getSearchParams()).then(function (response) {
                 self.handleNextResults(response.data);
             })
                 .catch(function (error) {
@@ -185,19 +185,39 @@ Alpine.data('salesData', (templates, address, stats) => ({
     isFlovatar(sale){
         return (sale.item_type == 'App\\Models\\Flovatar');
     },
+    // Flobot / DUST collectible sales carry their own row (no Flobit template)
+    isOtherItem(sale){
+        return sale.item_type == 'App\\Models\\Flobot' || sale.item_type == 'App\\Models\\DustCollectible';
+    },
     isFlobit(sale){
-        if(this.isFlovatar(sale)){
+        if(this.isFlovatar(sale) || this.isOtherItem(sale)){
             return false;
         } else {
             let item = this.getItem(sale);
-            return (item.category != 'spark' && item.category != 'boost') ? true : false;
+            return (item && item.category != 'spark' && item.category != 'boost') ? true : false;
         }
     },
     getItem(sale){
-        return this.isFlovatar(sale) ? sale.item : _.find(this.templates, {  'id': sale.item.flovatar_template_id });
+        if(!sale.item){
+            return null;
+        }
+        return (this.isFlovatar(sale) || this.isOtherItem(sale)) ? sale.item : _.find(this.templates, {  'id': sale.item.flovatar_template_id });
     },
     getSvgUrl(sale){
+        // headless API rows: R2 thumbnail when it looks the same as the SVG (opaque, not animated); else the SVG
+        if(sale.list_thumb){
+            return sale.list_thumb;
+        }
         let item = this.getItem(sale);
+        if(!item){
+            return '';
+        }
+        if(sale.item_type == 'App\\Models\\Flobot'){
+            return '/api/image/flobot/'+item.flow_id;
+        }
+        if(sale.item_type == 'App\\Models\\DustCollectible'){
+            return '/api/image/collectible/'+item.flow_id;
+        }
         return this.isFlovatar(sale) ? '/api/image/'+item.flow_id : '/api/image/template/'+item.flow_id;
     },
     getSvg(sale){
@@ -205,12 +225,23 @@ Alpine.data('salesData', (templates, address, stats) => ({
         return item ? wrapSvg(item.svg) : '';
     },
     getUrl(sale){
-        let prefix = this.isFlovatar(sale) ? '/flovatars/' : '/components/';
-        return sale.item ? prefix+sale.item.flow_id+'/'+sale.item.flow_address : '#';
+        if(!sale.item){
+            return '#';
+        }
+        if(sale.item_type == 'App\\Models\\Flobot'){
+            return window.itemUrl('flobots', sale.item.flow_id, sale.item.flow_address);
+        }
+        if(sale.item_type == 'App\\Models\\DustCollectible'){
+            return window.itemUrl('collectibles', sale.item.flow_id, sale.item.flow_address);
+        }
+        return this.isFlovatar(sale) ? window.itemUrl('flovatars', sale.item.flow_id, sale.item.flow_address) : '/components/'+sale.item.flow_id+'/'+sale.item.flow_address;
     },
     getName(sale){
         let item = this.getItem(sale);
-        if(this.isFlovatar(sale) && !item.name){
+        if(!item){
+            return '';
+        }
+        if((this.isFlovatar(sale) || this.isOtherItem(sale)) && !item.name){
             return '#'+item.flow_id;
         }
         return item && item.name ? item.name : '';
@@ -218,9 +249,15 @@ Alpine.data('salesData', (templates, address, stats) => ({
     getType(sale){
         if(this.isFlovatar(sale)){
             return 'Flovatar';
+        } else if(sale.item_type == 'App\\Models\\Flobot'){
+            return 'Flobot';
+        } else if(sale.item_type == 'App\\Models\\DustCollectible'){
+            return 'DUST Collectible';
         } else {
             let item = this.getItem(sale);
-            if(item.category == 'spark'){
+            if(!item){
+                return 'Flobit';
+            } else if(item.category == 'spark'){
                 return 'Spark';
             } else if(item.category == 'boost') {
                 return 'Rarity Booster';

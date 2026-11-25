@@ -1,0 +1,45 @@
+<?php
+
+/*
+ * Headless frontend (static HTML on R2 served by the Cloudflare Worker "flovatar-headless").
+ * Architecture: flovatar-kb notes/headless-architecture.md (kept in sync with docs/HEADLESS.md).
+ *
+ * The static pages are rendered by this app (Blade -> HTML, `php artisan headless:build`) and uploaded to
+ * the R2 bucket `flovatar-web` under {prefix}site/...; the Worker serves them and proxies the dynamic paths
+ * (/api/*, /login*, /logout, /csrf-token, searches, ...) to this app on the same origin.
+ */
+return [
+    // Master switch: regeneration jobs (model observers) + scheduled rebuilds only run when true.
+    'enabled' => env('HEADLESS_ENABLED', false),
+
+    // Public URL of the static frontend (canonical/og:url/sitemap). Testnet: https://next-testnet.flovatar.com
+    'frontend_url' => rtrim((string) env('HEADLESS_FRONTEND_URL', env('APP_URL', 'http://localhost')), '/'),
+
+    // Storage for the static site: disk + key prefix. Testnet MUST use 'testnet/' (enforced off mainnet).
+    'disk' => env('HEADLESS_DISK', 'r2web'),
+    'prefix' => env('HEADLESS_PREFIX', ''),
+
+    // Seconds to wait before re-rendering an item page after a change (coalesces bursts of events).
+    'debounce' => (int) env('HEADLESS_DEBOUNCE', 30),
+
+    // Queue for the per-item regeneration job.
+    'queue' => env('HEADLESS_QUEUE', 'default'),
+
+    // Cache-Control for HTML objects on R2 (the Worker passes it through). Edge TTL 60 s: no purge needed.
+    'html_cache_control' => 'public, max-age=0, s-maxage=60, stale-while-revalidate=300',
+    'asset_cache_control' => 'public, max-age=86400',
+    'versioned_asset_cache_control' => 'public, max-age=31536000, immutable',
+
+    // Laravel host(s) the Worker proxies to (its ORIGIN, prod: api.flovatar.com). Direct hits there get
+    // X-Robots-Tag noindex (App\Http\Middleware\HeadlessProxyRequest). Comma separated; empty = none.
+    'origin_hosts' => array_values(array_filter(array_map(fn ($h) => strtolower(trim($h)),
+        explode(',', (string) env('HEADLESS_ORIGIN_HOSTS', ''))))),
+
+    // Source addresses of Cloudflare Worker subrequests (after nginx real_ip). Only these may pass the
+    // visitor's IP in X-Headless-Client-IP. Cloudflare documents 2a06:98c0:3600::103 for Workers.
+    'worker_ips' => array_values(array_filter(array_map('trim',
+        explode(',', (string) env('HEADLESS_WORKER_IPS', '2a06:98c0::/29'))))),
+
+    // public/ entries that are never uploaded as static assets.
+    'asset_exclude' => ['index.php', 'storage', '.htaccess', 'web.config', 'hot', 'robots.txt', 'webgl'],
+];

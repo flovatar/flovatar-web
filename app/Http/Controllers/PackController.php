@@ -10,6 +10,7 @@ use App\Models\SportvatarPack;
 use App\Models\User;
 use App\Models\Whitelist;
 use App\Jobs\ReservePack;
+use App\Services\Flow\FlovatarPackAuthorizer;
 use Auth;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -105,7 +106,9 @@ class PackController extends AuthController
     {
 
         if(auth()->check()){
-            return SportvatarPack::select('flow_id', 'signature')->whereName('Genesis Free Pack')->whereFlowAddress(auth()->user()->email)->orderBy('flow_id', 'desc')->get();
+            // Pack codes v1 are dead on-chain since the 2026-11-22 SportvatarPack update and must never be served again.
+            // Holders now claim on Sportvatar with a wallet-bound voucher (no code needed); only list the pack ids.
+            return SportvatarPack::select('flow_id')->whereName('Genesis Free Pack')->whereFlowAddress(auth()->user()->email)->orderBy('flow_id', 'desc')->get();
         } else {
             return [];
         }
@@ -143,6 +146,24 @@ class PackController extends AuthController
 
             }
 
+        }
+
+        if($pack && config('flovatar.packsV2Enabled')) {
+            // Packs v2: fresh authorisation bound to this wallet and payment kind, expiring
+            // (pack verifier inside FlovatarPack, on-chain). The signer key is not an account key.
+            $auth = app(FlovatarPackAuthorizer::class)->authorize(
+                FlovatarPackAuthorizer::kindFor((string) $pack->name, $request->get('wallet') === 'dapper' ? 'dapper' : null),
+                (int) $pack->flow_id,
+                $address
+            );
+            return [
+                'version' => 2,
+                'packId' => $pack->flow_id,
+                'signature' => $auth['signature'],
+                'expiry' => $auth['expiry'],
+                'kind' => $auth['kind'],
+                'processing' => false
+            ];
         }
 
         if($pack) {

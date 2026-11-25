@@ -18,6 +18,11 @@ class Pack extends Model
 
 
     public function scopeReadyToSell($query){
+        // v1 needs a stored signature (made with account key 0); v2 signs a fresh, recipient-bound
+        // authorisation at reservation time (FlovatarPackAuthorizer), so only the on-chain pack is needed.
+        if (config('flovatar.packsV2Enabled')) {
+            return $query->whereNotNull('flow_id')->whereFlowAddress(config('services.flow.address'));
+        }
         return $query->whereNotNull('signature')->whereNotNull('flow_id')->whereFlowAddress(config('services.flow.address'));
     }
 

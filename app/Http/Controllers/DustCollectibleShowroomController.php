@@ -9,7 +9,7 @@ class DustCollectibleShowroomController extends FilteredController
     public function __invoke()
     {
 
-        $templates = $this->getDustTemplates()->makeHidden(['flow_metadata', 'svg']);
+        $templates = $this->getDustTemplatesLean();
 
         return view('dust-collectible-showroom')->with(['templates' => $templates]);
     }

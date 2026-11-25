@@ -17,8 +17,8 @@ class SearchFlobotController extends FilteredController
     public function __invoke()
     {
 
-        $flobots = Cache::remember('db-flobot-search-'.$this->paramString(), now()->addSeconds(30), function() {
-            return $this->getFilteredFlobots(request());
+        $flobots = Cache::remember('db-flobot-search-lean-'.$this->paramString(), now()->addSeconds(30), function() {
+            return $this->getFilteredFlobots(request(), true);
         });
 
         return $flobots;

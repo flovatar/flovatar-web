@@ -20,34 +20,71 @@ use Cache;
 
 class FilteredController extends Controller
 {
-    protected function getFilteredSales(Request $req){
-        $salesQuery = SaleOffer::query();
+    // List columns: everything except the svg blob; flow_metadata without metadata.svg (~27 KB each).
+    // The web pages show images via /api/image/* and never read svg / full_svg / full_svg_no_bg.
+    public const FLOVATAR_LIST_COLUMNS = ['id', 'name', 'series', 'flow_id', 'rare_count', 'epic_count', 'legendary_count', 'flow_address', 'created_at', 'updated_at'];
+    public const FLOBOT_LIST_COLUMNS = ['id', 'name', 'series', 'flow_id', 'rarity', 'flow_address', 'flow_metadata', 'created_at', 'updated_at'];
+    public const HEAVY_APPENDS = ['svg', 'full_svg', 'full_svg_no_bg'];
+
+    protected function leanItemConstraints(){
+        return function (MorphTo $morphTo) {
+            $morphTo->constrain([
+                Flovatar::class => function ($query) {
+                    $query->select(self::FLOVATAR_LIST_COLUMNS)
+                        ->selectRaw("JSON_REMOVE(flow_metadata, '$.metadata.svg') as flow_metadata");
+                },
+                Flobot::class => function ($query) {
+                    $query->select(self::FLOBOT_LIST_COLUMNS);
+                },
+            ]);
+        };
+    }
+
+    protected function hideHeavyItemAppends($results){
+        foreach($results->getCollection() as $row){
+            if($row->relationLoaded('item') && $row->item && ($row->item instanceof Flovatar || $row->item instanceof Flobot)){
+                $row->item->makeHidden(self::HEAVY_APPENDS);
+            }
+        }
+        return $results;
+    }
+
+    /** $lean: web pages (no svg blobs); the JSON API keeps its full output. */
+    protected function getFilteredSales(Request $req, $lean = false){
+        $salesQuery = SaleOffer::query()->notBlocked();
 
         if(!$req->get('nosvg')){
-            $salesQuery->with('item' );
+            $salesQuery->with($lean ? ['item' => $this->leanItemConstraints()] : 'item');
         }
 
         $results = $this->runFilterQuery($req, $salesQuery)->paginate(20);
 
         if($req->get('nosvg')) {
             $results->makeHidden(['flow_metadata']);
+        } else if($lean) {
+            $this->hideHeavyItemAppends($results);
         }
         return $results;
     }
 
 
-    protected function getFilteredTransactions(Request $req){
-        $salesQuery = Sale::query();
+    protected function getFilteredTransactions(Request $req, $lean = false){
+        $salesQuery = Sale::query()->notBlocked();
 
         if($req->get('nosvg')){
             $salesQuery->with(['item' => function($query) {
                 return $query->select(['id', 'flow_id','name', 'rare_count', 'epic_count', 'legendary_count', 'flow_address']);
             }]);
         } else {
-            $salesQuery->with('item' );
+            $salesQuery->with($lean ? ['item' => $this->leanItemConstraints()] : 'item');
         }
 
-        return $this->runFilterQuery($req, $salesQuery)->paginate(50);
+        $results = $this->runFilterQuery($req, $salesQuery)->paginate(50);
+
+        if($lean && !$req->get('nosvg')){
+            $this->hideHeavyItemAppends($results);
+        }
+        return $results;
     }
 
 
@@ -95,6 +132,8 @@ class FilteredController extends Controller
         } else {
             $salesQuery->where('is_dapper', false);
         }
+        // ĐUST marketplace: currency=all|flow|dust (ĐUST rows never shown while DUST_MARKET_ENABLED is off)
+        $salesQuery->currencyFilter($req->get('currency', 'all'), $req->get('dapper') == 'true');
 
         if($req->get('pricemin')){
             $salesQuery->where('price', '>=', intval($req->get('pricemin')));
@@ -182,8 +221,12 @@ class FilteredController extends Controller
 
 
 
-    protected function getFilteredFlovatars(Request $req){
+    protected function getFilteredFlovatars(Request $req, $lean = false){
         $flovatarsQuery = Flovatar::with('saleOffers');
+        if($lean){
+            $flovatarsQuery->select(self::FLOVATAR_LIST_COLUMNS)
+                ->selectRaw("JSON_REMOVE(flow_metadata, '$.metadata.svg') as flow_metadata");
+        }
 
 
 
@@ -242,13 +285,20 @@ class FilteredController extends Controller
 
         $flovatars = $flovatarsQuery->paginate(20);
 
+        if($lean){
+            $flovatars->getCollection()->each->makeHidden(self::HEAVY_APPENDS);
+        }
+
         return $flovatars;
     }
 
 
 
-    protected function getFilteredFlobots(Request $req){
+    protected function getFilteredFlobots(Request $req, $lean = false){
         $flobotsQuery = Flobot::with('saleOffers');
+        if($lean){
+            $flobotsQuery->select(self::FLOBOT_LIST_COLUMNS);
+        }
 
 
 
@@ -292,6 +342,10 @@ class FilteredController extends Controller
 
         $flobots = $flobotsQuery->paginate(20);
 
+        if($lean){
+            $flobots->getCollection()->each->makeHidden(self::HEAVY_APPENDS);
+        }
+
         return $flobots;
     }
 
@@ -299,7 +353,7 @@ class FilteredController extends Controller
 
     protected function getSalesByTemplateId($templateId, $quantity = 1){
 
-        $salesQuery = SaleOffer::with('item');
+        $salesQuery = SaleOffer::with('item')->notBlocked()->notDust(); // builder checkout buys FLOW listings only
         $salesQuery->whereItemType(FlovatarComponent::class)->where('is_dapper', false);
 
         $templates = FlovatarTemplate::select('id')->whereFlowId($templateId)->get()->flatten();
@@ -319,8 +373,15 @@ class FilteredController extends Controller
 
 
 
-    protected function getFilteredCollectibles(Request $req){
+    public const COLLECTIBLE_LIST_COLUMNS = ['id', 'mint', 'name', 'dust_series_id', 'rare_count', 'epic_count', 'legendary_count', 'rarity_score', 'flow_id', 'flow_address', 'created_at', 'updated_at'];
+
+    /** $lean (API v2): no svg blob / full_svg append; flow_metadata without its svg. */
+    protected function getFilteredCollectibles(Request $req, $lean = false){
         $collectibleQuery = DustCollectible::with('saleOffers');
+        if($lean){
+            $collectibleQuery->select(self::COLLECTIBLE_LIST_COLUMNS)
+                ->selectRaw("JSON_REMOVE(flow_metadata, '$.svg') as flow_metadata");
+        }
 
 
 /*
@@ -362,6 +423,10 @@ class FilteredController extends Controller
 
 
         $collectibles = $collectibleQuery->paginate(20);
+
+        if($lean){
+            $collectibles->getCollection()->each->makeHidden(['svg', 'full_svg']);
+        }
 
         return $collectibles;
     }
