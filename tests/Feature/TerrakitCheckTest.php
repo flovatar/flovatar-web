@@ -46,6 +46,14 @@ class TerrakitCheckTest extends TestCase
         $this->assertStringContainsString('window.TERRAKIT_CHECK = {"enabled":true,"packRanges":[[13,15]],"categories":["land","fub","flobotkit"]}', $html);
         $this->assertStringContainsString('Blocto Recovery Kit', $html);
         $this->assertStringContainsString('flow.com/post/action-required-for-blocto-wallet-users', $html);
+        // Blocto-created accounts are neutral (the Recovery Kit import keeps the same keys), never "can't sign"
+        $this->assertStringContainsString('Blocto-created account.</b> It works in Flow Wallet if you imported your', $html);
+        $this->assertStringContainsString('wallet.flow.com/post/migrating-from-blocto-to-flow-wallet', $html);
+        $this->assertStringNotContainsString("can't sign with Blocto", $html);
+        $this->assertStringNotContainsString('it should now show', $html);
+        $js = file_get_contents(resource_path('js/app/terrakit-check.js'));
+        $this->assertStringContainsString("blocto: 'Blocto-created account'", $js);
+        $this->assertStringNotContainsString('Blocto-style keys', $js);
         // brand: ĐUST with Đ, no dates, no "finally"
         $this->assertStringContainsString('ĐUST', $html);
         $page = file_get_contents(resource_path('views/terrakit/check.blade.php'));

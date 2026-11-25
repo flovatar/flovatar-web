@@ -19,7 +19,7 @@ const CONTRACT = process.env.MIX_CONTRACT_FLOW;
 const WALLET_LABELS = {
     flowwallet: 'Flow Wallet',
     dapper: 'Dapper Wallet',
-    blocto: 'Blocto-style keys',
+    blocto: 'Blocto-created account',
     keyless: 'No active keys',
     other: 'Other wallet',
     passkey: 'Flovatar passkey',
@@ -94,7 +94,7 @@ if (CFG) {
         },
         get signLabel() {
             const s = this.signState;
-            if (this.wallet.class === 'blocto') { return 'Can\u2019t sign with Blocto'; }
+            if (this.wallet.class === 'blocto' && s === 'unknown') { return 'Works in Flow Wallet with your Recovery Kit'; }
             return s === 'yes' ? 'Can sign today' : (s === 'no' ? 'Can\u2019t sign' : 'Can sign: not sure');
         },
         get errorTitle() {

@@ -19,11 +19,21 @@ test('address normalisation', () => {
     }
 });
 
-test('Blocto: secp256k1/SHA3 999 + 1000 + 1, still active', () => {
+test('Blocto-created: secp256k1/SHA3 999 + 1000 + 1, still active → neutral, never "can\'t sign"', () => {
+    // a Recovery Kit import into Flow Wallet keeps these same keys, so the chain can't tell imported from not imported
     const r = classifyWallet(acct(BLOCTO));
     assert.equal(r.class, 'blocto');
-    assert.equal(r.canSign, 'no');
+    assert.equal(r.canSign, 'unknown');
+    assert.notEqual(r.canSign, 'no');
     assert.equal(r.bloctoKeysActive, true);
+});
+
+test('"can\'t sign" only for real negatives', () => {
+    assert.equal(classifyWallet(acct(BLOCTO_REVOKED)).canSign, 'no', 'every key revoked');
+    assert.equal(classifyWallet(acct([])).canSign, 'no', 'no keys');
+    assert.equal(classifyWallet({exists: false, keys: []}).canSign, 'no', 'no account');
+    assert.equal(classifyWallet(acct([[2, 3, 999]])).canSign, 'no', 'Blocto key below the 1000 signing threshold');
+    assert.equal(classifyWallet(acct([...BLOCTO_REVOKED, ...BLOCTO])).canSign, 'unknown', 'rotated Blocto triple');
 });
 
 test('Blocto with a key rotation (old triple revoked, new triple active)', () => {

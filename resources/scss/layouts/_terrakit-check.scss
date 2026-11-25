@@ -98,7 +98,7 @@ $tk-orange: #FF6E03;
   border-left: 6px solid $tk-peri;
   &.tk-wallet-flowwallet, &.tk-wallet-passkey { border-left-color: $tk-green; }
   &.tk-wallet-dapper { border-left-color: $tk-sky; }
-  &.tk-wallet-blocto { border-left-color: $tk-orange; }
+  &.tk-wallet-blocto { border-left-color: $tk-sky; }
   &.tk-wallet-keyless, &.tk-wallet-other { border-left-color: $tk-peri; }
 
   .tk-wallet-head { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 10px; }
@@ -117,7 +117,7 @@ $tk-orange: #FF6E03;
   color: $tk-ink;
   &.tk-badge-flowwallet, &.tk-badge-passkey { background: $tk-green; }
   &.tk-badge-dapper { background: $tk-sky; }
-  &.tk-badge-blocto { background: $tk-orange; color: #fff; }
+  &.tk-badge-blocto { background: $tk-sky; }
 }
 
 .tk-sign {
