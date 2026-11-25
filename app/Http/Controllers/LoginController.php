@@ -99,6 +99,11 @@ class LoginController extends AuthController
         Auth::logout();
         Session::flush();
         $this->syncLoginMarker(false);
+        $stealth = \App\Support\Stealth::cookiePayload(request());
+        if($stealth && ($stealth['k'] ?? null) === 'a'){
+            // admin-wallet stealth cookie ends with the session (the secret-URL cookie stays)
+            \Illuminate\Support\Facades\Cookie::queue(\App\Support\Stealth::forgetCookie());
+        }
         return Redirect::to('/')->with('notice', 'You\'ve successfully logged out!');
     }
 

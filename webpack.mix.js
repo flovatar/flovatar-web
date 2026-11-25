@@ -17,7 +17,12 @@ mix.setPublicPath('public/');
 mix.webpackConfig({
     plugins: [
         new NodePolyfillPlugin()
-    ]
+    ],
+    // Lazy feature bundles (resources/js/app.js FX map) -> public/fx/<code>.js; bin/fx-assets.mjs then moves them to
+    // storage/app/fx (served only where the feature is visible, App\Http\Controllers\FxAssetController).
+    output: {
+        chunkFilename: 'fx/[name].js?id=[chunkhash]',
+    },
 });
 
 mix.extend("addWebpackLoaders", (webpackConfig, loaderRules) => {
@@ -36,6 +41,9 @@ mix.addWebpackLoaders([
 mix.sass('resources/scss/app.scss', 'css/')
 
 mix.js('resources/js/app.js', 'js/');
+
+// Per-feature stylesheets for the lazy bundles (moved out of public/ by bin/fx-assets.mjs)
+['p', 'm', 's', 'q', 't'].forEach((code) => mix.sass(`resources/scss/fx/${code}.scss`, 'fx/'));
     // .postCss('resources/css/app.css', 'public/css', [
     //     require('postcss-import'),
     //     require('tailwindcss')('./tailwind.config.js'),

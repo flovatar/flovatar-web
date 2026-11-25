@@ -17,7 +17,7 @@ import {getDustSalePreviewScript} from "../flow/get-dust-sale-preview.script";
 const SEGMENTS = {flovatar: 'flovatars', flobit: 'components', flobot: 'flobots', collectible: 'collectibles', accessory: 'dust/accessories'};
 const LABELS = {flovatar: 'Flovatar', flobit: 'Flobit', flobot: 'Flobot', collectible: 'Collectible', accessory: 'Accessory'};
 
-window.dustMarketEnabled = function(){
+window.altCurrencyOn = function(){
     return !!(window.DUST_MARKET && window.DUST_MARKET.enabled);
 };
 
@@ -62,7 +62,7 @@ function normalize(l){
 
 /** ĐUST listings of a wallet (kind+id = one item, kind '' = all). Never throws (empty list on errors). */
 window.getDustListings = async function(address, kind, id){
-    if(!address || !window.dustMarketEnabled()){
+    if(!address || !window.altCurrencyOn()){
         return [];
     }
     try{

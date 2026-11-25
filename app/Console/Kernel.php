@@ -36,7 +36,7 @@ class Kernel extends ConsoleKernel
             $schedule->command('flow:process --queue')->everyMinute()->withoutOverlapping();
         }
         $schedule->command('flovatar:refresh-collectible-templates')->hourly();
-        if (config('flovatar.dustMarket.enabled')) {
+        if (\App\Support\DustMarket::active()) {
             // ĐUST marketplace: drop offers whose storefront listing died on chain (ghost, expired, sold elsewhere)
             $schedule->command('dust-market:reconcile')->everyTenMinutes()->withoutOverlapping(10)->runInBackground();
         }
@@ -65,7 +65,7 @@ class Kernel extends ConsoleKernel
             $this->heavy($schedule, 'headless:build --quiet-puts', 3600)
                 ->dailyAt($mainnet ? '03:30' : '02:30')->withoutOverlapping(180)->runInBackground();
         }
-        if (config('passkey.enabled') && config('passkey.sponsor.address')) {
+        if (\App\Support\Stealth::active('passkey') && \App\Services\Passkey\PasskeyPoc::networkReady() && config('passkey.sponsor.address')) {
             // passkey sponsor: low-balance warning in the log (hourly) + per-day spend summary (fees, account funding)
             $schedule->command('passkey:sponsor-watch')->hourlyAt(17)->withoutOverlapping(10)->runInBackground();
             $schedule->command('passkey:sponsor-spend')->dailyAt('00:20')->withoutOverlapping(30)->runInBackground();

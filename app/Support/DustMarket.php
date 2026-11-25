@@ -5,7 +5,8 @@ namespace App\Support;
 /**
  * ĐUST marketplace switch + helpers (KB notes/dust-marketplace.md).
  *
- * enabled() = DUST_MARKET_ENABLED (testnet only for now). Off: the indexer skips ĐUST storefront events, public queries
+ * Mode DUST_MARKET_MODE (off|stealth|on; legacy DUST_MARKET_ENABLED). enabled() = visible to this request (App\Support\Stealth),
+ * active() = indexing runs (stealth collects data, nothing is shown publicly). Off: the indexer skips ĐUST storefront events, public queries
  * exclude currency DUST (scopeNotDust / currencyFilter), Blade prints no ĐUST markup and window.DUST_MARKET is absent,
  * so prod behaves exactly as before.
  */
@@ -13,9 +14,16 @@ class DustMarket
 {
     public const CURRENCY = 'DUST';
 
+    /** Visible to THIS request (mode on, or stealth + stealth gate): UI, public queries, API fields. */
     public static function enabled(): bool
     {
-        return (bool) config('flovatar.dustMarket.enabled', false);
+        return Stealth::visible('dust_market');
+    }
+
+    /** Running on the server (mode stealth or on): indexer, reconcile, backfill. Never request-based. */
+    public static function active(): bool
+    {
+        return Stealth::active('dust_market');
     }
 
     /** A.<flovatar>.FlovatarDustToken.Vault on this network (exact contract address, never a substring match). */

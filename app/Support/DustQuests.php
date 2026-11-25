@@ -15,9 +15,31 @@ use Illuminate\Support\Facades\Auth;
  */
 class DustQuests
 {
+    /** Visible to this request: DUST_QUESTS_MODE on (or stealth + stealth gate) + passkey sign-in visible + payouts ready. */
     public static function enabled(): bool
     {
-        return (bool) config('quests.enabled') && PasskeyLogin::enabled() && PasskeyPoc::isTestnet();
+        return Stealth::visible('quests') && PasskeyLogin::enabled() && self::networkReady();
+    }
+
+    /** Server side ready (routes, payout worker API): mode stealth/on + passkey active + payouts ready. Config only. */
+    public static function active(): bool
+    {
+        return Stealth::active('quests') && PasskeyLogin::active() && self::networkReady();
+    }
+
+    /**
+     * Testnet, or mainnet once the separate rewards server exists (rewards wallet address + payout HMAC secret set).
+     * Fail closed: without them quests stay off on mainnet whatever the mode says.
+     */
+    public static function networkReady(): bool
+    {
+        if (PasskeyPoc::isTestnet()) {
+            return true;
+        }
+
+        return PasskeyPoc::isMainnet()
+            && preg_match('/^(0x)?[0-9a-f]{16}$/i', (string) config('quests.payout.rewards_address'))
+            && strlen((string) config('quests.payout.secret')) >= 32;
     }
 
     /** window.DUST_QUESTS (same for every visitor: no user data, safe for static/headless shells). */

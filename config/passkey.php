@@ -12,7 +12,7 @@ return [
 
     // Site-wide integration ("Sign in" -> Email + passkey | Wallet, sponsored signing of the site's own transactions).
     // Needs the PoC flag too and a testnet network (App\Support\PasskeyLogin::enabled()). Off = the site is unchanged.
-    'login_enabled' => (bool) env('PASSKEY_LOGIN_ENABLED', false),
+    'login_enabled' => (bool) env('PASSKEY_LOGIN_ENABLED', in_array(strtolower((string) env('PASSKEY_MODE', '')), ['stealth', 'on'], true)),
 
     // WebAuthn relying party. rp_id must be the page host or a registrable suffix of it; null = request host.
     // Behind the headless Worker the request host is the API origin (api.flovatar.com), so set it explicitly:
@@ -71,9 +71,14 @@ return [
         'key_index' => (int) env('PASSKEY_SPONSOR_KEY_INDEX', 0),
         'key_file' => env('PASSKEY_SPONSOR_KEY_FILE'),
         'kms' => [
-            'provider' => env('PASSKEY_SPONSOR_KMS_PROVIDER'),   // gcp | aws
+            'provider' => env('PASSKEY_SPONSOR_KMS_PROVIDER'),   // aws (mainnet) | mock (testnet end-to-end check only)
             'key' => env('PASSKEY_SPONSOR_KMS_KEY'),             // GCP key version resource name / AWS key ARN
             'public_key' => env('PASSKEY_SPONSOR_KMS_PUBLIC_KEY'), // X||Y hex of the KMS key (= account key on chain)
+            'region' => env('PASSKEY_SPONSOR_KMS_REGION', env('AWS_DEFAULT_REGION')),
+            // label line → value line file OUTSIDE the app dir, chmod 600 ("access key id" / value / "secret access key" / value)
+            'credentials_file' => env('PASSKEY_SPONSOR_KMS_CREDENTIALS_FILE'),
+            // provider=mock (testnet only): local 64-hex key file answered in KMS wire format (end-to-end tests)
+            'mock_key_file' => env('PASSKEY_SPONSOR_KMS_MOCK_KEY_FILE'),
         ],
         // Balance watchdog (passkey:sponsor-watch, scheduled hourly + Hermes cron): warn below this many FLOW.
         'min_balance' => (float) env('PASSKEY_SPONSOR_MIN_BALANCE', 50),

@@ -23,9 +23,10 @@ class DustSwap
     /** Never allowlisted for passkey accounts (they sell ĐUST into the pool). */
     public const WALLET_ONLY_TEMPLATES = ['dust-swap-dust-to-flow', 'dust-swap-buy-flow-listing'];
 
+    /** Visible to this request (DUST_SWAP_MODE on, or stealth + stealth gate; legacy DUST_SWAP_ENABLED). */
     public static function enabled(): bool
     {
-        return (bool) config('flovatar.dustSwap.enabled', false);
+        return Stealth::visible('swap');
     }
 
     public static function network(): string

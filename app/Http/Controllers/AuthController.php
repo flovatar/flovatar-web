@@ -243,8 +243,24 @@ class AuthController extends Controller
         $request->session()->regenerate();
         $this->forgetLoginNonces();
         $this->syncLoginMarker(true);
+        $this->syncStealthCookie($request, $address);
 
         return $user;
+    }
+
+    /**
+     * Stealth launch (App\Support\Stealth): an account-proof login of an admin wallet (STEALTH_ADMIN_ADDRESSES) gets the
+     * signed fl_s cookie for the session lifetime (the headless Worker then sends its HTML to the origin, which renders
+     * the stealth features); any other login drops an admin cookie left in this browser.
+     */
+    protected function syncStealthCookie(Request $request, $address){
+        $payload = \App\Support\Stealth::cookiePayload($request);
+        if(\App\Support\Stealth::anyStealth() && \App\Support\Stealth::isAdminAddress($address)){
+            $minutes = max(60, (int) config('session.lifetime', 120));
+            Cookie::queue(\App\Support\Stealth::makeCookie('a', $address, $minutes));
+        } elseif($payload && ($payload['k'] ?? null) === 'a'){
+            Cookie::queue(\App\Support\Stealth::forgetCookie());
+        }
     }
 
     /**

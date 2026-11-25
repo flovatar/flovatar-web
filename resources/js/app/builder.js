@@ -264,11 +264,11 @@ Alpine.data('builderData', (templates) => ({
         return (this.templateIds[category] && this.componentIds[category]) ? this.componentIds[category] : null;
     },
     createFlovatarClick(){
-        if(this.balance() < 0.05 && this.currentWallet != 'dapper' && window.passkeySession && window.passkeySession.active && !this.storageTopupTried){
+        if(this.balance() < 0.05 && this.currentWallet != 'dapper' && window.extSession && window.extSession.active && !this.storageTopupTried){
             // Passkey account: Flovatar sends the storage FLOW, then we continue.
             this.storageTopupTried = true;
             window.dispatch('loading-start');
-            window.passkeyEnsureStorage().then((r) => {
+            window.extEnsureStorage().then((r) => {
                 window.dispatch('loading-completed');
                 if (r && this.profile) { this.profile.balance = String(r.balance); }
                 this.createFlovatarClick();

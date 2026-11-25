@@ -10,9 +10,16 @@ namespace App\Support;
  */
 class TerrakitCheck
 {
+    /** Visible to this request (TERRAKIT_CHECK_MODE on, or stealth + stealth gate; legacy TERRAKIT_CHECK_ENABLED). */
     public static function enabled(): bool
     {
-        return (bool) config('terrakit.check_enabled');
+        return Stealth::visible('terrakit');
+    }
+
+    /** Routes registered (mode stealth or on). Config only (route:cache safe). */
+    public static function active(): bool
+    {
+        return Stealth::active('terrakit');
     }
 
     /** "10800-15799,20000" → [[10800, 15799], [20000, 20000]] (invalid parts ignored). */

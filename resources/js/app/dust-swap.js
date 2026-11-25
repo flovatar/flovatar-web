@@ -44,7 +44,7 @@ window.dustSwapSession = function(){
     if(window.currentWallet === 'dapper'){
         return 'dapper';
     }
-    if((window.passkeySession && window.passkeySession.active) || u.authType === 'passkey'){
+    if((window.extSession && window.extSession.active) || u.authType === 'passkey'){
         return 'passkey';
     }
     return 'wallet';

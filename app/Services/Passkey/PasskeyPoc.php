@@ -36,6 +36,35 @@ class PasskeyPoc
             && ! str_contains((string) config('services.flow.rest'), 'mainnet');
     }
 
+    public static function isMainnet(): bool
+    {
+        return config('services.flow.network') === 'mainnet';
+    }
+
+    /**
+     * May the passkey code run on this network? Testnet: yes. Mainnet: ONLY with the cloud-KMS sponsor fully configured
+     * (never a key file) and mainnet contract addresses set — otherwise fail closed (no routes are usable, no UI).
+     * Launch steps: flovatar-kb notes/mainnet-launch-stealth.md.
+     */
+    public static function networkReady(): bool
+    {
+        return self::isTestnet() || (self::isMainnet() && self::mainnetSponsorReady());
+    }
+
+    public static function mainnetSponsorReady(): bool
+    {
+        $s = (array) config('passkey.sponsor');
+        $kms = (array) ($s['kms'] ?? []);
+
+        return ($s['driver'] ?? '') === 'kms'
+            && ($kms['provider'] ?? '') === 'aws'
+            && (string) ($kms['key'] ?? '') !== ''
+            && preg_match('/^[0-9a-f]{128}$/', strtolower((string) ($kms['public_key'] ?? '')))
+            && preg_match('/^(0x)?[0-9a-f]{16}$/i', (string) ($s['address'] ?? ''))
+            && strtolower((string) config('passkey.contracts.FlowToken')) === '0x1654653399040a61'
+            && strtolower((string) config('passkey.contracts.FungibleToken')) === '0xf233dcee88fe0abe';
+    }
+
     public function flow(): FlowGateway
     {
         return $this->flow;

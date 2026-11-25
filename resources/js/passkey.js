@@ -5,7 +5,7 @@
  *  - "Sign in" opens a choice: Email + passkey (no wallet) | Wallet (the unchanged FCL Flow Wallet / Dapper flow);
  *  - a passkey account is fed through the same user pipeline as an FCL wallet (window.applyUser -> user-loaded,
  *    init check, profile/balances, collection reads on chain), with window.currentWallet = 'flow';
- *  - every site transaction goes through resources/js/flow/fcl-tx.js -> window.passkeyMutate(): the server builds the
+ *  - every site transaction goes through resources/js/flow/fcl-tx.js -> window.extMutate(): the server builds the
  *    allowlisted template (hash-pinned), the passkey signs (FLIP-264), the sponsor pays, the tx id comes back;
  *  - login state survives reloads via the server session (/login/nonce auth_type=passkey, fl_auth marker cookie);
  *    pages stay static/edge-cacheable (no user data in HTML), so this also works on the headless build.
@@ -18,7 +18,7 @@ import * as t from '@onflow/types';
 const CFG = window.PASSKEY_LOGIN || null;
 const HINT_KEY = 'fl_passkey';
 
-window.passkeySession = null;
+window.extSession = null;
 
 // ------------------------------------------------------------------ helpers
 function b64uToBuf(s) {
@@ -114,7 +114,7 @@ async function relatedOriginProblem() {
 
 // ------------------------------------------------------------------ link to a wallet (HybridCustody, graduation)
 /**
- * Connect the user's wallet with FCL WITHOUT switching the site session to it: window.passkeyLinking makes the site's
+ * Connect the user's wallet with FCL WITHOUT switching the site session to it: window.extLinking makes the site's
  * user pipeline (actions.js updateUser) ignore the wallet; the wallet proves the address with an FCL account-proof
  * over our link nonce. Returns {address, wallet, proof: {nonce, signatures}}.
  */
@@ -177,12 +177,12 @@ function argsToJson(opts) {
     return opts.args(fcl.arg, t).map((a) => a.xform.asArgument(a.value));
 }
 // Builders need >= 0.05 FLOW for storage before minting: the sponsor tops up passkey accounts (server-capped).
-window.passkeyEnsureStorage = async function () {
-    if (!(window.passkeySession && window.passkeySession.active)) { return null; }
+window.extEnsureStorage = async function () {
+    if (!(window.extSession && window.extSession.active)) { return null; }
     return api('post', '/passkey/storage/ensure', {});
 };
 
-window.passkeyMutate = async function (opts) {
+window.extMutate = async function (opts) {
     const template = await sha256hex(opts.cadence);
     const prep = await api('post', '/passkey/tx/template', {template, args: argsToJson(opts)}).catch((e) => { throw new Error(errorText(e)); });
     const assertion = await ceremony(prep.label || 'approve this transaction', () => getAssertion(prep.challenge, [prep.credentialId]))
@@ -207,12 +207,12 @@ function passkeyUser(address) {
     return {f_type: 'User', f_vsn: '1.0.0', addr: address, loggedIn: true, authType: 'passkey', services: []};
 }
 function activate(address) {
-    window.passkeySession = {active: true, address};
+    window.extSession = {active: true, address};
     writeHint({address});
     window.currentWallet = 'flow';
 }
 function deactivate() {
-    window.passkeySession = null;
+    window.extSession = null;
     writeHint(null);
 }
 let applied = null;
@@ -244,19 +244,19 @@ if (CFG && CFG.enabled) {
     const origInitApp = window.initApp;
     window.initApp = function (d) {
         origInitApp(d);
-        if (window.passkeySession && window.passkeySession.active) {
-            setTimeout(() => applyPasskeyUser(window.passkeySession.address), 0);
+        if (window.extSession && window.extSession.active) {
+            setTimeout(() => applyPasskeyUser(window.extSession.address), 0);
         }
     };
-    window.addEventListener('server-auth', (ev) => {
+    const onServerAuth = (ev) => {
         const s = ev.detail || {};
         if (s.authenticated && s.authType === 'passkey' && s.address) {
-            if (!window.passkeySession || window.passkeySession.address !== s.address) {
+            if (!window.extSession || window.extSession.address !== s.address) {
                 activate(s.address);
                 applied = null;
             }
             applyPasskeyUser(s.address);
-        } else if (window.passkeySession && window.passkeySession.active && (!s.authenticated || s.authType === 'wallet')) {
+        } else if (window.extSession && window.extSession.active && (!s.authenticated || s.authType === 'wallet')) {
             // passkey session expired / replaced by a wallet login
             deactivate();
             if (applied) {
@@ -266,12 +266,17 @@ if (CFG && CFG.enabled) {
                 if (window.dispatch) { window.dispatch('logged-out'); }
             }
         }
-    });
+    };
+    window.addEventListener('server-auth', onServerAuth);
+    // this file is a lazy bundle now: the /login/nonce answer may have arrived before it loaded
+    if (window.loginNoncePromise) {
+        window.loginNoncePromise.then((data) => { if (data) { onServerAuth({detail: window.serverAuth}); } });
+    }
     window.addEventListener('logged-out', () => { deactivate(); applied = null; });
     // Pages that ask for a signed login message (legacy "Verify" buttons): a passkey sign-in is already a server login.
     const origCreateSignature = window.createSignature;
     window.createSignature = async function (message) {
-        if (window.passkeySession && window.passkeySession.active) {
+        if (window.extSession && window.extSession.active) {
             const data = await window.loadLoginNonce();
             if (data && data.authenticated) { window.dispatch('logged-in'); return; }
             dispatch('open-signin');
@@ -427,7 +432,7 @@ Alpine.data('passkeyAuth', () => ({
     confirmCancel() { this.confirmOpen = false; window.passkeyConfirmCancel(); },
 
     // ---- account panel
-    isPasskey() { return !!(window.passkeySession && window.passkeySession.active); },
+    isPasskey() { return !!(window.extSession && window.extSession.active); },
     async openAccount() {
         this.panelOpen = true;
         this.error = '';
@@ -505,7 +510,7 @@ Alpine.data('passkeyAuth', () => ({
     linkWallet() {
         const hooks = window.passkeyLinkHooks || {}; // test harness only: {connect(nonce), claim(parent, child)}
         return this.run(async () => {
-            window.passkeyLinking = true;
+            window.extLinking = true;
             try {
                 this.info = 'Connect the wallet you want to link (Flow Wallet or Dapper)…';
                 const n = await api('get', '/passkey/link/nonce');
@@ -534,7 +539,7 @@ Alpine.data('passkeyAuth', () => ({
                 // the next page load), then let the pipeline listen again
                 if (!hooks.connect) { try { await fcl.unauthenticate(); } catch (e) { /* none */ } }
                 await new Promise((res) => setTimeout(res, 300));
-                window.passkeyLinking = false;
+                window.extLinking = false;
                 await this.loadAccount();
             }
         });

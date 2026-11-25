@@ -85,6 +85,13 @@
     {{-- ĐUST Quests (testnet): static-safe runtime config for resources/js/quests.js --}}
     <script>window.DUST_QUESTS = @json(\App\Support\DustQuests::bootstrap());</script>
 @endif
+@php($fxBundles = \App\Support\Stealth::bundles())
+@if($fxBundles)
+    <script>window.__FX = @json($fxBundles);</script>
+@foreach($fxBundles as $fxCode)
+    <link rel="stylesheet" href="/fx/{{ $fxCode }}.css?id={{ \App\Support\Stealth::assetVersion($fxCode.'.css') }}">
+@endforeach
+@endif
     <script src="{{ mix('js/app.js') }}" defer></script>
 </head>
 <body class="{{request()->routeIs('home', 'builder', 'builder-psyche', 'flobot.builder', 'builder.flobot', 'pack', 'pack.buy', 'pack.login', 'fub', 'fub.sale', 'fub.test', 'land.sale') ? 'header-transparent' : ''}} {{request()->routeIs('fub.test') ? 'blueprint' : ''}}">

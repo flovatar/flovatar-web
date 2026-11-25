@@ -81,6 +81,17 @@ final class P256
         return $r;
     }
 
+    /** k·G as [x, y] (the mock KMS signer in tests / testnet checks uses it for ECDSA over a precomputed digest). */
+    public static function multiplyBase(GMP $k): array
+    {
+        $p = self::mul($k, [self::g(self::GX), self::g(self::GY)]);
+        if ($p === null) {
+            throw new RuntimeException('k·G is the point at infinity');
+        }
+
+        return $p;
+    }
+
     public static function isOnCurve(GMP $x, GMP $y): bool
     {
         $P = self::g(self::P);

@@ -35,7 +35,7 @@ class PublicController extends FilteredController
     {
         $params = $request->query();
         ksort($params);
-        $key = 'apiv2:'.$name.':'.md5(json_encode($params));
+        $key = \App\Support\Stealth::cacheKey('apiv2:'.$name.':'.md5(json_encode($params)), $request);
 
         return Cache::flexible($key, [$fresh, $fresh * 10], $fn);
     }
@@ -100,7 +100,7 @@ class PublicController extends FilteredController
     /** Flobit type (template) page data: template, supply, open listings (floor + cheapest), sales stats. */
     public function template(int $flowId)
     {
-        $data = Cache::flexible('apiv2:template:'.$flowId, [60, 600], fn () => ItemSnapshot::flobitType($flowId) ?? false);
+        $data = Cache::flexible(\App\Support\Stealth::cacheKey('apiv2:template:'.$flowId), [60, 600], fn () => ItemSnapshot::flobitType($flowId) ?? false);
         abort_unless($data, 404);
 
         return $data;
