@@ -34,6 +34,7 @@ require('./app/showroom-collectible');
 require('./app/asteroid-builder');
 require('./app/dust-market');
 require('./quests'); // ĐUST Quests (inert unless window.DUST_QUESTS)
+require('./app/terrakit-check'); // TerraKit wallet check (inert unless window.TERRAKIT_CHECK)
 
 window.Alpine = Alpine;
 
