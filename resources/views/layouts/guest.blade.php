@@ -69,6 +69,10 @@
     {{-- static page on R2 (headless:build): runtime config for resources/js/headless.js --}}
     <script>window.HEADLESS = @json(\App\Support\Headless::bootstrap());</script>
     @endif
+@if(\App\Support\DustMarket::enabled())
+    {{-- ĐUST marketplace (testnet): static-safe runtime config for resources/js/app/dust-market.js --}}
+    <script>window.DUST_MARKET = @json(\App\Support\DustMarket::bootstrap());</script>
+@endif
 @if(\App\Support\PasskeyLogin::enabled())
     {{-- testnet passkey sign-in: static-safe runtime config for resources/js/passkey.js --}}
     <script>window.PASSKEY_LOGIN = @json(\App\Support\PasskeyLogin::bootstrap());</script>

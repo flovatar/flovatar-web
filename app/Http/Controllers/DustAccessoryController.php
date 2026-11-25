@@ -27,7 +27,7 @@ class DustAccessoryController extends Controller
 
         $sales = Cache::remember('flovatar-dust-accessory-sales-'.$templateId, now()->addMinutes(60), function() use ($templateId) {
             $components = DustAccessory::select('id')->whereDustTemplateId($templateId)->get()->flatten();
-            $sales = Sale::notBlocked()->select(
+            $sales = Sale::notBlocked()->notDust()->select(
                 [
                     DB::raw('DATE_FORMAT(created_at, "%c/%d/%Y") as date'),
                     DB::raw('MAX(created_at) as maxdate'),
@@ -54,7 +54,7 @@ class DustAccessoryController extends Controller
         });
         $saleoffers = Cache::remember('flovatar-dust-accessory-saleoffers-'.$templateId, now()->addMinutes(60), function() use ($templateId) {
             $components = DustAccessory::select('id')->whereDustTemplateId($templateId)->get()->flatten();
-            $saleoffers = SaleOffer::notBlocked()->select(
+            $saleoffers = SaleOffer::notBlocked()->notDust()->select(
                 [
                     DB::raw('DATE_FORMAT(created_at, "%c/%d") as date'),
                     DB::raw('MAX(created_at) as maxdate'),

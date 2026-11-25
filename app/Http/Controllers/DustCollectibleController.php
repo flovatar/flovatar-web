@@ -18,7 +18,7 @@ class DustCollectibleController extends Controller
         });
         $saleOffer = Cache::remember('dust-collectible-sale-offers-'.$collectibleId, now()->addMinutes(1), function() use ($collectibleId) {
             $collectible = DustCollectible::where('flow_id', $collectibleId)->first();
-            return $collectible ? $collectible->saleOffers()->where('is_completed', false)->orderBy('created_at', 'desc')->first() : null;
+            return $collectible ? $collectible->saleOffers()->notDust()->where('is_completed', false)->orderBy('created_at', 'desc')->first() : null;
         });
         return view('dust-collectible')->with(['templates' => $templates, 'address' => $address, 'collectibleId' => $collectibleId, 'collectibleSales' => $sales, 'collectibleSaleOffer' => $saleOffer]);
     }

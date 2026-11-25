@@ -32,7 +32,9 @@ class FlowEventTypes
         'FlovatarDustToken.TokensBurned',
     ];
 
-    const STOREFRONT_EVENTS = ['NFTStorefrontV2.ListingAvailable', 'NFTStorefrontV2.ListingCompleted'];
+    // Cadence 1.0 NFTStorefrontV2 emits no ListingCompleted on removeListing/cleanup, only the listing's default destroy
+    // event Listing.ResourceDestroyed (nftType / salePaymentVaultType are Strings there, not Types).
+    const STOREFRONT_EVENTS = ['NFTStorefrontV2.ListingAvailable', 'NFTStorefrontV2.ListingCompleted', 'NFTStorefrontV2.Listing.ResourceDestroyed'];
 
     /**
      * Standard NonFungibleToken events (global, on the NonFungibleToken contract account). Kept only for our NFT types
@@ -132,7 +134,8 @@ class FlowEventTypes
             return true;
         }
         $nft = is_array($payload) ? ($payload['nftType'] ?? null) : null;
+        $typeId = is_array($nft) ? ($nft['typeID'] ?? null) : (is_string($nft) ? $nft : null);
 
-        return is_array($nft) && in_array($nft['typeID'] ?? null, static::ourNftTypes(), true);
+        return in_array($typeId, static::ourNftTypes(), true);
     }
 }

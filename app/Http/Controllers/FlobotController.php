@@ -18,7 +18,7 @@ class FlobotController extends Controller
         });
         $saleOffer = Cache::remember('flobot-sale-offers-'.$flobotId, now()->addMinutes(1), function() use ($flobotId) {
             $flobot = Flobot::where('flow_id', $flobotId)->first();
-            return $flobot ? $flobot->saleOffers()->where('is_completed', false)->orderBy('created_at', 'desc')->first() : null;
+            return $flobot ? $flobot->saleOffers()->notDust()->where('is_completed', false)->orderBy('created_at', 'desc')->first() : null;
         });
         return view('flobot')->with(['templatesScript' => $templatesScript, 'address' => $address, 'flobotId' => $flobotId, 'flobotSales' => $sales, 'flobotSaleOffer' => $saleOffer]);
     }

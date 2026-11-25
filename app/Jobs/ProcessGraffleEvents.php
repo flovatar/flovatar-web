@@ -49,6 +49,17 @@ class ProcessGraffleEvents extends BaseJob
 
         $check = false;
 
+        // ĐUST marketplace (NFTStorefrontV2 listings paid in FlovatarDustToken) + Listing.ResourceDestroyed of any
+        // currency: handled before the legacy branches, which treat every storefront listing as a Dapper listing.
+        $dustMarket = new \App\Services\Market\DustStorefrontProcessor();
+        if ($dustMarket->handles($event)) {
+            if ($dustMarket->process($event)) {
+                $this->event->update(['synced' => true]);
+                \App\Support\HeadlessRegen::fromEvent($event->type, $event->flow_metadata);
+            }
+            return;
+        }
+
 
         if($event->type == $this->getEventAddress('FlovatarCreated')){
             if(isset($event->flow_metadata['metadata']) && isset($event->flow_metadata['metadata']['creatorAddress'])) {
@@ -259,6 +270,7 @@ class ProcessGraffleEvents extends BaseJob
                             'price' => $price,
                             'is_completed' => false,
                             'is_dapper' => $isDapper,
+                            'currency' => $isDapper ? 'DUC' : 'FLOW',
                             'listing_id' => $listingId
                         ]
                     );
@@ -296,7 +308,8 @@ class ProcessGraffleEvents extends BaseJob
                                     'flow_metadata' => $flovatar->flow_metadata,
                                     'flow_address' => $event->flow_metadata['address'],
                                     'price' => $price,
-                                    'is_completed' => false
+                                    'is_completed' => false,
+                                    'currency' => 'FLOW'
                                 ]
                             );
 
@@ -311,7 +324,8 @@ class ProcessGraffleEvents extends BaseJob
                             'flow_metadata' => $flovatar->flow_metadata,
                             'flow_address' => $event->flow_metadata['address'],
                             'price' => $price,
-                            'is_completed' => false
+                            'is_completed' => false,
+                            'currency' => 'FLOW'
                         ]);
                         $check = true;
                     }
@@ -384,7 +398,8 @@ class ProcessGraffleEvents extends BaseJob
                             'is_dapper' => $isDapper
                         ],
                         [
-                            'completed_at' => $event->event_date ?? Carbon::now()
+                            'completed_at' => $event->event_date ?? Carbon::now(),
+                            'currency' => $isDapper ? 'DUC' : 'FLOW'
                         ]
                     );
                     $check = true;
@@ -439,6 +454,7 @@ class ProcessGraffleEvents extends BaseJob
                             'price' => $price,
                             'is_completed' => false,
                             'is_dapper' => $isDapper,
+                            'currency' => $isDapper ? 'DUC' : 'FLOW',
                             'listing_id' => $listingId
                         ]
                     );
@@ -487,7 +503,8 @@ class ProcessGraffleEvents extends BaseJob
                                     'flow_metadata' => $component->flow_metadata,
                                     'flow_address' => $event->flow_metadata['address'],
                                     'price' => $price,
-                                    'is_completed' => false
+                                    'is_completed' => false,
+                                    'currency' => 'FLOW'
                                 ]
                             );
 
@@ -501,7 +518,8 @@ class ProcessGraffleEvents extends BaseJob
                             'flow_metadata' => $component->flow_metadata,
                             'flow_address' => $event->flow_metadata['address'],
                             'price' => $price,
-                            'is_completed' => false
+                            'is_completed' => false,
+                            'currency' => 'FLOW'
                         ]);
                         $check = true;
                     }
@@ -580,7 +598,8 @@ class ProcessGraffleEvents extends BaseJob
                             'is_dapper' => $isDapper
                         ],
                         [
-                            'completed_at' => $event->event_date ?? Carbon::now()
+                            'completed_at' => $event->event_date ?? Carbon::now(),
+                            'currency' => $isDapper ? 'DUC' : 'FLOW'
                         ]
                     );
                     $check = true;
@@ -627,6 +646,7 @@ class ProcessGraffleEvents extends BaseJob
                             'price' => $price,
                             'is_completed' => false,
                             'is_dapper' => $isDapper,
+                            'currency' => $isDapper ? 'DUC' : 'FLOW',
                             'listing_id' => $listingId
                         ]
                     );
@@ -692,7 +712,8 @@ class ProcessGraffleEvents extends BaseJob
                             'is_dapper' => $isDapper
                         ],
                         [
-                            'completed_at' => $event->event_date ?? Carbon::now()
+                            'completed_at' => $event->event_date ?? Carbon::now(),
+                            'currency' => $isDapper ? 'DUC' : 'FLOW'
                         ]
                     );
                     $check = true;
@@ -735,6 +756,7 @@ class ProcessGraffleEvents extends BaseJob
                             'price' => $price,
                             'is_completed' => false,
                             'is_dapper' => $isDapper,
+                            'currency' => $isDapper ? 'DUC' : 'FLOW',
                             'listing_id' => $listingId
                         ]
                     );
@@ -793,7 +815,8 @@ class ProcessGraffleEvents extends BaseJob
                             'is_dapper' => $isDapper
                         ],
                         [
-                            'completed_at' => $event->event_date ?? Carbon::now()
+                            'completed_at' => $event->event_date ?? Carbon::now(),
+                            'currency' => $isDapper ? 'DUC' : 'FLOW'
                         ]
                     );
                     $check = true;

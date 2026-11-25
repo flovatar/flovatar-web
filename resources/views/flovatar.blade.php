@@ -118,7 +118,7 @@
                                     <li class="grow">
                                         <a target="_blank" x-bind:href="'https://flov.dev/?mint='+mint()" class="btn btn-sm btn-lilac"><span class="inner"><span class="long-label">VIEW IN FLOV.DEV</span><span class="short-label">FLOV.DEV</span></span></a>
                                     </li>
-                                    <li x-show="!isSale() && isOwned() && !showSale">
+                                    <li x-show="!isSale() && isOwned() && !showSale{{ \App\Support\DustMarket::enabled() ? ' && !$store.dust.live' : '' }}">
                                         <button @click.prevent.stop="showSale = true" x-bind:disabled="!loggedIn()" class="btn btn-sm btn-green"><span class="inner">Sell</span></button>
                                     </li>
                                     <li x-show="showSaleBtn()">
@@ -149,6 +149,7 @@
                         </p>
                     </div>
 
+                    @include('partials.dust-market', ['dustKind' => 'flovatar', 'dustId' => $flovatarId])
                     <div class="content-box" x-show="isSale() || (isOwned() && showSale)">
                         <div class="title-row">
                             <h2>Marketplace</h2>

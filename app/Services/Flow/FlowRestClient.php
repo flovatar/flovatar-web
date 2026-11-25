@@ -45,6 +45,12 @@ class FlowRestClient
         return CadenceJson::decode(json_decode(base64_decode(trim((string) $res->body(), '"')), true));
     }
 
+    /** GET /v1/transactions/{id}: proposal key, payer, authorizers, arguments (no result). */
+    public function transaction(string $id): array
+    {
+        return (array) $this->http()->get('/v1/transactions/'.preg_replace('/^0x/', '', $id))->throw()->json();
+    }
+
     public function sealedHeight(): int
     {
         $res = $this->http()->get('/v1/blocks', ['height' => 'sealed'])->throw()->json();

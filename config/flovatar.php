@@ -110,4 +110,18 @@ return [
         explode(',', (string) env('FLOVATAR_BLOCKED_ADDRESSES', '0x0c7deb7a0c9cb424'))
     ))),
     'blockedNotice' => env('FLOVATAR_BLOCKED_NOTICE', 'This wallet or item is linked to the 2026-11-16 security incident. It is hidden from the marketplace while the team reviews it.'),
+
+    /*
+    | ĐUST marketplace (KB notes/dust-marketplace.md): buy/sell any Flovatar item for ĐUST through the standard
+    | NFTStorefrontV2. Default OFF: with the flag off the indexer ignores ĐUST listings, every public query excludes
+    | currency DUST and no ĐUST UI is rendered (prod unchanged). Testnet .env only for now.
+    | Creator royalties: paid only when the creator has a ĐUST receiver (Luca 2026-11-25, fixed in the Cadence).
+    | Dapper wallets get no ĐUST features at all (Luca 2026-11-25).
+    */
+    'dustMarket' => [
+        'enabled' => (bool) env('DUST_MARKET_ENABLED', false),
+        // listing lifetime chosen by the site's sell box (seconds)
+        'listingTtl' => (int) env('DUST_MARKET_LISTING_TTL', 60 * 60 * 24 * 365),
+        'customId' => 'flovatar-dust',
+    ],
 ];

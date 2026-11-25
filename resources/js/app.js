@@ -32,6 +32,7 @@ require('./app/dust-collectible');
 require('./app/dust-builder');
 require('./app/showroom-collectible');
 require('./app/asteroid-builder');
+require('./app/dust-market');
 
 window.Alpine = Alpine;
 

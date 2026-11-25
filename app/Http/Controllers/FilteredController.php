@@ -132,6 +132,8 @@ class FilteredController extends Controller
         } else {
             $salesQuery->where('is_dapper', false);
         }
+        // ĐUST marketplace: currency=all|flow|dust (ĐUST rows never shown while DUST_MARKET_ENABLED is off)
+        $salesQuery->currencyFilter($req->get('currency', 'all'), $req->get('dapper') == 'true');
 
         if($req->get('pricemin')){
             $salesQuery->where('price', '>=', intval($req->get('pricemin')));
@@ -351,7 +353,7 @@ class FilteredController extends Controller
 
     protected function getSalesByTemplateId($templateId, $quantity = 1){
 
-        $salesQuery = SaleOffer::with('item')->notBlocked();
+        $salesQuery = SaleOffer::with('item')->notBlocked()->notDust(); // builder checkout buys FLOW listings only
         $salesQuery->whereItemType(FlovatarComponent::class)->where('is_dapper', false);
 
         $templates = FlovatarTemplate::select('id')->whereFlowId($templateId)->get()->flatten();

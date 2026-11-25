@@ -36,6 +36,10 @@ class Kernel extends ConsoleKernel
             $schedule->command('flow:process --queue')->everyMinute()->withoutOverlapping();
         }
         $schedule->command('flovatar:refresh-collectible-templates')->hourly();
+        if (config('flovatar.dustMarket.enabled')) {
+            // ĐUST marketplace: drop offers whose storefront listing died on chain (ghost, expired, sold elsewhere)
+            $schedule->command('dust-market:reconcile')->everyTenMinutes()->withoutOverlapping(10)->runInBackground();
+        }
         // Heavy batch jobs (render batches, headless builds) run through bin/heavy-job: ONE server-wide flock shared by
         // the 4 sites on the box (flovatar, sportvatar, both testnets) + nice/ionice, so only one of them runs at a
         // time (mysqld was OOM-killed while overnight builds overlapped). Times are staggered per site (UTC):
