@@ -522,6 +522,9 @@ Alpine.data('passkeyAuth', () => ({
                     if (!c.linked) { throw new Error('Your wallet has not accepted the link yet. Try "Link" again to finish.'); }
                 }
                 this.info = 'Linked! Your wallet now shows this account under linked accounts. You can still sign in here with your passkey.';
+            } catch (e) {
+                this.info = ''; // don't leave "Connect the wallet…" next to the error
+                throw e;
             } finally {
                 // disconnect the wallet again (FCL keeps its session in storage: it would replace the passkey user on
                 // the next page load), then let the pipeline listen again
