@@ -387,7 +387,13 @@ class QuestEngine
                     if (! $post) {
                         return $no('Paste the link of your post on X, TikTok or Instagram (https://x.com/you/status/…).');
                     }
+                    if (in_array((string) $post['author'], ShareCheck::OFFICIAL, true)) {
+                        return $no('Share a post from your own account (not one of ours).');
+                    }
                     $r = $this->share->check($post);
+                    if ($r['status'] === 'invalid') {
+                        return $no($r['reason']);
+                    }
 
                     return $yes($r['evidence'], 'share:'.$post['key'], $r['status'], $r['reason'] ?: null);
             }

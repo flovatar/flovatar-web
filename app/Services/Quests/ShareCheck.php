@@ -12,6 +12,9 @@ use Throwable;
  */
 class ShareCheck
 {
+    /** Our own accounts: their posts never count (anyone could paste them). */
+    public const OFFICIAL = ['flovatar', 'flovatar_nft', 'flovatar_live', 'sportvatar', 'sportvatar_nft', 'flovalabs'];
+
     /** Normalised post URL + platform, or null when it is not a post URL we accept. */
     public static function parse(string $url): ?array
     {
@@ -36,7 +39,7 @@ class ShareCheck
     }
 
     /**
-     * ['status' => 'verified'|'pending', 'evidence' => [...], 'reason' => string]. Never throws.
+     * ['status' => 'verified'|'pending'|'invalid', 'evidence' => [...], 'reason' => string]. Never throws.
      */
     public function check(array $post): array
     {
@@ -54,9 +57,20 @@ class ShareCheck
         } catch (Throwable $e) {
             return ['status' => 'pending', 'evidence' => $evidence + ['oembed' => 'error'], 'reason' => 'We could not read this post automatically. We will check it by hand.'];
         }
-        $text = html_entity_decode(strip_tags((string) ($j['html'] ?? '').' '.(string) ($j['title'] ?? '')), ENT_QUOTES | ENT_HTML5);
-        $raw = strtolower((string) ($j['html'] ?? '').' '.$text);
+        $html = (string) ($j['html'] ?? '');
+        // X: only the post body (<p>…</p>), never the "— Name (@handle)" byline; TikTok: the caption (title)
+        if ($post['platform'] === 'x' && preg_match('#<p[^>]*>(.*?)</p>#s', $html, $m)) {
+            $html = $m[1];
+        } elseif ($post['platform'] === 'tiktok') {
+            $html = '';
+        }
+        $text = html_entity_decode(strip_tags($html.' '.(string) ($j['title'] ?? '')), ENT_QUOTES | ENT_HTML5);
+        $raw = strtolower($html.' '.$text);
         $evidence['author'] = (string) ($j['author_name'] ?? '');
+        $authorHandle = strtolower(trim((string) parse_url((string) ($j['author_url'] ?? ''), PHP_URL_PATH), '/@'));
+        if (in_array($authorHandle ?: (string) $post['author'], self::OFFICIAL, true) || in_array((string) $post['author'], self::OFFICIAL, true)) {
+            return ['status' => 'invalid', 'evidence' => $evidence, 'reason' => 'Share a post from your own account (not one of ours).'];
+        }
         $evidence['text'] = mb_substr(trim(preg_replace('/\s+/', ' ', $text)), 0, 280);
         $hasTag = (bool) preg_match('/#flovatar\b/i', $text);
         $hasLink = str_contains($raw, 'flovatar.com') || (bool) preg_match('/@flovatar\b/i', $text);

@@ -236,14 +236,16 @@ class DustQuestsTest extends TestCase
         $this->assertSame('tiktok', ShareCheck::parse('https://www.tiktok.com/@fan/video/7311111111111111111')['platform']);
         Http::fake([
             'publish.twitter.com/*' => Http::sequence()
-                ->push(['html' => '<blockquote><p>My Flovatar! <a href="https://twitter.com/hashtag/Flovatar">#Flovatar</a> by <a>@flovatar</a></p></blockquote>', 'author_name' => 'Fan'])
-                ->push(['html' => '<blockquote><p>gm everyone</p></blockquote>', 'author_name' => 'Other']),
+                ->push(['html' => '<blockquote><p>My Flovatar! <a href="https://twitter.com/hashtag/Flovatar">#Flovatar</a> by <a>@flovatar</a></p>&mdash; Fan (@fan)</blockquote>', 'author_name' => 'Fan', 'author_url' => 'https://twitter.com/fan'])
+                // the @flovatar in the byline/quote is not the user's mention: only the <p> body counts
+                ->push(['html' => '<blockquote><p>gm everyone #Flovatar</p>&mdash; Other (@other) <a>quoting @flovatar</a></blockquote>', 'author_name' => 'Other', 'author_url' => 'https://twitter.com/other']),
         ]);
         $a = $this->account();
         $this->as($a)->postJson('/quests/share_card/claim', ['url' => 'https://x.com/fan/status/1234567890'])->assertOk()->assertJson(['status' => 'verified']);
         $b = $this->account();
         $this->as($b)->postJson('/quests/share_card/claim', ['url' => 'https://twitter.com/fan/status/1234567890'])->assertStatus(409)->assertJsonFragment(['error' => 'This post was already used.']);
         $c = $this->account();
+        $this->as($c)->postJson('/quests/share_card/claim', ['url' => 'https://x.com/flovatar/status/1502721905958465536'])->assertStatus(422)->assertJsonFragment(['error' => 'Share a post from your own account (not one of ours).']);
         $this->as($c)->postJson('/quests/share_card/claim', ['url' => 'https://x.com/other/status/999999999'])->assertOk()->assertJson(['status' => 'pending']);
         // admin approves the review
         $claim = QuestClaim::where('passkey_account_id', $c->id)->first();

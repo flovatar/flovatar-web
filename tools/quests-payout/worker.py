@@ -212,8 +212,9 @@ def send_batch(cfg, items, max_total):
                             '--network', cfg['FLOW_NETWORK'], '-f', os.path.expanduser(cfg['FLOW_JSON']), '--compute-limit', '9999'],
                            capture_output=True, text=True, timeout=240, cwd=d)
     out = p.stdout + '\n' + p.stderr
-    m = re.search(r'\bID\s+([0-9a-f]{64})\b', out)
-    sealed = bool(re.search(r'Status\s+.*SEALED', out))
+    # the transaction id line is exactly 'ID <hex>' (other lines carry 'Block ID', 'Collection ID', ... )
+    m = re.search(r'^ID\s+([0-9a-f]{64})\s*$', out, re.M)
+    sealed = bool(re.search(r'^Status\s+.*SEALED', out, re.M))
     err = None
     em = re.search(r'(?:❌|error|Error)[^\n]{0,300}', out)
     if em and not sealed:
@@ -252,8 +253,10 @@ def run(cfg):
     # 1) re-report batches sent earlier but not confirmed yet
     for bid, b in list(j['batches'].items()):
         if b.get('status') == 'sent' and b.get('tx_id'):
-            report(cfg, j, bid, b['tx_id'])
+            st = report(cfg, j, bid, b['tx_id'])
             save_journal(cfg, j)
+            if st == 'pending' and time.time() - b.get('sent_at', time.time()) > 900:
+                problem('batch %s tx %s still not confirmed after 15 min (unknown to the access node?): check Flowscan' % (bid, b['tx_id']))
         elif b.get('status') == 'unknown':
             problem('batch %s ended without a tx id at %s: check the rewards wallet on Flowscan, then run --report %s <tx> or --release %s "<reason>"' % (bid, b.get('sent_at'), bid, bid))
     if any(b.get('status') == 'unknown' for b in j['batches'].values()):

@@ -50,6 +50,7 @@
                 <div class="quests-bar quests-bar-lg" role="progressbar" :aria-valuenow="pct" aria-valuemin="0" aria-valuemax="100"><span class="quests-bar-fill" :style="'width:' + pct + '%'"></span></div>
                 <p class="quests-hint">Rewards arrive in your account (<span class="mono" x-text="state.address"></span>) a few minutes after a quest is done. Each quest counts once per account.</p>
                 <p class="quests-alert" x-show="state.claims_paused">Quests are paused for a moment. Please come back later.</p>
+                <p class="quests-alert" x-show="earned >= cap">You reached the season cap of <span x-text="fmt(cap)"></span>. Thank you for playing!</p>
             </div>
 
             <p class="quests-msg ok" x-show="msg && msgKey === 'discord'" x-text="msg"></p>
@@ -67,7 +68,7 @@
                         <p class="quest-note" x-show="c.note" x-text="c.note"></p>
                         <p class="quest-paid" x-show="c.status === 'paid' && c.tx_id"><a :href="txUrl(c.tx_id)" target="_blank" rel="noopener">View payout on Flowscan</a></p>
 
-                        <div class="quest-actions" x-show="isOpen(c)">
+                        <div class="quest-actions" x-show="isOpen(c) && earned < cap">
                             {{-- honor click: open the profile, claim after a few seconds --}}
                             <template x-if="c.verify === 'honor'">
                                 <div class="quest-row">
