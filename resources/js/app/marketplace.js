@@ -89,7 +89,7 @@ Alpine.data('marketplaceData', (templates, stats) => ({
                         self.nextPage = paramArr[1];
                     } else if(paramArr[0] == 'dapper'){
                         self.showDapper = paramArr[1];
-                    } else if(paramArr[0] == 'currency' && window.dustMarketEnabled && window.dustMarketEnabled()){
+                    } else if(paramArr[0] == 'currency' && window.altCurrencyOn && window.altCurrencyOn()){
                         self.currency = ['flow', 'dust'].indexOf(paramArr[1]) >= 0 ? paramArr[1] : 'all';
                     }
                 }
@@ -108,7 +108,7 @@ Alpine.data('marketplaceData', (templates, stats) => ({
             page: this.nextPage,
             dapper: this.showDapper
         };
-        if(window.dustMarketEnabled && window.dustMarketEnabled()){
+        if(window.altCurrencyOn && window.altCurrencyOn()){
             params.currency = this.currency;
         }
         let hashParams = this.getHashParams(params);

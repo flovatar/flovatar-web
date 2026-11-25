@@ -22,7 +22,7 @@ class PasskeySponsorWatch extends Command
 
     public function handle(): int
     {
-        if (! config('passkey.enabled') || ! config('passkey.sponsor.address')) {
+        if (! \App\Support\Stealth::active('passkey') || ! config('passkey.sponsor.address')) {
             if ($this->option('verbose-ok')) {
                 $this->line('passkey sponsor not configured');
             }

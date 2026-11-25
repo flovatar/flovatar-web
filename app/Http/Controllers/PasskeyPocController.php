@@ -41,7 +41,7 @@ class PasskeyPocController extends Controller
 
     public function __construct()
     {
-        abort_unless(config('passkey.enabled') && PasskeyPoc::isTestnet(), 404);
+        abort_unless(\App\Support\Stealth::visible('passkey') && PasskeyPoc::networkReady(), 404);
     }
 
     private function rpId(Request $request): string

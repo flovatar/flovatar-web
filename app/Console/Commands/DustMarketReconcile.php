@@ -21,7 +21,7 @@ class DustMarketReconcile extends Command
 
     public function handle(): int
     {
-        if (! DustMarket::enabled()) {
+        if (! DustMarket::active()) {
             return self::SUCCESS;
         }
         $p = new DustStorefrontProcessor();

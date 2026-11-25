@@ -27,6 +27,10 @@ final class SponsorSigner implements SponsorKey
         if (config('passkey.sponsor.driver') === 'kms') {
             return KmsSponsorSigner::fromConfig();
         }
+        if (PasskeyPoc::isMainnet()) {
+            // mainnet sponsor = cloud KMS only (flovatar-kb notes/mainnet-launch-stealth.md); fail closed
+            throw new RuntimeException('Mainnet passkey sponsor must use PASSKEY_SPONSOR_DRIVER=kms');
+        }
 
         return new self(config('passkey.sponsor.key_file'), base_path());
     }

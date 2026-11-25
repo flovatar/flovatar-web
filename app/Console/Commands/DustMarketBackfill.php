@@ -21,7 +21,7 @@ class DustMarketBackfill extends Command
 
     public function handle(): int
     {
-        if (! DustMarket::enabled() && ! $this->option('dry-run')) {
+        if (! DustMarket::active() && ! $this->option('dry-run')) {
             $this->error('DUST_MARKET_ENABLED is off: nothing would be written (use --dry-run to count).');
 
             return self::FAILURE;

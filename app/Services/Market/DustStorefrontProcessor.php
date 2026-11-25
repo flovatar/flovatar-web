@@ -74,13 +74,13 @@ class DustStorefrontProcessor
 
         if ($s === 'Listing.ResourceDestroyed') {
             // cancel / cleanup of a listing (any currency): the offer row goes, matched by the global listing uuid
-            if (! empty($meta['listingResourceID']) && (! $isDust || DustMarket::enabled())) {
+            if (! empty($meta['listingResourceID']) && (! $isDust || DustMarket::active())) {
                 SaleOffer::where('listing_id', $meta['listingResourceID'])->delete();
             }
 
             return true;
         }
-        if (! DustMarket::enabled()) {
+        if (! DustMarket::active()) {
             return true;
         }
         if ($s === 'ListingAvailable') {

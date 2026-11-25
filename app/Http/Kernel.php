@@ -20,6 +20,8 @@ class Kernel extends HttpKernel
         \App\Http\Middleware\TrustProxies::class,
         // Visitor IP + origin-host noindex for requests proxied by the headless Worker (before any throttle)
         \App\Http\Middleware\HeadlessProxyRequest::class,
+        // Stealth features: anonymous requests to their routes get a plain 404 before sessions/throttles (App\Support\Stealth)
+        \App\Http\Middleware\StealthRoutes::class,
         \App\Http\Middleware\PreventRequestsDuringMaintenance::class,
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
         \App\Http\Middleware\TrimStrings::class,
@@ -71,6 +73,7 @@ class Kernel extends HttpKernel
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'queueit' => \App\Http\Middleware\QueueIt::class,
         'packsales' => \App\Http\Middleware\EnsurePackSalesEnabled::class,
+        'stealth' => \App\Http\Middleware\EnsureStealthVisible::class,
     ];
 
 }

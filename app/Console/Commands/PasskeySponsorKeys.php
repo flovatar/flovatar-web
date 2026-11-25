@@ -19,7 +19,7 @@ class PasskeySponsorKeys extends Command
 
     public function handle(): int
     {
-        if (! config('passkey.enabled') || ! PasskeyPoc::isTestnet()) {
+        if (! \App\Support\Stealth::active('passkey') || ! PasskeyPoc::isTestnet()) {
             $this->error('Passkey PoC disabled or not on testnet.');
 
             return 1;

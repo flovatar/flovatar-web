@@ -22,7 +22,7 @@ class PasskeySponsorSpend extends Command
 
     public function handle(): int
     {
-        if (! config('passkey.enabled') || ! config('passkey.sponsor.address')) {
+        if (! \App\Support\Stealth::active('passkey') || ! config('passkey.sponsor.address')) {
             $this->line('passkey sponsor not configured');
 
             return 0;

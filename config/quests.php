@@ -33,7 +33,7 @@ return [
     ],
 
     // Admin page (/quests/admin): wallet addresses (same env as the other admin tools)
-    'admin_addresses' => array_values(array_filter(array_map(fn ($a) => strtolower(trim($a)), explode(',', (string) env('ADMIN_ADDRESSES', ''))))),
+    'admin_addresses' => array_values(array_filter(array_map(fn ($a) => strtolower(trim($a)), explode(',', (string) env('ADMIN_ADDRESSES', env('STEALTH_ADMIN_ADDRESSES', '')))))),
 
     // Payout worker API (/quests/payout/*): HMAC-SHA256 with this shared secret; the rewards key stays on the worker box.
     'payout' => [

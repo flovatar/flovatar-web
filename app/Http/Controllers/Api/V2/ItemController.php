@@ -19,7 +19,7 @@ class ItemController extends Controller
 
     public function show(string $type, int $id)
     {
-        $snapshot = Cache::flexible('apiv2:item:'.$type.':'.$id, [15, 120], fn () => ItemSnapshot::build($type, $id) ?? false);
+        $snapshot = Cache::flexible(\App\Support\Stealth::cacheKey('apiv2:item:'.$type.':'.$id), [15, 120], fn () => ItemSnapshot::build($type, $id) ?? false);
         abort_unless($snapshot, 404);
 
         return $snapshot;

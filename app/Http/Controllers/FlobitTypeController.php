@@ -16,7 +16,7 @@ class FlobitTypeController extends Controller
     {
         // static build/regeneration renders fresh data (a cached copy could predate the event that triggered it)
         $data = \App\Support\Headless::building() ? (ItemSnapshot::flobitType($templateId) ?? false)
-            : Cache::remember('flobit-type-'.$templateId, now()->addMinute(), fn () => ItemSnapshot::flobitType($templateId) ?? false);
+            : Cache::remember(\App\Support\Stealth::cacheKey('flobit-type-'.$templateId), now()->addMinute(), fn () => ItemSnapshot::flobitType($templateId) ?? false);
         abort_unless($data, 404);
 
         return view('flobit-type')->with(['templateId' => $templateId, 'flobitType' => $data]);

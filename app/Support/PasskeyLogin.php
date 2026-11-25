@@ -28,9 +28,20 @@ class PasskeyLogin
 
     public const SESSION_CREDENTIAL = 'passkey_poc.credential';
 
+    /**
+     * Visible to this request: PASSKEY_LOGIN_ENABLED + PASSKEY_MODE on (or stealth + stealth gate; legacy
+     * PASSKEY_POC_ENABLED) + a network the sponsor is ready for (testnet, or mainnet with the KMS sponsor configured:
+     * PasskeyPoc::networkReady(); fail closed otherwise).
+     */
     public static function enabled(): bool
     {
-        return (bool) config('passkey.login_enabled') && (bool) config('passkey.enabled') && PasskeyPoc::isTestnet();
+        return (bool) config('passkey.login_enabled') && Stealth::visible('passkey') && PasskeyPoc::networkReady();
+    }
+
+    /** Server side ready (mode stealth/on + network ready). Config only. */
+    public static function active(): bool
+    {
+        return (bool) config('passkey.login_enabled') && Stealth::active('passkey') && PasskeyPoc::networkReady();
     }
 
     /** Alpine click expression for "Connect Wallet" buttons: the sign-in choice when enabled, FCL otherwise. */

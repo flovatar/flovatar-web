@@ -16,7 +16,7 @@ class QuestsPayoutController extends Controller
 {
     public function __construct()
     {
-        abort_unless(DustQuests::enabled(), 404);
+        abort_unless(DustQuests::active(), 404); // HMAC worker API: works in stealth mode (no cookie)
     }
 
     private function guard(Request $request): ?JsonResponse

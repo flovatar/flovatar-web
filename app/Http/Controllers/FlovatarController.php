@@ -17,9 +17,9 @@ class FlovatarController extends Controller
 
         // Template SVGs come from a separate cacheable script (TemplateDataController)
         $templatesScript = $this->templatesScriptUrl('series1');
-        $sales = Cache::remember('flovatar-sales-'.$flovatarId, now()->addMinutes(10), function() use ($flovatarId) {
+        $sales = Cache::remember(\App\Support\Stealth::cacheKey('flovatar-sales-'.$flovatarId), now()->addMinutes(10), function() use ($flovatarId) {
             $flovatar = Flovatar::where('flow_id', $flovatarId)->first();
-            return $flovatar ? $flovatar->sales()->orderBy('created_at', 'asc')->get() : [];
+            return $flovatar ? $flovatar->sales()->marketVisible()->orderBy('created_at', 'asc')->get() : [];
         });
         $saleOffer = Cache::remember('flovatar-sale-offers-'.$flovatarId, now()->addMinutes(1), function() use ($flovatarId) {
             $flovatar = Flovatar::where('flow_id', $flovatarId)->first();
