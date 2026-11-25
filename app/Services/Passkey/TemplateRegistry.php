@@ -29,8 +29,22 @@ class TemplateRegistry
     public function __construct(?array $manifest = null, ?array $allow = null, ?array $aliases = null)
     {
         $this->manifest = $manifest ?? self::loadManifest();
-        $this->allow = $allow ?? (array) config('passkey-templates', []);
+        $this->allow = $allow ?? self::defaultAllow();
         $this->aliases = $aliases ?? (array) config('passkey.aliases', []);
+    }
+
+    /**
+     * config/passkey-templates.php + the ĐUST swap FLOW → ĐUST pins (config/passkey-templates-dust-swap.php) only while
+     * DustSwap::passkeyBuyAllowed() (testnet + DUST_SWAP_ENABLED). Evaluated at runtime, so config:cache is safe.
+     */
+    public static function defaultAllow(): array
+    {
+        $allow = (array) config('passkey-templates', []);
+        if (\App\Support\DustSwap::passkeyBuyAllowed()) {
+            $allow += (array) config('passkey-templates-dust-swap', []);
+        }
+
+        return $allow;
     }
 
     public static function loadManifest(): array

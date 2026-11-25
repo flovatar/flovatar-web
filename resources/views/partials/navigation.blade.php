@@ -52,6 +52,11 @@
                     </div>
                 </li>
 
+@if(\App\Support\DustSwap::enabled())
+                <li class="dust-rate-chip-li" x-data="dustRateChip()" x-show="chipVisible()" x-cloak>
+                    <a href="/dust#swap" class="dust-rate-chip" x-bind:class="{'is-low': chipLow()}" x-bind:title="chipTitle()"><span x-text="chipLabel()"></span><em x-show="chipLow()">low liquidity</em></a>
+                </li>
+@endif
                 <li x-show="!loggedIn() && !userCheckLoading" class="jshidden hide-mobile">
                     <button @click.prevent.stop="{!! \App\Support\PasskeyLogin::connectAction() !!}" class="btn"><span class="inner">{{ \App\Support\PasskeyLogin::enabled() ? 'Sign in' : 'Connect Wallet' }}</span></button>
                 </li>
@@ -84,7 +89,11 @@
 @if(\App\Support\DustQuests::enabled())
                         <li x-show="user && user.authType == 'passkey'" class="{{ request()->routeIs('quests.page') ? 'active ' : '' }}"><a href="/quests" data-quests="nav">ĐUST Quests</a></li>
 @endif
+@if(\App\Support\DustSwap::enabled())
+                        <li x-show="!isDapperWallet()"><a href="/dust#swap">Swap ÐUST</a></li>
+@else
                         <li x-show="!isDapperWallet()"><a href="https://app.increment.fi/swap?in=A.1654653399040a61.FlowToken&out=A.921ea449dffec68a.FlovatarDustToken" target="_blank">Buy ÐUST</a></li>
+@endif
                         @if(config('flovatar.isTest'))
                             <li><a href="https://testnet-faucet.onflow.org/fund-account" target="_blank" data-modal >Top up wallet</a></li>
                         @endif

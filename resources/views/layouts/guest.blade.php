@@ -73,6 +73,10 @@
     {{-- ĐUST marketplace (testnet): static-safe runtime config for resources/js/app/dust-market.js --}}
     <script>window.DUST_MARKET = @json(\App\Support\DustMarket::bootstrap());</script>
 @endif
+@if(\App\Support\DustSwap::enabled())
+    {{-- ĐUST ⇄ FLOW swap (testnet): static-safe runtime config for resources/js/app/dust-swap.js --}}
+    <script>window.DUST_SWAP = @json(\App\Support\DustSwap::bootstrap());</script>
+@endif
 @if(\App\Support\PasskeyLogin::enabled())
     {{-- testnet passkey sign-in: static-safe runtime config for resources/js/passkey.js --}}
     <script>window.PASSKEY_LOGIN = @json(\App\Support\PasskeyLogin::bootstrap());</script>

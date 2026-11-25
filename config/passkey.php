@@ -125,6 +125,10 @@ return [
         '0xTokenForwarding' => env('MIX_TOKEN_FORWARDING'),
         '0xDapperMerchant' => env('MIX_DAPPER_MERCHANT'),
         '0xHybridCustody' => env('MIX_HYBRID_CUSTODY'),
+        // ĐUST swap (IncrementFi; same per-network defaults as config/flovatar.php dustSwap, set at runtime in the browser)
+        '0xSwapRouter' => env('DUST_SWAP_ROUTER', env('FLOW_NETWORK') === 'mainnet' ? '0xa6850776a94e6551' : '0x84e6590ef1493ae7'),
+        '0xSwapConfig' => env('DUST_SWAP_CONFIG', env('FLOW_NETWORK') === 'mainnet' ? '0xb78ef7afa52ff906' : '0x84e6590ef1493ae7'),
+        '0xSwapFactory' => env('DUST_SWAP_FACTORY', env('FLOW_NETWORK') === 'mainnet' ? '0xb063c16cac85dbd1' : '0x84e6590ef1493ae7'),
     ],
 
     // Testnet faucet shown in the passkey account panel (deposit address).

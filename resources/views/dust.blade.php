@@ -20,6 +20,7 @@
         </div>
     </section>
 
+@include('partials.dust-swap-widget')
     <section class="explore-features dust-features">
         <div class="first-division">
             <div class="container">

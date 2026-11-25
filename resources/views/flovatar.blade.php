@@ -191,6 +191,7 @@
                                         </div>
                                     </div>
                                 </li>
+@include('partials.dust-swap-pay-dust', ['swapKind' => 'flovatar'])
                                 <li x-show="!isSale() && isOwned() && showSale">
                                     <strong>Sale Price</strong>
                                     <div class="col-r" x-show="isOwned() && !isDapperSale()">

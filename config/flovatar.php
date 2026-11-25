@@ -124,4 +124,28 @@ return [
         'listingTtl' => (int) env('DUST_MARKET_LISTING_TTL', 60 * 60 * 24 * 365),
         'customId' => 'flovatar-dust',
     ],
+
+    /*
+    | ĐUST ⇄ FLOW auto-swap through IncrementFi (KB notes/dust-swap.md): "pay with FLOW" for ĐUST listings, "pay with
+    | ĐUST" for FLOW listings (self-custody Flow Wallet only), live rate chip, quick-swap widget on /dust. Default OFF;
+    | testnet .env only for now. Increment is a third party: every address is config (per network, env-overridable) and
+    | the browser hides the swap whenever a quote script fails. Testnet uses OUR copy of Increment's contracts
+    | (Increment's own testnet deployment has no ĐUST pair). Rates are read on chain in the browser (chain-first).
+    */
+    'dustSwap' => [
+        'enabled' => (bool) env('DUST_SWAP_ENABLED', false),
+        'router' => env('DUST_SWAP_ROUTER', env('FLOW_NETWORK') === 'mainnet' ? '0xa6850776a94e6551' : '0x84e6590ef1493ae7'),
+        // SwapConfig + SwapInterfaces + SwapError
+        'swapConfig' => env('DUST_SWAP_CONFIG', env('FLOW_NETWORK') === 'mainnet' ? '0xb78ef7afa52ff906' : '0x84e6590ef1493ae7'),
+        'factory' => env('DUST_SWAP_FACTORY', env('FLOW_NETWORK') === 'mainnet' ? '0xb063c16cac85dbd1' : '0x84e6590ef1493ae7'),
+        // the ĐUST/FLOW pair: the browser checks that SwapFactory returns exactly this pair, else the swap stays hidden
+        'pair' => env('DUST_SWAP_PAIR', env('FLOW_NETWORK') === 'mainnet' ? '0xa06c38beec9cf0e8' : '0x76d585e079b73059'),
+        'slippageDefault' => (float) env('DUST_SWAP_SLIPPAGE_DEFAULT', 1.0),
+        'slippageMax' => (float) env('DUST_SWAP_SLIPPAGE_MAX', 3.0),
+        'impactWarn' => (float) env('DUST_SWAP_IMPACT_WARN', 2.0),
+        'impactBlock' => (float) env('DUST_SWAP_IMPACT_BLOCK', 10.0),
+        // pool FLOW below this → the rate chip says "low liquidity"
+        'lowLiquidityFlow' => (float) env('DUST_SWAP_LOW_LIQUIDITY_FLOW', env('FLOW_NETWORK') === 'mainnet' ? 1000 : 5),
+        'deadlineSeconds' => (int) env('DUST_SWAP_DEADLINE_SECONDS', 300),
+    ],
 ];

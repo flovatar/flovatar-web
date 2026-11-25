@@ -34,6 +34,7 @@
                     </div>
                 </li>
             </template>
+@include('partials.dust-swap-pay')
             <template x-if="dustListing && !dustSignedIn() && !dustDapper()">
                 <li><span class="dust-note">Sign in to buy with ĐUST.</span></li>
             </template>

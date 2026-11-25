@@ -33,6 +33,7 @@ require('./app/dust-builder');
 require('./app/showroom-collectible');
 require('./app/asteroid-builder');
 require('./app/dust-market');
+require('./app/dust-swap'); // ĐUST ⇄ FLOW swap (inert unless window.DUST_SWAP)
 require('./quests'); // ĐUST Quests (inert unless window.DUST_QUESTS)
 require('./app/terrakit-check'); // TerraKit wallet check (inert unless window.TERRAKIT_CHECK)
 
