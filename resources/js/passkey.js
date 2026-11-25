@@ -88,7 +88,61 @@ function getAssertion(challenge, allowIds) {
         clientDataJSON: bufToB64u(a.response.clientDataJSON),
         authenticatorData: bufToB64u(a.response.authenticatorData),
         signature: bufToB64u(a.response.signature),
+        userHandle: a.response.userHandle ? bufToB64u(a.response.userHandle) : null,
     }));
+}
+
+/**
+ * The page origin can use the rpId directly (same host or a subdomain), or only through WebAuthn Related Origin
+ * Requests (/.well-known/webauthn on the rpId host, e.g. next-testnet.flovatar.com -> testnet.flovatar.com).
+ * Returns a message when this browser can't do the latter, else null.
+ */
+async function relatedOriginProblem() {
+    if (!CFG || !CFG.rpId) { return null; }
+    const host = window.location.hostname;
+    if (host === CFG.rpId || host.endsWith('.' + CFG.rpId)) { return null; }
+    try {
+        if (window.PublicKeyCredential && PublicKeyCredential.getClientCapabilities) {
+            const caps = await PublicKeyCredential.getClientCapabilities();
+            if (caps && caps.relatedOrigins === false) {
+                return 'This browser can only use your passkey on https://' + CFG.rpId + ' — please open the site there, or update your browser.';
+            }
+        }
+    } catch (e) { /* unknown: just try */ }
+    return null;
+}
+
+// ------------------------------------------------------------------ link to a wallet (HybridCustody, graduation)
+/**
+ * Connect the user's wallet with FCL WITHOUT switching the site session to it: window.passkeyLinking makes the site's
+ * user pipeline (actions.js updateUser) ignore the wallet; the wallet proves the address with an FCL account-proof
+ * over our link nonce. Returns {address, wallet, proof: {nonce, signatures}}.
+ */
+async function connectParentWallet(nonce) {
+    const saved = window.accountProofNonce;
+    window.accountProofNonce = nonce; // the site's account-proof resolver (bootstrap.js) sends this nonce
+    try {
+        try { await fcl.unauthenticate(); } catch (e) { /* none */ }
+        await fcl.authenticate();
+        const user = await fcl.currentUser.snapshot();
+        if (!user || !user.addr) { throw new Error('No wallet was connected.'); }
+        const svc = (user.services || []).find((x) => x.type === 'account-proof');
+        if (!svc || !svc.data || svc.data.nonce !== nonce || !svc.data.signatures) {
+            throw new Error('This wallet did not prove the address (account proof). Please use Flow Wallet or Dapper.');
+        }
+        const wallet = window.detectWallet ? window.detectWallet(user) : 'other';
+        return {address: user.addr, wallet, proof: {nonce: svc.data.nonce, signatures: svc.data.signatures}};
+    } finally {
+        window.accountProofNonce = saved;
+    }
+}
+/** The wallet (parent) claims the published link; it signs and pays its own small fee. Returns the tx id. */
+async function claimInWallet() {
+    const c = await api('get', '/passkey/link/claim');
+    const txId = await fcl.mutate({cadence: c.cadence, args: (arg, tt) => [arg(c.child, tt.Address)], limit: 9999});
+    const res = await fcl.tx(txId).onceSealed();
+    if (res && res.errorMessage) { throw new Error('Your wallet could not accept the link: ' + res.errorMessage); }
+    return txId;
 }
 
 /**
@@ -233,6 +287,14 @@ Alpine.data('passkeyAuth', () => ({
     step: 'choice',
     email: '',
     emailError: '',
+    code: '',
+    codeSentTo: '',
+    resendIn: 0,
+    resendTimer: null,
+    existingEmail: false,
+    verifyEmail: '',
+    verifyCode: '',
+    verifySentTo: '',
     busy: false,
     error: '',
     info: '',
@@ -250,7 +312,22 @@ Alpine.data('passkeyAuth', () => ({
         this.error = '';
         this.emailError = '';
         this.info = '';
+        this.existingEmail = false;
         this.signinOpen = true;
+        relatedOriginProblem().then((m) => { if (m) { this.error = m; } });
+    },
+    startCooldown(seconds) {
+        this.resendIn = seconds || 60;
+        if (this.resendTimer) { clearInterval(this.resendTimer); }
+        this.resendTimer = setInterval(() => { this.resendIn = Math.max(0, this.resendIn - 1); if (!this.resendIn) { clearInterval(this.resendTimer); } }, 1000);
+    },
+    changeEmail() {
+        this.codeSentTo = '';
+        this.code = '';
+        this.existingEmail = false;
+        this.info = '';
+        this.error = '';
+        this.$nextTick(() => this.$refs.passkeyEmail && this.$refs.passkeyEmail.focus());
     },
     closeSignin() {
         if (!this.busy) { this.signinOpen = false; }
@@ -273,20 +350,52 @@ Alpine.data('passkeyAuth', () => ({
         if (this.emailError && this.$refs.passkeyEmail) { this.$nextTick(() => this.$refs.passkeyEmail.focus()); }
         return !this.emailError;
     },
-    signUp() {
+    /** Sign-up step 1: email -> we send a 6-digit code (generic answer, cooldown 60 s). */
+    sendCode() {
         this.error = '';
         if (!this.validateEmail()) { return Promise.resolve(); }
         return this.run(async () => {
             if (!this.supported) { throw new Error('This browser does not support passkeys.'); }
+            const em = this.email.trim().toLowerCase();
+            const out = await api('post', '/passkey/email/start', {email: em, purpose: 'signup'});
+            this.codeSentTo = em;
+            this.code = '';
+            this.existingEmail = false;
+            this.startCooldown(out.cooldown);
+            this.info = 'We sent a 6-digit code to ' + em + '. It works for 10 minutes.';
+            this.$nextTick(() => this.$refs.passkeyCode && this.$refs.passkeyCode.focus());
+        });
+    },
+    /** Sign-up step 2: code -> (existing account? -> sign in) -> step 3: passkey + Flow account. */
+    signUp() {
+        this.error = '';
+        if (!this.codeSentTo || this.codeSentTo !== (this.email || '').trim().toLowerCase()) { return this.sendCode(); }
+        const code = (this.code || '').replace(/\D/g, '');
+        if (code.length !== 6) {
+            this.error = 'Enter the 6-digit code from the email.';
+            this.$nextTick(() => this.$refs.passkeyCode && this.$refs.passkeyCode.focus());
+            return Promise.resolve();
+        }
+        return this.run(async () => {
+            if (!this.supported) { throw new Error('This browser does not support passkeys.'); }
+            this.info = 'Checking your code…';
+            const v = await api('post', '/passkey/email/verify', {email: this.codeSentTo, code, purpose: 'signup'});
+            if (v.existing) {
+                this.existingEmail = true;
+                this.info = v.message || 'You already have an account with this email. Sign in with your passkey.';
+                return;
+            }
             this.info = 'Creating your passkey…';
-            const options = await api('post', '/passkey/register/options', {email: this.email.trim()});
+            const options = await api('post', '/passkey/register/options', {email: this.codeSentTo});
             const cred = await ceremony('create your passkey', () => createCredential(JSON.parse(JSON.stringify(options))));
             this.info = 'Creating your Flow account (≈15 s)…';
             const out = await api('post', '/passkey/register/verify', cred);
             this.info = '';
+            this.codeSentTo = '';
+            this.code = '';
             this.signinOpen = false;
             await startSession(out.address);
-        }).finally(() => { if (this.error) { this.info = ''; } });
+        }).finally(() => { if (this.error && !this.codeSentTo) { this.info = ''; } });
     },
     signIn() {
         return this.run(async () => {
@@ -296,6 +405,11 @@ Alpine.data('passkeyAuth', () => ({
             const out = await api('post', '/passkey/login/verify', a);
             this.signinOpen = false;
             await startSession(out.address);
+            if (out.recovered) {
+                // DB-loss recovery: the account was found on chain; the email is unknown -> ask to verify it
+                await this.openAccount();
+                this.info = 'Welcome back! We restored your account from the blockchain. Please confirm your email below.';
+            }
         });
     },
 
@@ -321,6 +435,7 @@ Alpine.data('passkeyAuth', () => ({
         try {
             this.account = await api('get', '/passkey/account');
             this.accountError = '';
+            if (this.account && !this.verifyEmail) { this.verifyEmail = this.account.email || ''; }
         } catch (e) {
             this.accountError = errorText(e);
         }
@@ -357,6 +472,67 @@ Alpine.data('passkeyAuth', () => ({
         };
         return inner ? go() : this.run(go);
     },
+    // ---- verify the email of an existing account (needed for ĐUST quests)
+    sendVerifyCode() {
+        return this.run(async () => {
+            const em = (this.verifyEmail || '').trim().toLowerCase();
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em)) { throw new Error('Please enter a valid email address.'); }
+            const out = await api('post', '/passkey/email/start', {email: em, purpose: 'verify'});
+            this.verifySentTo = em;
+            this.verifyCode = '';
+            this.startCooldown(out.cooldown);
+            this.info = 'We sent a 6-digit code to ' + em + '.';
+        });
+    },
+    confirmVerifyCode() {
+        return this.run(async () => {
+            await api('post', '/passkey/email/verify', {email: this.verifySentTo, code: (this.verifyCode || '').replace(/\D/g, ''), purpose: 'verify'});
+            this.verifySentTo = '';
+            this.verifyCode = '';
+            this.info = 'Email confirmed. Thank you!';
+            await this.loadAccount();
+        });
+    },
+
+    // ---- link to Flow Wallet / Dapper (HybridCustody child account)
+    linkedWallets() { return this.account && this.account.links ? this.account.links.filter((l) => l.status === 'linked') : []; },
+    pendingLinks() { return this.account && this.account.links ? this.account.links.filter((l) => l.status === 'published') : []; },
+    walletName(w) { return w === 'dapper' ? 'Dapper' : (w === 'flow' ? 'Flow Wallet' : 'wallet'); },
+    linkWallet() {
+        const hooks = window.passkeyLinkHooks || {}; // test harness only: {connect(nonce), claim(parent, child)}
+        return this.run(async () => {
+            window.passkeyLinking = true;
+            try {
+                this.info = 'Connect the wallet you want to link (Flow Wallet or Dapper)…';
+                const n = await api('get', '/passkey/link/nonce');
+                const parent = await (hooks.connect ? hooks.connect(n.nonce) : connectParentWallet(n.nonce));
+                const prep = await api('post', '/passkey/link/prepare', {parent: parent.address, wallet: parent.wallet, proof: parent.proof});
+                if (prep.token) {
+                    this.info = 'Approve with your passkey to link your account to ' + parent.address + '…';
+                    const a = await ceremony(prep.label, () => getAssertion(prep.challenge, [prep.credentialId]));
+                    const sub = await api('post', '/passkey/tx/submit', {token: prep.token, assertion: a});
+                    this.info = 'Publishing the link on chain…';
+                    const r = await waitPasskeyTx(sub.txId);
+                    if (r.status !== 'Sealed') { throw new Error('Linking failed: ' + (r.error || r.status)); }
+                }
+                if (!prep.linked) {
+                    this.info = 'Last step: confirm in your wallet (it pays a tiny network fee)…';
+                    const claimTx = await (hooks.claim ? hooks.claim(parent.address, this.account.address) : claimInWallet());
+                    const c = await api('post', '/passkey/link/confirm', {parent: parent.address, claimTx});
+                    if (!c.linked) { throw new Error('Your wallet has not accepted the link yet. Try "Link" again to finish.'); }
+                }
+                this.info = 'Linked! Your wallet now shows this account under linked accounts. You can still sign in here with your passkey.';
+            } finally {
+                // disconnect the wallet again (FCL keeps its session in storage: it would replace the passkey user on
+                // the next page load), then let the pipeline listen again
+                if (!hooks.connect) { try { await fcl.unauthenticate(); } catch (e) { /* none */ } }
+                await new Promise((res) => setTimeout(res, 300));
+                window.passkeyLinking = false;
+                await this.loadAccount();
+            }
+        });
+    },
+
     claimGift() {
         return this.run(async () => {
             this.info = 'Sending your starter Flobit…';

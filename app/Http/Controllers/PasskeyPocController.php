@@ -5,15 +5,21 @@ namespace App\Http\Controllers;
 use App\Models\PasskeyAccount;
 use App\Models\PasskeyCredential;
 use App\Models\PasskeyTransaction;
+use App\Models\PasskeyWalletLink;
+use App\Services\Passkey\AccountRecovery;
+use App\Services\Passkey\EmailVerification;
 use App\Services\Passkey\FlowTransaction;
 use App\Services\Passkey\PasskeyCrypto;
 use App\Services\Passkey\PasskeyPoc;
 use App\Services\Passkey\TemplateRegistry;
+use App\Services\Passkey\WalletLink;
+use App\Services\Passkey\WebAuthnOrigins;
 use App\Support\PasskeyLogin;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 use lbuchs\WebAuthn\WebAuthn;
 use RuntimeException;
 use Throwable;
@@ -28,6 +34,11 @@ class PasskeyPocController extends Controller
     private const SESSION_ACCOUNT = PasskeyLogin::SESSION_ACCOUNT;
     private const SESSION_CREDENTIAL = PasskeyLogin::SESSION_CREDENTIAL;
 
+    /** Email confirmed with a one-time code for sign-up: ['email' => ..., 'at' => unix time]. */
+    private const SESSION_EMAIL = 'passkey_poc.email_verified';
+
+    private const SESSION_LINK_NONCE = 'passkey_poc.link_nonce';
+
     public function __construct()
     {
         abort_unless(config('passkey.enabled') && PasskeyPoc::isTestnet(), 404);
@@ -35,7 +46,7 @@ class PasskeyPocController extends Controller
 
     private function rpId(Request $request): string
     {
-        return (string) (config('passkey.rp_id') ?: $request->getHost());
+        return WebAuthnOrigins::rpId($request);
     }
 
     private function webauthn(Request $request): WebAuthn
@@ -143,6 +154,7 @@ class PasskeyPocController extends Controller
         $out += [
             'address' => $account->address,
             'email' => $account->email,
+            'email_verified' => $account->hasVerifiedEmail(),
             'gift_tx' => $account->gift_tx,
             'creation_tx' => $account->creation_tx,
             'credential' => ['id' => $cred->credential_id, 'key_index' => $cred->key_index, 'label' => $cred->label],
@@ -163,12 +175,12 @@ class PasskeyPocController extends Controller
 
     public function registerOptions(Request $request): JsonResponse
     {
-        $email = strtolower(trim((string) $request->input('email', '')));
-        if ($email === '') {
-            return $this->fail('Please enter your email address to create your account.', 422);
+        $email = EmailVerification::normalise($request->input('email', ''));
+        if ($error = EmailVerification::validationError($email)) {
+            return $this->fail($error, 422);
         }
-        if (strlen($email) > 190 || ! filter_var($email, FILTER_VALIDATE_EMAIL) || validator(['e' => $email], ['e' => 'email:rfc'])->fails()) {
-            return $this->fail('That doesn\'t look like a valid email address. Please check it and try again.', 422);
+        if (! $this->emailVerifiedInSession($request, $email)) {
+            return response()->json(['error' => 'Please confirm your email with the 6-digit code we sent you first.', 'needs_code' => true], 422);
         }
         if (PasskeyAccount::whereRaw('LOWER(email) = ?', [$email])->where('status', 'active')->exists()) {
             return $this->fail('An account with this email already exists. Use "Sign in with my passkey" instead.', 422);
@@ -223,6 +235,7 @@ class PasskeyPocController extends Controller
         $data = $request->validate([
             'id' => 'required|string|max:255', 'clientDataJSON' => 'required|string|max:4096', 'attestationObject' => 'required|string|max:16384',
         ]);
+        WebAuthnOrigins::assertClientData(PasskeyCrypto::base64UrlDecode($data['clientDataJSON']), $request);
         $res = $this->webauthn($request)->processCreate(
             PasskeyCrypto::base64UrlDecode($data['clientDataJSON']),
             PasskeyCrypto::base64UrlDecode($data['attestationObject']),
@@ -251,7 +264,13 @@ class PasskeyPocController extends Controller
         if (empty($reg['email'])) {
             return $this->fail('Please enter your email address to create your account.', 422);
         }
-        $account = PasskeyAccount::create(['email' => $reg['email'], 'status' => 'pending', 'created_ip' => (string) $request->ip()]);
+        if (! $this->emailVerifiedInSession($request, $reg['email'])) {
+            return response()->json(['error' => 'Please confirm your email with the 6-digit code we sent you first.', 'needs_code' => true], 422);
+        }
+        if (PasskeyAccount::whereRaw('LOWER(email) = ?', [$reg['email']])->where('status', 'active')->exists()) {
+            return $this->fail('An account with this email already exists. Use "Sign in with my passkey" instead.', 422);
+        }
+        $account = PasskeyAccount::create(['email' => $reg['email'], 'email_verified_at' => now(), 'status' => 'pending', 'created_ip' => (string) $request->ip()]);
         $cred = PasskeyCredential::create([
             'passkey_account_id' => $account->id, 'credential_id' => $credentialId, 'public_key' => $pub, 'key_index' => 0,
             'user_handle' => $reg['handle'], 'aaguid' => $res->AAGUID ? bin2hex($res->AAGUID) : null, 'sign_count' => (int) ($res->signatureCounter ?? 0),
@@ -266,6 +285,7 @@ class PasskeyPocController extends Controller
         }
         $account->update(['address' => $address, 'status' => 'active', 'creation_tx' => $txId]);
         $cred->update(['status' => 'active', 'last_used_at' => now()]);
+        $request->session()->forget(self::SESSION_EMAIL);
         $request->session()->regenerate();
         $request->session()->put(self::SESSION_ACCOUNT, $account->id);
         $request->session()->put(self::SESSION_CREDENTIAL, $cred->id);
@@ -298,13 +318,25 @@ class PasskeyPocController extends Controller
         $data = $request->validate([
             'id' => 'required|string|max:255', 'clientDataJSON' => 'required|string|max:4096',
             'authenticatorData' => 'required|string|max:4096', 'signature' => 'required|string|max:512',
+            'userHandle' => 'nullable|string|max:255',
         ]);
         if (! $login || $login['expires'] < time()) {
             return $this->fail('The sign-in request expired, please try again');
         }
+        try {
+            WebAuthnOrigins::assertClientData(PasskeyCrypto::base64UrlDecode($data['clientDataJSON']), $request);
+        } catch (Throwable $e) {
+            return $this->fail('Passkey sign-in failed: '.$e->getMessage(), 422, $e);
+        }
+        $recovered = false;
         $cred = PasskeyCredential::where('credential_id', $data['id'])->first();
         if (! $cred) {
-            return $this->fail('This passkey is not registered here (it may belong to an older test, or to another site).', 404);
+            // DB-loss recovery: find the account on chain from the signature itself
+            $cred = $this->recoverCredential($request, $data, hex2bin($login['challenge']));
+            if (! $cred) {
+                return $this->fail('This passkey is not registered here (it may belong to an older test, or to another site).', 404);
+            }
+            $recovered = true;
         }
         if ($cred->status !== 'active') {
             return $this->fail('This passkey was created on this device but is not on your account yet. Finish "Add this device" by approving it with a passkey that is already on the account.', 409);
@@ -330,7 +362,222 @@ class PasskeyPocController extends Controller
             PasskeyLogin::loginSite($request, $cred->account->address);
         }
 
-        return response()->json(['address' => $cred->account->address, 'key_index' => $cred->key_index, 'csrf' => $request->session()->token(), 'auth_type' => 'passkey']);
+        $account = $cred->account;
+
+        return response()->json([
+            'address' => $account->address, 'key_index' => $cred->key_index, 'csrf' => $request->session()->token(), 'auth_type' => 'passkey',
+            'recovered' => $recovered, 'email_verified' => $account->hasVerifiedEmail(),
+        ]);
+    }
+
+    /**
+     * Unknown credential at sign-in: recover the account from the chain (AccountRecovery), verify the assertion with the
+     * on-chain key and re-create the rows. Returns the new credential or null.
+     */
+    private function recoverCredential(Request $request, array $data, string $challenge): ?PasskeyCredential
+    {
+        if (! config('passkey.recovery.enabled')) {
+            return null;
+        }
+        $key = 'passkey-recovery:'.EmailVerification::ipBucket((string) $request->ip());
+        if (RateLimiter::tooManyAttempts($key, (int) config('passkey.recovery.attempts_per_ip_per_hour'))) {
+            return null;
+        }
+        RateLimiter::hit($key, 3600);
+        try {
+            $clientData = PasskeyCrypto::base64UrlDecode($data['clientDataJSON']);
+            $authData = PasskeyCrypto::base64UrlDecode($data['authenticatorData']);
+            $der = PasskeyCrypto::base64UrlDecode($data['signature']);
+            $recovery = AccountRecovery::make();
+            $found = $recovery->locate($authData, $clientData, $der, function (string $pub) use ($request, $clientData, $authData, $der, $challenge) {
+                $this->webauthn($request)->processGet($clientData, $authData, $der, PasskeyCrypto::pemFromPublicKeyHex($pub), $challenge, null, true, true);
+            });
+            if (! $found) {
+                return null;
+            }
+            $handle = ! empty($data['userHandle']) ? bin2hex(PasskeyCrypto::base64UrlDecode($data['userHandle'])) : null;
+
+            return $recovery->restore($found, $data['id'], $handle, 'Recovered · '.self::deviceLabel($request), (string) $request->ip());
+        } catch (Throwable $e) {
+            Log::warning('passkey-recovery: failed: '.$e->getMessage());
+
+            return null;
+        }
+    }
+
+    // ------------------------------------------------------------------ email one-time codes
+
+    private function emailVerifiedInSession(Request $request, string $email): bool
+    {
+        $v = $request->session()->get(self::SESSION_EMAIL);
+
+        return is_array($v) && hash_equals((string) ($v['email'] ?? ''), $email)
+            && (time() - (int) ($v['at'] ?? 0)) <= (int) config('passkey.email.verified_ttl');
+    }
+
+    /** POST /passkey/email/start {email, purpose: signup|verify} — sends a 6-digit code (generic answer). */
+    public function emailStart(Request $request): JsonResponse
+    {
+        $purpose = (string) $request->input('purpose', 'signup');
+        if (! in_array($purpose, EmailVerification::PURPOSES, true)) {
+            return $this->fail('Unknown request', 422);
+        }
+        $account = null;
+        if ($purpose === 'verify') {
+            [$account] = $this->requireLogin($request);
+        }
+        $email = EmailVerification::normalise($request->input('email', ''));
+        if ($error = EmailVerification::validationError($email)) {
+            return $this->fail($error, 422);
+        }
+        $out = (new EmailVerification)->start($email, $purpose, (string) $request->ip(), $account?->id);
+        if (! $out['ok']) {
+            return response()->json(['error' => $out['error'], 'retry_after' => $out['retry_after'] ?? null], $out['status']);
+        }
+
+        return response()->json(['sent' => true, 'email' => $email, 'cooldown' => $out['cooldown'], 'expires_in' => $out['expires_in']]);
+    }
+
+    /** POST /passkey/email/verify {email, code, purpose} */
+    public function emailVerify(Request $request): JsonResponse
+    {
+        $purpose = (string) $request->input('purpose', 'signup');
+        if (! in_array($purpose, EmailVerification::PURPOSES, true)) {
+            return $this->fail('Unknown request', 422);
+        }
+        $account = null;
+        if ($purpose === 'verify') {
+            [$account] = $this->requireLogin($request);
+        }
+        $email = EmailVerification::normalise($request->input('email', ''));
+        if ($error = EmailVerification::validationError($email)) {
+            return $this->fail($error, 422);
+        }
+        $out = (new EmailVerification)->verify($email, $purpose, (string) $request->input('code', ''), (string) $request->ip());
+        if (! $out['ok']) {
+            return response()->json(['error' => $out['error'], 'expired' => $out['expired'] ?? false], $out['status']);
+        }
+        $taken = PasskeyAccount::whereRaw('LOWER(email) = ?', [$email])->where('status', 'active')
+            ->when($account, fn ($q) => $q->where('id', '!=', $account->id))->exists();
+        if ($purpose === 'signup') {
+            // the caller proved they own the mailbox: now it is fine to say that the account exists
+            if ($taken) {
+                return response()->json(['verified' => true, 'existing' => true, 'message' => 'You already have a Flovatar account with this email. Sign in with your passkey.']);
+            }
+            $request->session()->put(self::SESSION_EMAIL, ['email' => $email, 'at' => time()]);
+
+            return response()->json(['verified' => true, 'existing' => false, 'email' => $email]);
+        }
+        if ($taken) {
+            return $this->fail('This email is already used by another Flovatar account.', 409);
+        }
+        $account->update(['email' => $email, 'email_verified_at' => now()]);
+
+        return response()->json(['verified' => true, 'email' => $email]);
+    }
+
+    // ------------------------------------------------------------------ link to a wallet (HybridCustody)
+
+    private function requireLinking(Request $request): array
+    {
+        abort_unless(PasskeyLogin::enabled() && config('passkey.link.enabled'), 404);
+
+        return $this->requireLogin($request);
+    }
+
+    /** GET /passkey/link/nonce — nonce for the wallet's FCL account-proof (single use, 10 min). */
+    public function linkNonce(Request $request): JsonResponse
+    {
+        $this->requireLinking($request);
+        $nonce = WalletLink::nonce();
+        $request->session()->put(self::SESSION_LINK_NONCE, ['nonce' => $nonce, 'at' => time()]);
+
+        return response()->json(['nonce' => $nonce])->header('Cache-Control', 'private, no-store');
+    }
+
+    /**
+     * POST /passkey/link/prepare {parent, wallet, proof: {nonce, signatures}} — checks the wallet's account-proof and
+     * returns the passkey-signed publish transaction (or pending/linked when that already happened on chain).
+     */
+    public function linkPrepare(Request $request): JsonResponse
+    {
+        [$account, $signer] = $this->requireLinking($request);
+        $data = $request->validate([
+            'parent' => ['required', 'string', 'regex:/^0x[0-9a-fA-F]{16}$/'],
+            'wallet' => 'nullable|string|max:16',
+            'proof' => 'required|array',
+            'proof.nonce' => 'required|string|max:128',
+            'proof.signatures' => 'required|array|max:10',
+        ]);
+        $parent = strtolower($data['parent']);
+        $issued = $request->session()->pull(self::SESSION_LINK_NONCE);
+        if (! is_array($issued) || ! hash_equals((string) $issued['nonce'], (string) $data['proof']['nonce']) || time() - (int) $issued['at'] > 600) {
+            return $this->fail('The wallet connection expired. Please start again.', 422);
+        }
+        try {
+            WalletLink::assertLinkable($account, $parent);
+            $link = WalletLink::make();
+            if (! $link->verifyAccountProof($parent, $data['proof']['nonce'], $data['proof']['signatures'], WebAuthnOrigins::allowed($request))) {
+                return $this->fail('We could not confirm that you control this wallet (account proof). Please try again.', 422);
+            }
+            $wallet = in_array($data['wallet'] ?? null, ['flow', 'dapper'], true) ? $data['wallet'] : 'other';
+            $row = PasskeyWalletLink::firstOrCreate(
+                ['passkey_account_id' => $account->id, 'parent_address' => $parent],
+                ['child_address' => $account->address, 'wallet' => $wallet, 'status' => 'proved'],
+            );
+            $state = $link->status($account->address, $parent);
+            if (array_key_exists($parent, $state['parents'])) {
+                if ($state['parents'][$parent] && $state['managerHasChild']) {
+                    $row->update(['status' => 'linked', 'linked_at' => $row->linked_at ?? now()]);
+
+                    return response()->json(['linked' => true, 'parent' => $parent]);
+                }
+                $row->update(['status' => 'published']);
+
+                return response()->json(['pending' => true, 'parent' => $parent]);
+            }
+            $prep = $this->poc()->prepareUserTx($account, $signer, 'hc_publish', 'hc_publish_to_parent', WalletLink::publishArgs($parent), ['link' => $row->id]);
+
+            return response()->json($prep + ['parent' => $parent, 'label' => 'link your account to wallet '.$parent]);
+        } catch (Throwable $e) {
+            return $this->fail($e->getMessage(), 422, $e);
+        }
+    }
+
+    /** GET /passkey/link/claim — the Cadence the wallet signs to claim the link (FCL, wallet pays its own fee). */
+    public function linkClaim(Request $request): JsonResponse
+    {
+        [$account] = $this->requireLinking($request);
+
+        return response()->json(['cadence' => WalletLink::claimCadence(), 'child' => $account->address])->header('Cache-Control', 'private, no-store');
+    }
+
+    /** POST /passkey/link/confirm {parent, claimTx?} — reads the link state on chain and records it. */
+    public function linkConfirm(Request $request): JsonResponse
+    {
+        [$account] = $this->requireLinking($request);
+        $data = $request->validate([
+            'parent' => ['required', 'string', 'regex:/^0x[0-9a-fA-F]{16}$/'],
+            'claimTx' => ['nullable', 'string', 'regex:/^[0-9a-f]{64}$/'],
+        ]);
+        $parent = strtolower($data['parent']);
+        $row = PasskeyWalletLink::where('passkey_account_id', $account->id)->where('parent_address', $parent)->first();
+        if (! $row) {
+            return $this->fail('No link to this wallet was started.', 404);
+        }
+        try {
+            $state = WalletLink::make()->status($account->address, $parent);
+        } catch (Throwable $e) {
+            return $this->fail('Could not read the link from the chain, please try again.', 502, $e);
+        }
+        $linked = ($state['parents'][$parent] ?? false) && $state['managerHasChild'];
+        $row->update(array_filter([
+            'status' => $linked ? 'linked' : (array_key_exists($parent, $state['parents']) ? 'published' : $row->status),
+            'linked_at' => $linked ? ($row->linked_at ?? now()) : null,
+            'claim_tx' => $data['claimTx'] ?? null,
+        ], fn ($v) => $v !== null));
+
+        return response()->json(['linked' => $linked, 'pending' => ! $linked && array_key_exists($parent, $state['parents']), 'parent' => $parent]);
     }
 
     public function logout(Request $request): JsonResponse
@@ -502,8 +749,15 @@ class PasskeyPocController extends Controller
             'auth_type' => 'passkey',
             'address' => $account->address,
             'email' => $account->email,
+            'email_verified' => $account->hasVerifiedEmail(),
+            'recovered' => $account->recovered_at !== null,
             'gift_tx' => $account->gift_tx,
             'created_at' => optional($account->created_at)->toIso8601String(),
+            'link_enabled' => (bool) config('passkey.link.enabled'),
+            'links' => $account->walletLinks()->whereIn('status', ['linked', 'published'])->orderBy('id')->get()->map(fn ($l) => [
+                'parent' => $l->parent_address, 'wallet' => $l->wallet, 'status' => $l->status,
+                'linked_at' => optional($l->linked_at)->toIso8601String(), 'claim_tx' => $l->claim_tx, 'publish_tx' => $l->publish_tx,
+            ])->values(),
             'credential' => ['id' => $cred->id, 'key_index' => $cred->key_index, 'label' => $cred->label],
             'devices' => $creds->map(fn ($c) => [
                 'id' => $c->id, 'label' => $c->label, 'status' => $c->status, 'key_index' => $c->key_index,
@@ -537,6 +791,9 @@ class PasskeyPocController extends Controller
         }
         if (($out['entry']['kind'] ?? '') === 'add_key') {
             PasskeyCredential::where('id', $out['entry']['meta']['pending'] ?? 0)->update(['add_key_tx' => $out['txId']]);
+        }
+        if (($out['entry']['kind'] ?? '') === 'hc_publish') {
+            PasskeyWalletLink::where('id', $out['entry']['meta']['link'] ?? 0)->where('passkey_account_id', $account->id)->update(['publish_tx' => $out['txId'], 'status' => 'published']);
         }
 
         return response()->json(['txId' => $out['txId']]);

@@ -11,7 +11,7 @@ use SensitiveParameter;
  * The key file holds 64 hex chars, must be chmod 600 and live outside the application directory.
  * The key never appears in exceptions or logs.
  */
-final class SponsorSigner
+final class SponsorSigner implements SponsorKey
 {
     private const P256_N = 'ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551';
 
@@ -21,8 +21,13 @@ final class SponsorSigner
     ) {
     }
 
-    public static function fromConfig(): self
+    /** The configured sponsor signer: key file (default, testnet) or cloud KMS (PASSKEY_SPONSOR_DRIVER=kms). */
+    public static function fromConfig(): SponsorKey
     {
+        if (config('passkey.sponsor.driver') === 'kms') {
+            return KmsSponsorSigner::fromConfig();
+        }
+
         return new self(config('passkey.sponsor.key_file'), base_path());
     }
 

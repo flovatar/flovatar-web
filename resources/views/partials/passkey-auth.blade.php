@@ -46,12 +46,23 @@
                         <form class="passkey-form" novalidate @submit.prevent.stop="signUp()">
                             <h3 class="passkey-form-title">New here? Create your account</h3>
                             <label for="passkey-email">Your email <span class="req">required</span></label>
-                            <input id="passkey-email" x-ref="passkeyEmail" type="email" inputmode="email" required maxlength="190" x-model.trim="email" autocomplete="email" placeholder="you@example.com" :disabled="busy"
+                            <input id="passkey-email" x-ref="passkeyEmail" type="email" inputmode="email" required maxlength="190" x-model.trim="email" autocomplete="email" placeholder="you@example.com" :disabled="busy || !!codeSentTo"
                                    :class="{ 'is-invalid': emailError }" :aria-invalid="emailError ? 'true' : 'false'" aria-describedby="passkey-email-help passkey-email-error"
-                                   @input="emailError = ''" @blur="email && validateEmail()">
+                                   @input="emailError = ''" @blur="email && !codeSentTo && validateEmail()">
                             <p id="passkey-email-error" class="passkey-field-error" x-show="emailError" x-text="emailError" role="alert"></p>
-                            <p id="passkey-email-help" class="passkey-field-help">We use it for important account updates and to help you recover your account. It is never shown publicly.</p>
-                            <button type="submit" class="btn btn-pink" :disabled="busy" data-passkey="signup"><span class="inner">Create my account</span></button>
+                            <p id="passkey-email-help" class="passkey-field-help" x-show="!codeSentTo">We send you a 6-digit code to confirm it. We use it for important account updates and to help you recover your account. It is never shown publicly.</p>
+                            <template x-if="codeSentTo && !existingEmail">
+                                <div class="passkey-code">
+                                    <label for="passkey-code">6-digit code from the email</label>
+                                    <input id="passkey-code" x-ref="passkeyCode" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="6" x-model.trim="code" placeholder="123456" :disabled="busy" data-passkey="code">
+                                    <p class="passkey-field-help">
+                                        <a href="#" @click.prevent.stop="if(!resendIn && !busy){ codeSentTo = ''; sendCode() }" :class="{ 'is-disabled': resendIn }" data-passkey="resend"><span x-text="resendIn ? 'Send a new code in ' + resendIn + ' s' : 'Send a new code'"></span></a>
+                                        · <a href="#" @click.prevent.stop="changeEmail()">Change email</a>
+                                    </p>
+                                </div>
+                            </template>
+                            <button type="submit" class="btn btn-pink" :disabled="busy" data-passkey="signup" x-show="!existingEmail"><span class="inner" x-text="codeSentTo ? 'Confirm code & create my passkey' : 'Send me a code'">Send me a code</span></button>
+                            <p class="passkey-info" x-show="existingEmail">You already have an account with this email: use <b>Sign in with my passkey</b> below. <a href="#" @click.prevent.stop="changeEmail()">Use another email</a></p>
                         </form>
                         <div class="passkey-or"><span>already have an account?</span></div>
                         <button type="button" class="btn" @click.prevent.stop="signIn()" :disabled="busy" data-passkey="signin"><span class="inner">Sign in with my passkey</span></button>
@@ -97,11 +108,26 @@
                                 <dd><span class="mono" x-text="account.address" data-passkey="address"></span> <a href="#" @click.prevent.stop="copy(account.address)">copy</a> · <a :href="accountUrl()" target="_blank" rel="noopener">Flowscan</a></dd>
                                 <dt>Signed in with</dt>
                                 <dd>Passkey · <span x-text="account.credential.label"></span> (key #<span x-text="account.credential.key_index"></span>)</dd>
-                                <dt x-show="account.email">Email</dt>
-                                <dd x-show="account.email" x-text="account.email"></dd>
+                                <dt>Email</dt>
+                                <dd><span x-text="account.email || 'not set'"></span> <span class="chip" x-show="account.email_verified">verified</span><span class="chip warn" x-show="!account.email_verified">not verified</span></dd>
                                 <dt>Balances</dt>
                                 <dd><span x-text="fmt(account.flow_balance, 4)"></span> FLOW · <span x-text="fmt(dust)"></span> ĐUST</dd>
                             </dl>
+
+                            <template x-if="!account.email_verified">
+                                <div class="passkey-verify" data-passkey="verify-email">
+                                    <h3>Verify your email</h3>
+                                    <p class="passkey-note" x-text="account.recovered ? 'We restored your account from the blockchain. Confirm your email so we can reach you and you can join ĐUST quests.' : 'Confirm your email with a 6-digit code: it keeps your account recoverable and is needed for ĐUST quests.'"></p>
+                                    <form class="passkey-form" novalidate @submit.prevent.stop="verifySentTo ? confirmVerifyCode() : sendVerifyCode()">
+                                        <input type="email" inputmode="email" maxlength="190" autocomplete="email" x-model.trim="verifyEmail" placeholder="you@example.com" :disabled="busy || !!verifySentTo" aria-label="Your email" data-passkey="verify-email-input">
+                                        <template x-if="verifySentTo">
+                                            <input type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="6" x-model.trim="verifyCode" placeholder="6-digit code" :disabled="busy" aria-label="6-digit code" data-passkey="verify-code">
+                                        </template>
+                                        <button type="submit" class="btn btn-pink btn-sm" :disabled="busy" data-passkey="verify-submit"><span class="inner" x-text="verifySentTo ? 'Confirm code' : 'Send me a code'">Send me a code</span></button>
+                                        <a href="#" x-show="verifySentTo" @click.prevent.stop="verifySentTo = ''; verifyCode = ''">Change email</a>
+                                    </form>
+                                </div>
+                            </template>
 
                             <h3>Deposit</h3>
                             <p class="passkey-note">Network fees are on us. To buy with FLOW or ĐUST, send tokens to your address above. @if(config('services.flow.network') === 'testnet')Testnet: get free FLOW from the <a :href="faucetUrl()" target="_blank" rel="noopener">Flow faucet</a>. @endif ĐUST also comes from claiming in your collection.</p>
@@ -126,7 +152,14 @@
                             <p><button type="button" class="btn" @click.prevent.stop="addThisDevice()" :disabled="busy" data-passkey="add-device"><span class="inner">Add this device</span></button></p>
 
                             <h3>Link to a wallet</h3>
-                            <p class="passkey-note">Coming soon: link this account to Flow Wallet (as a child account) or export it, so you can take your Flovatars anywhere.</p>
+                            <template x-for="l in linkedWallets()" :key="l.parent">
+                                <p class="passkey-linked" data-passkey="linked-wallet">Linked to <span x-text="walletName(l.wallet)"></span> <a :href="(window.PASSKEY_LOGIN ? window.PASSKEY_LOGIN.flowscan : '') + '/account/' + l.parent" target="_blank" rel="noopener" class="mono" x-text="l.parent"></a> <span class="chip">linked</span></p>
+                            </template>
+                            <template x-for="l in pendingLinks()" :key="'p' + l.parent">
+                                <p class="passkey-note">Waiting for wallet <span class="mono" x-text="l.parent"></span> to accept the link: tap <b>Link</b> again and confirm in that wallet.</p>
+                            </template>
+                            <p class="passkey-note" x-show="!linkedWallets().length">Already have Flow Wallet or Dapper? Link this account to it: your wallet shows it under <b>linked accounts</b> and can manage your Flovatars and tokens, and you keep signing in here with your passkey.</p>
+                            <p x-show="account.link_enabled"><button type="button" class="btn" @click.prevent.stop="linkWallet()" :disabled="busy" data-passkey="link-wallet"><span class="inner" x-text="linkedWallets().length ? 'Link another wallet' : 'Link to Flow Wallet / Dapper'">Link to Flow Wallet / Dapper</span></button></p>
 
                             <h3 x-show="account.transactions && account.transactions.length">Recent transactions</h3>
                             <ul class="passkey-txs">

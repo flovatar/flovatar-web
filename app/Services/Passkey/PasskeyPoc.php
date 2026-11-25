@@ -21,7 +21,7 @@ class PasskeyPoc
 
     public function __construct(
         protected FlowGateway $flow,
-        protected SponsorSigner $sponsor,
+        protected SponsorKey $sponsor,
     ) {
     }
 
@@ -58,9 +58,9 @@ class PasskeyPoc
             throw new RuntimeException('Bad cadence name');
         }
         $code = file_get_contents(base_path("cadence/passkey/{$name}.cdc"));
-        $map = config('passkey.contracts');
+        $map = config('passkey.contracts') + ['FCLCrypto' => config('passkey.link.fcl_crypto')];
 
-        return preg_replace_callback('/\b0x(Flovatar|FungibleToken|NonFungibleToken|MetadataViews|FlowToken)\b/', fn ($m) => $map[$m[1]], $code);
+        return preg_replace_callback('/\b0x(Flovatar|FungibleToken|NonFungibleToken|MetadataViews|FlowToken|ViewResolver|HybridCustody|FCLCrypto)\b/', fn ($m) => $map[$m[1]], $code);
     }
 
     public function script(string $name, array $args = [])
@@ -87,7 +87,9 @@ class PasskeyPoc
             $id = $this->flow->send($tx);
             $log = PasskeyTransaction::create(['passkey_account_id' => $accountId, 'kind' => $kind, 'tx_id' => $id, 'signed_by' => 'sponsor#'.$keyIndex]);
             $result = $this->flow->wait($id, 45);
-            $log->update(['status' => $result['error'] !== '' ? 'Failed' : $result['status'], 'error' => $result['error'] ?: null]);
+            $spend = SponsorSpend::fromResult($result, $sponsor);
+            $log->update(['status' => $result['error'] !== '' ? 'Failed' : $result['status'], 'error' => $result['error'] ?: null]
+                + ($result['status'] === 'Sealed' ? ['fee' => $spend['fee'] ?? 0, 'sponsor_amount' => $spend['outflow']] : []));
 
             return [$id, $result];
         });
@@ -219,7 +221,7 @@ class PasskeyPoc
         $authData = PasskeyCrypto::base64UrlDecode((string) $assertion['authenticatorData']);
         $clientData = PasskeyCrypto::base64UrlDecode((string) $assertion['clientDataJSON']);
         $der = PasskeyCrypto::base64UrlDecode((string) $assertion['signature']);
-        $raw = PasskeyCrypto::checkTransactionAssertion($cred->public_key, $tx->payloadMessage(), $authData, $clientData, $der, $rpId);
+        $raw = PasskeyCrypto::checkTransactionAssertion($cred->public_key, $tx->payloadMessage(), $authData, $clientData, $der, $rpId, true, WebAuthnOrigins::allowed());
         $tx->addPayloadSignature($tx->proposerAddress, (int) $cred->key_index, $raw, PasskeyCrypto::extensionData($authData, $clientData));
         $sponsor = self::sponsorAddress();
         $tx->addEnvelopeSignature($sponsor, (int) config('passkey.sponsor.key_index'), $this->sponsor->sign($tx->envelopeMessage()));

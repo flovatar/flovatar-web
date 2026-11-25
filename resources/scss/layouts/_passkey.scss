@@ -95,7 +95,24 @@
     .req { margin-left: 6px; padding: 1px 6px; border-radius: 4px; background: rgba(255, 255, 255, .15); font-size: 11px; font-weight: 400; text-transform: uppercase; letter-spacing: .04em; }
     .passkey-field-error { margin: 0; color: #ff8a8a; font-size: 14px; text-align: left; }
     .passkey-field-help { margin: 0; opacity: .75; font-size: 13px; text-align: left; }
+    .passkey-field-help a.is-disabled { opacity: .6; pointer-events: none; text-decoration: none; }
+    .passkey-code { display: flex; flex-direction: column; gap: 6px; }
+    .passkey-code input { letter-spacing: .3em; font-family: monospace; font-size: 20px; }
   }
+
+  .passkey-verify {
+    margin: 12px 0;
+    padding: 12px;
+    border-radius: 8px;
+    background: rgba(255, 238, 80, .08);
+    border: 1px solid rgba(255, 238, 80, .35);
+
+    h3 { margin-top: 0; }
+    .passkey-form { flex-direction: row; flex-wrap: wrap; align-items: center; }
+    .passkey-form input { flex: 1 1 180px; min-width: 0; }
+  }
+
+  .passkey-linked { word-break: break-all; }
 
   .btn[disabled] {
     opacity: .5;

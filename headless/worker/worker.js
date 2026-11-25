@@ -43,10 +43,11 @@ const PROXY = [
   /^\/admin(\/|$)/, /^\/sanctum\//, /^\/livewire\//, /^\/filament\//, /^\/css\/filament\//, /^\/js\/filament\//,
   /^\/transactions\/0x[a-f0-9]{16}\/?$/, /^\/collection\/api\//,
   /^\/passkey(\/|$)/,                                                 // passkey sign-in + sponsored signing (session)
+  /^\/\.well-known\/webauthn$/,                                       // WebAuthn related origins (rp_id = this host)
 ];
 
 // Anonymous, user-agnostic GETs that may be cached at the edge (honours the origin's Cache-Control).
-const EDGE_CACHEABLE = [/^\/api\/v2\/(?!auth\/)/, /^\/api\/image\//, /^\/templates\//, /^\/(flovatars|flobots|components|collectibles)\/json\//, /^\/components\/\d+\/0x[a-f0-9]{16}\/?$/];
+const EDGE_CACHEABLE = [/^\/\.well-known\/webauthn$/, /^\/api\/v2\/(?!auth\/)/, /^\/api\/image\//, /^\/templates\//, /^\/(flovatars|flobots|components|collectibles)\/json\//, /^\/components\/\d+\/0x[a-f0-9]{16}\/?$/];
 
 const ITEM_OWNER_URL = /^\/(flovatars|flobots|collectibles)\/(\d+)\/(0x[a-f0-9]{16})\/?$/;
 const ITEM_URL = /^\/(flovatars|flobots|collectibles)\/(\d+)\/?$/;

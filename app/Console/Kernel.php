@@ -61,6 +61,11 @@ class Kernel extends ConsoleKernel
             $this->heavy($schedule, 'headless:build --quiet-puts', 3600)
                 ->dailyAt($mainnet ? '03:30' : '02:30')->withoutOverlapping(180)->runInBackground();
         }
+        if (config('passkey.enabled') && config('passkey.sponsor.address')) {
+            // passkey sponsor: low-balance warning in the log (hourly) + per-day spend summary (fees, account funding)
+            $schedule->command('passkey:sponsor-watch')->hourlyAt(17)->withoutOverlapping(10)->runInBackground();
+            $schedule->command('passkey:sponsor-spend')->dailyAt('00:20')->withoutOverlapping(30)->runInBackground();
+        }
     }
 
     /**

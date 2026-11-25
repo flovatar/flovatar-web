@@ -90,6 +90,7 @@
                 clientDataJSON: bufToB64u(a.response.clientDataJSON),
                 authenticatorData: bufToB64u(a.response.authenticatorData),
                 signature: bufToB64u(a.response.signature),
+                userHandle: a.response.userHandle ? bufToB64u(a.response.userHandle) : null,
                 userHandle: a.response.userHandle ? bufToB64u(a.response.userHandle) : null
             };
         });
@@ -148,20 +149,49 @@
     }
 
     // ---------------------------------------------------------------- actions
+    // sign-up: email -> 6-digit code (email/start, email/verify) -> passkey -> Flow account
+    var codeFor = null;
+    function sendCode(em) {
+        return api('POST', '/passkey/email/start', { email: em, purpose: 'signup' }).then(function () {
+            codeFor = em;
+            $('code-box').classList.remove('hidden');
+            $('btn-create').textContent = 'Confirm code & create account';
+            setStatus(1, '📧 We sent a 6-digit code to <b>' + esc(em) + '</b>. Enter it above (valid 10 minutes).', 'ok');
+            $('email-code').focus();
+        });
+    }
     var doCreate = wrap(1, function () {
-        setStatus(1, '<span class="spinner"></span> Asking your device for a passkey…', 'wait');
-        var em = $('email').value.trim();
+        var em = $('email').value.trim().toLowerCase();
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em)) { return Promise.reject(new Error('Please enter a valid email address.')); }
-        return api('POST', '/passkey/register/options', { email: em }).then(function (opts) {
+        if (codeFor !== em) {
+            setStatus(1, '<span class="spinner"></span> Sending your code…', 'wait');
+            return sendCode(em);
+        }
+        var code = $('email-code').value.replace(/\D/g, '');
+        if (code.length !== 6) { return Promise.reject(new Error('Enter the 6-digit code from the email.')); }
+        setStatus(1, '<span class="spinner"></span> Checking the code…', 'wait');
+        return api('POST', '/passkey/email/verify', { email: em, code: code, purpose: 'signup' }).then(function (v) {
+            if (v.existing) { throw new Error(v.message || 'You already have an account with this email. Sign in with your passkey.'); }
+            setStatus(1, '<span class="spinner"></span> Asking your device for a passkey…', 'wait');
+            return api('POST', '/passkey/register/options', { email: em });
+        }).then(function (opts) {
             return ceremony(1, 'create your passkey', function () { return createCredential(JSON.parse(JSON.stringify(opts))); });
         }).then(function (att) {
             setStatus(1, '<span class="spinner"></span> Passkey saved. Creating your Flow account on testnet (about 10–20 seconds)…', 'wait');
             return api('POST', '/passkey/register/verify', att);
         }).then(function (r) {
+            codeFor = null;
+            $('code-box').classList.add('hidden');
+            $('btn-create').textContent = 'Send me a code';
             setStatus(1, '✅ Account created: <span class="mono">' + esc(r.address) + '</span><span class="txline">tx ' + txLink(r.txId) + ' <span class="chip Sealed">Sealed</span></span>', 'ok');
             state.lastTx = { id: r.txId, label: 'Create account', status: 'Sealed' };
             return refresh();
         });
+    });
+    var doResend = wrap(1, function () {
+        var em = $('email').value.trim().toLowerCase();
+        setStatus(1, '<span class="spinner"></span> Sending a new code…', 'wait');
+        return sendCode(em);
     });
 
     var doLogin = wrap(1, function () {
@@ -171,7 +201,7 @@
         }).then(function (a) {
             return api('POST', '/passkey/login/verify', a);
         }).then(function (r) {
-            setStatus(1, '✅ Signed in as <span class="mono">' + esc(r.address) + '</span> (key #' + esc(r.key_index) + ')', 'ok');
+            setStatus(1, '✅ Signed in as <span class="mono">' + esc(r.address) + '</span> (key #' + esc(r.key_index) + ')' + (r.recovered ? ' — account restored from the blockchain' : ''), 'ok');
             return refresh();
         });
     });
@@ -345,6 +375,7 @@
             }
         }
         $('btn-create').onclick = doCreate;
+        $('btn-resend').onclick = doResend;
         $('btn-login').onclick = doLogin;
         $('btn-logout').onclick = doLogout;
         $('btn-setup').onclick = doSetup;

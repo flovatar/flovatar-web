@@ -192,6 +192,9 @@ window.transError = function(transaction){
 window.applyUser = function(user){ return updateUser(user); };
 
 async function updateUser(user){
+    // passkey account panel "Link to Flow Wallet / Dapper": the wallet is connected only to sign the link, it must not
+    // become the site user (resources/js/passkey.js linkWallet)
+    if(window.passkeyLinking){ return; }
     if(window.passkeySession && window.passkeySession.active){
         // passkey sign-in (testnet): FCL's own (empty) emissions must not replace the passkey user;
         // a real wallet connecting ends the passkey session on this page.

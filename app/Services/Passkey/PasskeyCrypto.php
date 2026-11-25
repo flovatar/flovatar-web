@@ -93,6 +93,7 @@ final class PasskeyCrypto
         string $derSignature,
         string $rpId,
         bool $requireUserVerification = true,
+        ?array $allowedOrigins = null,
     ): string {
         $client = json_decode($clientDataJSON, true);
         if (! is_array($client) || ($client['type'] ?? null) !== 'webauthn.get') {
@@ -102,9 +103,16 @@ final class PasskeyCrypto
         if (! hash_equals(self::challengeFor($message), $challenge)) {
             throw new RuntimeException('Assertion challenge does not match the transaction');
         }
-        $host = parse_url((string) ($client['origin'] ?? ''), PHP_URL_HOST);
-        if ($host !== $rpId && ! str_ends_with((string) $host, '.'.$rpId)) {
-            throw new RuntimeException('Assertion origin does not match');
+        if ($allowedOrigins !== null) {
+            // exact allowlist (headless frontends, related origins): see WebAuthnOrigins
+            if (! in_array(WebAuthnOrigins::normalise((string) ($client['origin'] ?? '')), $allowedOrigins, true)) {
+                throw new RuntimeException('Assertion origin does not match');
+            }
+        } else {
+            $host = parse_url((string) ($client['origin'] ?? ''), PHP_URL_HOST);
+            if ($host !== $rpId && ! str_ends_with((string) $host, '.'.$rpId)) {
+                throw new RuntimeException('Assertion origin does not match');
+            }
         }
         if (strlen($authenticatorData) < 37) {
             throw new RuntimeException('authenticatorData too short');

@@ -101,8 +101,13 @@
         <div id="signed-out">
             <label for="email">Email <span class="hint">(required)</span></label>
             <input id="email" type="email" required maxlength="190" inputmode="email" autocomplete="email" placeholder="you@example.com">
-            <p class="hint">On testnet we only store your email next to your account so we can recognise test sign-ups. No email is sent and there is no code to enter. A real launch would confirm it with a one-time code.</p>
-            <button class="btn full" id="btn-create">Create account</button>
+            <p class="hint">We email you a 6-digit code to confirm the address (testnet: from info@flovatar.com).</p>
+            <div id="code-box" class="hidden">
+                <label for="email-code">6-digit code from the email</label>
+                <input id="email-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]*" placeholder="123456">
+                <p class="hint"><button class="btn secondary" id="btn-resend" type="button">Send a new code</button></p>
+            </div>
+            <button class="btn full" id="btn-create">Send me a code</button>
             <div class="prompt"><span>🔐</span><span>Your device will ask to <b>save a passkey for {{ $rpId }}</b>. Confirm with Face ID, Touch ID, fingerprint or your PIN. On a computer without a fingerprint reader you'll get a <b>QR code</b>: scan it with your phone and approve there.</span></div>
             <p style="margin-top:18px">Already created one? <button class="btn secondary" id="btn-login">Sign in with passkey</button></p>
             <p class="hint">Signing in on a new computer or tablet? Pick <b>"Use a phone or tablet"</b> (or "Other device") in the passkey window and scan the QR code with the phone that has your passkey.</p>
