@@ -192,6 +192,12 @@ window.transError = function(transaction){
 window.applyUser = function(user){ return updateUser(user); };
 
 async function updateUser(user){
+    if(window.passkeySession && window.passkeySession.active){
+        // passkey sign-in (testnet): FCL's own (empty) emissions must not replace the passkey user;
+        // a real wallet connecting ends the passkey session on this page.
+        if(!user || !user.addr){ return; }
+        if(user.authType !== 'passkey'){ window.passkeySession = null; }
+    }
     console.log('update user');
     console.log(user);
     window.user = user;
