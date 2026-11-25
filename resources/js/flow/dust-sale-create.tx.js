@@ -86,9 +86,13 @@ transaction(kind: String, saleItemID: UInt64, saleItemPrice: UFix64, expiry: UIn
         self.storefront = acct.storage.borrow<auth(NFTStorefrontV2.CreateListing, NFTStorefrontV2.RemoveListing) &NFTStorefrontV2.Storefront>(from: NFTStorefrontV2.StorefrontStoragePath)
             ?? panic("Could not borrow your Storefront")
 
-        // One listing per item: remove older listings of this NFT (any currency)
+        // One listing per item: remove older listings of this NFT (any currency). NFTStorefrontV2.cleanupGhostListings
+        // destroys a listing but leaves its id in the storefront index (getExistingListingIDs), and removeListing panics
+        // "missing Listing" on such an id: only remove listings that can still be borrowed.
         for listingID in self.storefront.getExistingListingIDs(nftType: self.nftType, nftID: saleItemID) {
-            self.storefront.removeListing(listingResourceID: listingID)
+            if self.storefront.borrowListing(listingResourceID: listingID) != nil {
+                self.storefront.removeListing(listingResourceID: listingID)
+            }
         }
 
         // Reuse an existing withdraw capability for the collection instead of issuing a new controller per listing

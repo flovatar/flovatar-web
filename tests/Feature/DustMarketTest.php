@@ -297,6 +297,28 @@ class DustMarketTest extends TestCase
         $this->assertStringNotContainsString('FlowUtilityToken', $create, 'no Dapper/DUC code in the ĐUST templates');
     }
 
+    /**
+     * Ghost index fix: NFTStorefrontV2.cleanupGhostListings leaves the destroyed listing's id in getExistingListingIDs, and
+     * removeListing panics "missing Listing" on it (seen on testnet: user1, Flobit #72, tx 57a9591f…). The listing tx must
+     * only remove listings it can still borrow, and the passkey pin must be the hash of that exact Cadence.
+     */
+    public function test_dust_sale_create_skips_index_ids_without_a_listing(): void
+    {
+        $t = (new TemplateRegistry())->find('dust-sale-create');
+        $c = $t['cadence'];
+        $loop = 'for listingID in self.storefront.getExistingListingIDs(nftType: self.nftType, nftID: saleItemID) {';
+        $this->assertStringContainsString($loop, $c);
+        $body = substr($c, strpos($c, $loop) + strlen($loop), 200);
+        $this->assertMatchesRegularExpression(
+            '/^\s*if self\.storefront\.borrowListing\(listingResourceID: listingID\) != nil \{\s*self\.storefront\.removeListing\(listingResourceID: listingID\)\s*\}/',
+            $body
+        );
+        $this->assertSame(1, substr_count($c, 'removeListing('), 'no unguarded removeListing');
+        $pin = (require base_path('config/passkey-templates.php'))['dust-sale-create']['sha256'];
+        $this->assertSame($pin, hash('sha256', $c));
+        $this->assertSame('20c5abf0797c909d7a0f86e17d5314dde8260ce36585081dca6916ceed4fd9c1', $pin);
+    }
+
     public function test_layout_prints_dust_config_only_when_enabled(): void
     {
         $this->assertFalse(DustMarket::enabled());

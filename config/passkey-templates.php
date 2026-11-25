@@ -65,7 +65,7 @@ return [
     'send-dust-to-address' => ['sha256' => 'd2498de89eff48d6dc23746dceb8ea30c1d4babf4c78aea9d1b56bb2d6ef8ecd', 'label' => 'Send ĐUST'],
     'upgrade-flobits' => ['sha256' => 'f1ec9554a2f654cc0f316b1e8252a6c91ed813d695083ab8d7210b7caea532c4', 'label' => 'Upgrade Flobits (ĐUST)'],
     // ĐUST marketplace (NFTStorefrontV2, KB notes/dust-marketplace.md): sponsor-paid for passkey users
-    'dust-sale-create' => ['sha256' => '06c490b2711d114b7b160ddc17a877c0ad1476aa007aa473943ff8dd6a38cf1c', 'label' => 'List for ĐUST'],
+    'dust-sale-create' => ['sha256' => '20c5abf0797c909d7a0f86e17d5314dde8260ce36585081dca6916ceed4fd9c1', 'label' => 'List for ĐUST'],
     'dust-sale-buy' => ['sha256' => '340f3ec7e942ef07b508d45f7b1e9d91c6b907e7d765b93891199bde7e77bb6f', 'label' => 'Buy with ĐUST'],
     'dust-sale-cancel' => ['sha256' => 'dbfd2ce3ea2c22a3579ac392758b581ba98e37a8dd3da8bb2e6e03605c91c6df', 'label' => 'Cancel the ĐUST listing'],
     'dust-sale-cleanup' => ['sha256' => 'c86c1c3121ae14bc3e44053bde306f9e0cba64c1369fea499fce5c46d80051c2', 'label' => 'Clean up an old ĐUST listing'],
