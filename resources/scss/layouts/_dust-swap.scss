@@ -18,10 +18,13 @@
     &:hover { text-decoration: none; background: rgba(245, 197, 66, .2); }
 }
 #main-nav .nav > li.dust-rate-chip-li { display: flex; align-items: center; }
+// the nav's own link rule (#main-nav .nav > li > a) would make the chip a 24px nav link
+#main-nav .nav > li.dust-rate-chip-li > a.dust-rate-chip { font-size: 17px; line-height: 1.3; padding: 4px 12px; color: #f5c542; }
 
 .dust-swap-pay {
     .dust-swap-slippage {
-        display: inline-flex; align-items: center; gap: 6px; font-size: 13px; opacity: .85;
+        // item pages style every `li label` as a 22px uppercase heading
+        display: inline-flex; align-items: center; gap: 6px; font-size: 15px !important; text-transform: none !important; color: #fff !important; opacity: .85; margin: 0;
         select { width: auto; padding: 2px 6px; font-size: 13px; background: #fff; color: #111; border-radius: 6px; }
     }
 }
