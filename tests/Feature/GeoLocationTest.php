@@ -19,6 +19,7 @@ class GeoLocationTest extends TestCase
             ['geometry' => ['coordinates' => [9.1900, 45.4642]], 'properties' => ['name' => 'Milan', 'state' => 'Lombardy', 'country' => 'Italy']],
             ['geometry' => ['coordinates' => [-89.0, 37.0]], 'properties' => ['name' => 'Milan', 'state' => 'Illinois', 'country' => 'United States']],
             ['geometry' => ['coordinates' => ['x', 1]], 'properties' => ['name' => 'broken']],
+            ['geometry' => ['coordinates' => [9.1901, 45.4643]], 'properties' => ['name' => 'Milan', 'state' => 'Lombardy', 'country' => 'Italy']],
         ],
     ];
 
@@ -41,7 +42,7 @@ class GeoLocationTest extends TestCase
         $this->assertTrue($r['ok']);
         $this->assertSame('photon', $r['source']);
         $this->assertSame('© OpenStreetMap contributors', $r['attribution']);
-        $this->assertCount(2, $r['results'], 'broken features are skipped');
+        $this->assertCount(2, $r['results'], 'broken features and duplicate labels are skipped');
         $this->assertSame(['label' => 'Milan, Lombardy, Italy', 'lat' => 45.4642, 'lon' => 9.19], $r['results'][0]);
 
         $this->getJson('/api/v2/geo/search?q=%20MILAN%20%20')->assertOk();
