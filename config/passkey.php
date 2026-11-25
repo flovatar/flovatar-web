@@ -63,8 +63,8 @@ return [
 
     // Sponsor account: creates the user accounts and pays every fee (envelope signer).
     // Key: 64 hex chars (raw P-256 scalar), ECDSA_P256 + SHA2_256 account key, file chmod 600 outside the app dir.
-    // driver: 'file' (key file, testnet) | 'kms' (Cloud KMS EC_SIGN_P256_SHA256 key, for mainnet; see
-    // App\Services\Passkey\KmsSponsorSigner and flovatar-kb notes/passkey-ui-integration.md "Mainnet sponsor").
+    // driver: 'file' (key file, testnet only) | 'kms' (AWS KMS ECC_NIST_P256 / SIGN_VERIFY key, required on mainnet; see
+    // App\Services\Passkey\KmsSponsorSigner, `php artisan passkey:kms-check` and flovatar-kb notes/mainnet-launch-stealth.md).
     'sponsor' => [
         'driver' => env('PASSKEY_SPONSOR_DRIVER', 'file'),
         'address' => env('PASSKEY_SPONSOR_ADDRESS'),
@@ -72,7 +72,7 @@ return [
         'key_file' => env('PASSKEY_SPONSOR_KEY_FILE'),
         'kms' => [
             'provider' => env('PASSKEY_SPONSOR_KMS_PROVIDER'),   // aws (mainnet) | mock (testnet end-to-end check only)
-            'key' => env('PASSKEY_SPONSOR_KMS_KEY'),             // GCP key version resource name / AWS key ARN
+            'key' => env('PASSKEY_SPONSOR_KMS_KEY'),             // AWS key ARN (arn:aws:kms:<region>:<account>:key/<id>)
             'public_key' => env('PASSKEY_SPONSOR_KMS_PUBLIC_KEY'), // X||Y hex of the KMS key (= account key on chain)
             'region' => env('PASSKEY_SPONSOR_KMS_REGION', env('AWS_DEFAULT_REGION')),
             // label line → value line file OUTSIDE the app dir, chmod 600 ("access key id" / value / "secret access key" / value)
