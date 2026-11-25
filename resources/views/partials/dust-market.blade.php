@@ -17,7 +17,7 @@
                             <span class="input-txt dust-price" x-text="dustFmt(dustListing.price)"></span>
                         </div>
                         <div class="btn-hold" x-show="dustMine() && !dustDapper()">
-                            <button @click.prevent.stop="cancelDust" x-bind:disabled="!dustSignedIn()" class="btn btn-sm btn-red"><span class="inner">Cancel ĐUST listing</span></button>
+                            <button @click.prevent.stop="cancelDust" x-bind:disabled="!dustSignedIn()" class="btn btn-sm btn-red"><span class="inner">Cancel</span></button>
                         </div>
                         <div class="btn-hold" x-show="canBuyDust()">
                             <button @click.prevent.stop="buyDust" x-bind:disabled="!dustSignedIn() || !dustEnough()" class="btn btn-sm btn-green"><span class="inner" x-text="'Buy for ' + dustFmt(dustListing.price)"></span></button>
@@ -60,7 +60,7 @@
                             <span class="label">ĐUST</span>
                         </div>
                         <div class="btn-hold">
-                            <button @click.prevent.stop="listDust" x-bind:disabled="!dustSignedIn() || !(dustPrice > 0)" type="submit" class="btn btn-sm btn-green"><span class="inner">List for ĐUST</span></button>
+                            <button @click.prevent.stop="listDust" x-bind:disabled="!dustSignedIn() || !(dustPrice > 0)" type="submit" class="btn btn-sm btn-green"><span class="inner">List</span></button>
                         </div>
                     </div>
                 </li>

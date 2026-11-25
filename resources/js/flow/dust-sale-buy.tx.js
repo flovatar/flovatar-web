@@ -16,15 +16,18 @@ import NFTStorefrontV2 from 0xStorefront2
 import Flovatar, FlovatarComponent, Flobot, FlovatarDustCollectible, FlovatarDustCollectibleAccessory, FlovatarDustToken from 0xFlovatar
 
 transaction(storefrontAddress: Address, listingResourceID: UInt64, expectedPrice: UFix64) {
+    let storefront: &{NFTStorefrontV2.StorefrontPublic}
     let listing: &{NFTStorefrontV2.ListingPublic}
+    let listingID: UInt64
     let payment: @{FungibleToken.Vault}
     let collection: &{NonFungibleToken.Collection}
 
     prepare(buyer: auth(Storage, Capabilities) &Account) {
         assert(storefrontAddress != buyer.address, message: "This is your own listing")
-        let storefront = getAccount(storefrontAddress).capabilities.borrow<&{NFTStorefrontV2.StorefrontPublic}>(NFTStorefrontV2.StorefrontPublicPath)
+        self.storefront = getAccount(storefrontAddress).capabilities.borrow<&{NFTStorefrontV2.StorefrontPublic}>(NFTStorefrontV2.StorefrontPublicPath)
             ?? panic("The seller has no Storefront")
-        self.listing = storefront.borrowListing(listingResourceID: listingResourceID) ?? panic("This listing is no longer available")
+        self.listingID = listingResourceID
+        self.listing = self.storefront.borrowListing(listingResourceID: listingResourceID) ?? panic("This listing is no longer available")
         let details = self.listing.getDetails()
         assert(details.salePaymentVaultType == Type<@FlovatarDustToken.Vault>(), message: "This is not a DUST listing")
         assert(!details.purchased, message: "This item has already been sold")
@@ -104,6 +107,8 @@ transaction(storefrontAddress: Address, listingResourceID: UInt64, expectedPrice
     execute {
         let item <- self.listing.purchase(payment: <-self.payment, commissionRecipient: nil)
         self.collection.deposit(token: <-item)
+        // remove the sold listing from the seller's Storefront right away (no "sold, waiting for clean-up" leftovers)
+        self.storefront.cleanupPurchasedListings(listingResourceID: self.listingID)
     }
 }
 `,
