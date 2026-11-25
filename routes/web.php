@@ -337,3 +337,8 @@ if (config('passkey.enabled')) {
 if (\App\Support\DustQuests::enabled()) {
     require __DIR__.'/quests.php';
 }
+
+// TerraKit wallet check (read-only, chain-first): off unless TERRAKIT_CHECK_ENABLED=true (testnet only for now).
+if (\App\Support\TerrakitCheck::enabled()) {
+    require __DIR__.'/terrakit.php';
+}
