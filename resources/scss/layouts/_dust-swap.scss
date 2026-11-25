@@ -20,6 +20,8 @@
 #main-nav .nav > li.dust-rate-chip-li { display: flex; align-items: center; }
 // the nav's own link rule (#main-nav .nav > li > a) would make the chip a 24px nav link
 #main-nav .nav > li.dust-rate-chip-li > a.dust-rate-chip { font-size: 17px; line-height: 1.3; padding: 4px 12px; color: #f5c542; }
+// below 1200px the extra item wraps the nav onto two lines: the /dust widget still shows the rate
+@media (max-width: 1199px) { #main-nav .nav > li.dust-rate-chip-li { display: none !important; } }
 
 .dust-swap-pay {
     .dust-swap-slippage {
