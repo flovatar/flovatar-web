@@ -120,7 +120,9 @@ class TemplateRegistry
 
             return '0x'.FlowTransaction::addr($addr);
         }, $cadence);
-        if (preg_match('/\bfrom\s+0x[A-Za-z]/', $out, $m)) {
+        // An alias left over = `from 0x<Name>` that is not a hex address (mainnet addresses like 0xf233dcee88fe0abe
+        // start with a letter too: they must not count as aliases).
+        if (preg_match('/\bfrom\s+0x(?![0-9a-fA-F]+\b)[A-Za-z][A-Za-z0-9_]*/', $out, $m)) {
             throw new RuntimeException('Unresolved contract alias in template: '.$m[0]);
         }
 
