@@ -472,6 +472,18 @@ class PasskeyPocController extends Controller
         }
         $keys = collect($chain['keys'] ?? [])->keyBy('index');
         $creds = $account->credentials()->orderBy('id')->get();
+        // refresh the status of recent transactions the browser followed itself (fcl.tx), max 3 lookups
+        $open = $account->transactions()->where(fn ($q) => $q->whereNull('status')->orWhereIn('status', ['Pending', 'Finalized', 'Executed', 'Unknown']))->where('created_at', '>=', now()->subHour())->latest('id')->limit(3)->get();
+        foreach ($open as $t) {
+            try {
+                $r = $this->poc()->flow()->result($t->tx_id);
+                if (in_array($r['status'], ['Sealed', 'Expired'], true) || $r['error'] !== '') {
+                    $t->update(['status' => $r['error'] !== '' ? 'Failed' : $r['status'], 'error' => $r['error'] ?: null]);
+                }
+            } catch (Throwable $e) {
+                break;
+            }
+        }
 
         return response()->json([
             'authenticated' => true,

@@ -187,6 +187,11 @@
   }
 }
 
+// the approval sheet can open on top of the account panel (add device)
+.passkey-confirm.modal-wrapper {
+  z-index: 1010;
+}
+
 #main-nav .user-info .auth-type {
   text-transform: none;
 }
