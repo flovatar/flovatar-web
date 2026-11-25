@@ -128,8 +128,9 @@ class PasskeyTemplatesTest extends TestCase
 
         $sale = $reg->find('flovatar-sale-create');
         $this->assertSame('10.00', $reg->validateArgs($sale['cadence'], [['type' => 'UInt64', 'value' => '1'], ['type' => 'UFix64', 'value' => '10.00']])[1]['value']);
+        $this->assertSame('10', $reg->validateArgs($sale['cadence'], [['type' => 'UInt64', 'value' => '1'], ['type' => 'UFix64', 'value' => '10']])[1]['value']);
         $this->expectException(RuntimeException::class);
-        $reg->validateArgs($sale['cadence'], [['type' => 'UInt64', 'value' => '1'], ['type' => 'UFix64', 'value' => '10']]);
+        $reg->validateArgs($sale['cadence'], [['type' => 'UInt64', 'value' => '1'], ['type' => 'UFix64', 'value' => '1e-7']]);
     }
 
     public function test_alias_resolution_matches_fcl(): void

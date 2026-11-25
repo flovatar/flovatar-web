@@ -276,8 +276,9 @@ class TemplateRegistry
         }
         $ok = match (true) {
             $type === 'String' => strlen($val) <= 4096,
-            $type === 'UFix64' => (bool) preg_match('/^\d{1,11}\.\d{1,8}$/', $val),
-            $type === 'Fix64' => (bool) preg_match('/^-?\d{1,11}\.\d{1,8}$/', $val),
+            // FCL pads strings to 8 decimals but sends JS numbers as toString() ("1"); the node accepts both
+            $type === 'UFix64' => (bool) preg_match('/^\d{1,11}(\.\d{1,8})?$/', $val),
+            $type === 'Fix64' => (bool) preg_match('/^-?\d{1,11}(\.\d{1,8})?$/', $val),
             str_starts_with($type, 'U') || str_starts_with($type, 'Word') => (bool) preg_match('/^\d{1,78}$/', $val),
             default => (bool) preg_match('/^-?\d{1,78}$/', $val),
         };
