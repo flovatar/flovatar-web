@@ -20,8 +20,10 @@ mix.webpackConfig({
     ],
     // Lazy feature bundles (resources/js/app.js FX map) -> public/fx/<code>.js; bin/fx-assets.mjs then moves them to
     // storage/app/fx (served only where the feature is visible, App\Http\Controllers\FxAssetController).
+    // (only the one-letter feature chunks; every other chunk keeps Mix's default js/[name].js)
     output: {
-        chunkFilename: 'fx/[name].js?id=[chunkhash]',
+        chunkFilename: (pathData) => (/^[a-z]$/.test(String(pathData.chunk && pathData.chunk.name))
+            ? 'fx/[name].js?id=[chunkhash]' : 'js/[name].js?id=[chunkhash]'),
     },
 });
 

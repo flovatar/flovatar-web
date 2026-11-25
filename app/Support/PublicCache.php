@@ -113,6 +113,10 @@ class PublicCache
             if ($request->is(...self::ALWAYS_STATELESS_PATHS)) {
                 return true;
             }
+            // stealth launch: a VALID signed fl_s cookie = an admin/tester (App\Support\Stealth) → real session, never shared
+            if (Stealth::cookiePayload($request) !== null) {
+                return false;
+            }
 
             return ! self::hasSessionCookie($request);
         }

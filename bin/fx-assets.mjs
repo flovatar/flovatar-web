@@ -14,11 +14,15 @@ if (fs.existsSync(src)) {
     for (const f of fs.readdirSync(dst)) fs.rmSync(path.join(dst, f), {force: true});
     let n = 0;
     for (const f of fs.readdirSync(src)) {
-        if (!/^[a-z]{1,8}\.(js|css)$/.test(f)) { fs.rmSync(path.join(src, f), {force: true, recursive: true}); continue; }
+        if (!/^[a-z]{1,8}\.(js|css)$/.test(f)) {
+            // never silently drop an unexpected chunk: every other chunk must stay in public/js (webpack.mix.js)
+            if (!/\.LICENSE\.txt$/.test(f)) { console.error(`fx-assets: unexpected file public/fx/${f}`); process.exitCode = 1; }
+            continue;
+        }
         fs.copyFileSync(path.join(src, f), path.join(dst, f));
         n++;
     }
-    fs.rmSync(src, {recursive: true, force: true});
+    if (!process.exitCode) fs.rmSync(src, {recursive: true, force: true});
     console.log(`fx-assets: ${n} bundle file(s) -> storage/app/fx`);
 }
 const manifest = path.join(root, 'public', 'mix-manifest.json');

@@ -17,7 +17,7 @@ class SearchController extends FilteredController
     public function __invoke()
     {
 
-        $sales = Cache::remember('marketplace-sales-search-lean-'.$this->paramString(), now()->addSeconds(10), function() {
+        $sales = Cache::remember(\App\Support\Stealth::cacheKey('marketplace-sales-search-lean-'.$this->paramString()), now()->addSeconds(10), function() {
             return $this->getFilteredSales(request(), true);
         });
 

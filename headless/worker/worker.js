@@ -45,7 +45,16 @@ const PROXY = [
   /^\/passkey(\/|$)/,                                                 // passkey sign-in + sponsored signing (session)
   /^\/quests(\/|$)/,                                                  // ĐUST Quests (session; only where DUST_QUESTS_ENABLED)
   /^\/\.well-known\/webauthn$/,                                       // WebAuthn related origins (rp_id = this host)
+  /^\/__stealth\//,                                                  // stealth gate: secret URL sets the signed fl_s cookie
+  /^\/fx\//,                                                         // lazy feature bundles (origin decides who gets them)
 ];
+
+// Stealth launch (App\Support\Stealth): a request carrying the fl_s cookie gets its pages from the origin (which verifies the
+// cookie and renders the stealth-only features) and never shares the edge cache. Without the cookie nothing changes: the
+// static R2 site has no trace of stealth features. A forged cookie just gets the public page from the origin.
+function hasStealthCookie(request) {
+  return /(?:^|;\s*)fl_s=[^;]/.test(request.headers.get("cookie") || "");
+}
 
 // Anonymous, user-agnostic GETs that may be cached at the edge (honours the origin's Cache-Control).
 const EDGE_CACHEABLE = [/^\/\.well-known\/webauthn$/, /^\/api\/v2\/(?!auth\/)/, /^\/api\/image\//, /^\/templates\//, /^\/(flovatars|flobots|components|collectibles)\/json\//, /^\/components\/\d+\/0x[a-f0-9]{16}\/?$/];
@@ -149,7 +158,7 @@ async function proxy(request, env, c, url, opts = {}) {
   if (!headers.get("user-agent")) headers.set("User-Agent", FETCH_UA);
   const init = { method: request.method, headers, redirect: "manual" };
   if (!["GET", "HEAD"].includes(request.method)) init.body = request.body;
-  const cacheable = request.method === "GET" && EDGE_CACHEABLE.some((re) => re.test(url.pathname));
+  const cacheable = request.method === "GET" && !hasStealthCookie(request) && EDGE_CACHEABLE.some((re) => re.test(url.pathname));
   if (cacheable) init.cf = { cacheEverything: true };
   let r = await fetch(upstream, init);
   const out = new Headers(r.headers);
@@ -204,6 +213,12 @@ async function itemFallback(request, env, c, url, seg, id) {
   return null;
 }
 
+function withNoStore(resp) {
+  const r = new Response(resp.body, resp);
+  r.headers.set("Cache-Control", "private, no-store");
+  return r;
+}
+
 async function notFound(request, env, c) {
   const obj = await getObject(env, c, "404.html", null);
   if (obj) return objectResponse(c, request, "404.html", obj, 404, "public, max-age=0, s-maxage=60");
@@ -237,6 +252,17 @@ async function handle(request, env) {
 
   if (!["GET", "HEAD"].includes(request.method) || PROXY.some((re) => re.test(path))) {
     return proxy(request, env, c, url);
+  }
+
+  // stealth (admin) visitors: every page from the origin, item pages via their owner URL (same as the not-built fallback)
+  if (hasStealthCookie(request) && !typeFor(path.replace(/\/+$/, ""))) {
+    const it = path.match(ITEM_URL);
+    if (it) {
+      const fb = await itemFallback(request, env, c, url, it[1], it[2]);
+      if (fb) return withNoStore(fb);
+      return notFound(request, env, c);
+    }
+    return withNoStore(await proxy(request, env, c, url));
   }
 
   // shells: wallet comes from the URL at runtime

@@ -23,6 +23,8 @@ class PasskeyKmsCheck extends Command
     protected $signature = 'passkey:kms-check
         {--mock-key-file= : testnet only: mock KMS provider backed by this local 64-hex key file}
         {--send=0 : testnet only: send N no-op sponsor transactions in parallel through the KMS signer}
+        {--address= : sponsor account to check/use instead of PASSKEY_SPONSOR_ADDRESS (e.g. a mock sponsor on testnet)}
+        {--keys= : proposal key indices instead of PASSKEY_SPONSOR_PROPOSAL_KEYS, e.g. 0,1,2,3}
         {--send-one : (internal) send one no-op sponsor transaction}';
 
     protected $description = 'Check the AWS KMS passkey sponsor key (public key, account keys, test signature; testnet: sealed txs)';
@@ -30,6 +32,13 @@ class PasskeyKmsCheck extends Command
     public function handle(): int
     {
         $mock = (string) $this->option('mock-key-file');
+        if ($this->option('address')) {
+            config(['passkey.sponsor.address' => (string) $this->option('address')]);
+        }
+        if ($this->option('keys') !== null && $this->option('keys') !== '') {
+            $keys = array_map('intval', array_filter(explode(',', (string) $this->option('keys')), 'strlen'));
+            config(['passkey.sponsor.proposal_keys' => $keys, 'passkey.sponsor.key_index' => $keys[0] ?? 0]);
+        }
         if ($mock !== '' && ! PasskeyPoc::isTestnet()) {
             $this->error('--mock-key-file is testnet only');
 
@@ -93,6 +102,11 @@ class PasskeyKmsCheck extends Command
             $cmd = [PHP_BINARY, base_path('artisan'), 'passkey:kms-check', '--send-one'];
             if ($mock !== '') {
                 $cmd[] = '--mock-key-file='.$mock;
+            }
+            foreach (['address', 'keys'] as $opt) {
+                if ($this->option($opt)) {
+                    $cmd[] = '--'.$opt.'='.$this->option($opt);
+                }
             }
             $results = Process::pool(function ($pool) use ($n, $cmd) {
                 for ($i = 0; $i < $n; $i++) {
