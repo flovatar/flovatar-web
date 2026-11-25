@@ -115,7 +115,7 @@
                                             </template>
                                         </ul>
                                         <div x-show="flovatars.length == 0 && flovatarSales.length == 0" class="meme-connect-wallet">
-                                            <button @click.prevent.stop="fcl.signUp()" class="btn"><span class="inner">Connect Wallet</span></button>
+                                            <button @click.prevent.stop="{!! \App\Support\PasskeyLogin::connectAction('fcl.signUp()') !!}" class="btn"><span class="inner">Connect Wallet</span></button>
                                         </div>
                                     </div>
                                 </div>

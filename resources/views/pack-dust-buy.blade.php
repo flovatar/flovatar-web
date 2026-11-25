@@ -30,7 +30,7 @@
                     <a x-show="loggedIn() && dustBalance() < 3000" href="https://app.increment.fi/swap?in=A.1654653399040a61.FlowToken&out=A.921ea449dffec68a.FlovatarDustToken" target="_blank" class="btn btn-pink btn-lg">
                         <span class="inner" x-text="'GET '+missingDustPackBalanceFormatted()+' ÐUST TO BUY A PACK'"></span>
                     </a>
-                    <button x-show="!loggedIn()" @click.prevent.stop.debounce="fcl.authenticate()" class="btn btn-pink btn-lg">
+                    <button x-show="!loggedIn()" @click.prevent.stop.debounce="{!! \App\Support\PasskeyLogin::connectAction('fcl.authenticate()') !!}" class="btn btn-pink btn-lg">
                         <span class="inner">Connect your Wallet</span>
                     </button>
                 </div>

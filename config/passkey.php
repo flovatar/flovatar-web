@@ -10,6 +10,10 @@
 return [
     'enabled' => (bool) env('PASSKEY_POC_ENABLED', false),
 
+    // Site-wide integration ("Sign in" -> Email + passkey | Wallet, sponsored signing of the site's own transactions).
+    // Needs the PoC flag too and a testnet network (App\Support\PasskeyLogin::enabled()). Off = the site is unchanged.
+    'login_enabled' => (bool) env('PASSKEY_LOGIN_ENABLED', false),
+
     // WebAuthn relying party. rp_id must be the page host (testnet.flovatar.com); null = request host.
     'rp_id' => env('PASSKEY_RP_ID'),
     'rp_name' => env('PASSKEY_RP_NAME', 'Flovatar (testnet)'),
@@ -20,6 +24,10 @@ return [
         'address' => env('PASSKEY_SPONSOR_ADDRESS'),
         'key_index' => (int) env('PASSKEY_SPONSOR_KEY_INDEX', 0),
         'key_file' => env('PASSKEY_SPONSOR_KEY_FILE'),
+        // Proposal keys used for sponsor-only transactions (account creation, gifts). Every listed index must hold the
+        // same public key as key_index (add them with `php artisan passkey:sponsor-keys N`). Each key has its own
+        // sequence number, so N keys = N sponsor transactions in flight. Empty = key_index only.
+        'proposal_keys' => array_values(array_filter(array_map('trim', explode(',', (string) env('PASSKEY_SPONSOR_PROPOSAL_KEYS', ''))), 'strlen')),
     ],
 
     // FLOW deposited into each new account on top of the account-creation minimum (storage headroom).
@@ -33,6 +41,32 @@ return [
     ],
 
     'compute_limit' => (int) env('PASSKEY_COMPUTE_LIMIT', 9999),
+
+    // FCL address aliases used by the site's transactions (resources/js/bootstrap.js config()->put('0x...')).
+    // Same MIX_* values the JS bundle is built with, so a sponsored transaction runs exactly the wallet Cadence.
+    'aliases' => [
+        '0xProfile' => env('MIX_CONTRACT_PROFILE'),
+        '0xFungible' => env('MIX_CONTRACT_FUNGIBLE'),
+        '0xNonFungible' => env('MIX_CONTRACT_NON_FUNGIBLE'),
+        '0xFlowToken' => env('MIX_CONTRACT_FLOW_TOKEN'),
+        '0xFlovatar' => env('MIX_CONTRACT_FLOW'),
+        '0xComponent' => env('MIX_CONTRACT_FLOW'),
+        '0xTemplate' => env('MIX_CONTRACT_FLOW'),
+        '0xPack' => env('MIX_CONTRACT_FLOW'),
+        '0xMarketplace' => env('MIX_CONTRACT_FLOW'),
+        '0xFindProfile' => env('MIX_CONTRACT_FIND'),
+        '0xFind' => env('MIX_CONTRACT_FIND'),
+        '0xMetadataViews' => env('MIX_METADATA_VIEWS'),
+        '0xStorefront2' => env('MIX_CONTRACT_STOREFRONT2'),
+        '0xDuc' => env('MIX_CONTRACT_DUC'),
+        '0xFut' => env('MIX_CONTRACT_DUC'),
+        '0xTokenForwarding' => env('MIX_TOKEN_FORWARDING'),
+        '0xDapperMerchant' => env('MIX_DAPPER_MERCHANT'),
+        '0xHybridCustody' => env('MIX_HYBRID_CUSTODY'),
+    ],
+
+    // Testnet faucet shown in the passkey account panel (deposit address).
+    'faucet' => env('PASSKEY_FAUCET', 'https://testnet-faucet.onflow.org/fund-account'),
 
     // Contract addresses (testnet defaults).
     'contracts' => [

@@ -1,0 +1,192 @@
+// ---------------------------------------------------------===
+// passkey sign-in (testnet, PASSKEY_LOGIN_ENABLED) — markup only rendered when enabled
+// ---------------------------------------------------------===
+
+.passkey-modal.modal-wrapper {
+  z-index: 1000; // above the transaction loading overlay
+
+  .msg-box {
+    width: 100%;
+    background: #18022b;
+    color: white;
+    padding: 40px 50px 40px;
+    text-align: left;
+    font-size: 18px;
+
+    @include media('<tablet') {
+      padding: 36px 18px 28px;
+    }
+
+    h2, h3 {
+      color: white;
+    }
+
+    h3 {
+      font-size: 20px;
+      margin: 22px 0 8px;
+    }
+
+    a {
+      color: #f7c6ff;
+      text-decoration: underline;
+    }
+
+    .heading {
+      margin-bottom: 24px;
+    }
+  }
+
+  .btn-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+
+    li + li {
+      margin-top: 16px;
+    }
+
+    .btn-grad {
+      width: 100%;
+      position: relative;
+      padding: 15px 20px 15px 88px;
+      justify-content: flex-start;
+      text-align: left;
+      color: white;
+    }
+
+    .ico-wrap {
+      position: absolute;
+      left: 24px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 56px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .lbl small {
+      display: block;
+      font: 400 14px/1.3 sans-serif;
+      text-transform: none;
+      opacity: .9;
+    }
+  }
+
+  .passkey-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    input {
+      height: 48px;
+      border-radius: 6px;
+      border: 0;
+      padding: 0 14px;
+      color: #000;
+      font-size: 16px; // no iOS zoom
+    }
+  }
+
+  .btn[disabled] {
+    opacity: .5;
+    pointer-events: none;
+  }
+
+  .passkey-or {
+    text-align: center;
+    margin: 18px 0 10px;
+    font-size: 14px;
+    opacity: .8;
+  }
+
+  .passkey-note {
+    font-size: 14px;
+    line-height: 1.45;
+    opacity: .85;
+    margin-top: 12px;
+  }
+
+  .passkey-info {
+    font-size: 15px;
+    color: #b6f5c8;
+    margin-top: 12px;
+  }
+
+  .passkey-error {
+    font-size: 15px;
+    color: #ff9d9d;
+    margin-top: 12px;
+  }
+
+  .passkey-action {
+    font-weight: 600;
+    margin: 10px 0 18px;
+  }
+
+  .muted {
+    opacity: .7;
+  }
+
+  .mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    word-break: break-all;
+  }
+
+  .passkey-dl {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 6px 14px;
+    font-size: 15px;
+
+    dt {
+      opacity: .7;
+    }
+
+    dd {
+      margin: 0;
+    }
+
+    @include media('<tablet') {
+      grid-template-columns: 1fr;
+
+      dt {
+        margin-top: 6px;
+      }
+    }
+  }
+
+  .passkey-devices, .passkey-txs {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: 15px;
+
+    li {
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, .1);
+    }
+  }
+
+  .chip {
+    display: inline-block;
+    font-size: 12px;
+    padding: 1px 8px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, .15);
+    margin-left: 6px;
+
+    &.warn {
+      background: #b5651d;
+    }
+  }
+
+  .btn-hold {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+}
+
+#main-nav .user-info .auth-type {
+  text-transform: none;
+}

@@ -13,7 +13,7 @@
                             <img src="/images/treasure-hunt-title.svg" alt="">
                             <p>Before you continue, please verify that you are a Flovatar and not a bot or a human.</p>
                             <div x-show="!loggedIn() && !userCheckLoading" class="meme-connect-wallet">
-                                <button @click.prevent.stop="fcl.signUp()" class="btn"><span class="inner">Connect Wallet</span></button>
+                                <button @click.prevent.stop="{!! \App\Support\PasskeyLogin::connectAction('fcl.signUp()') !!}" class="btn"><span class="inner">Connect Wallet</span></button>
                             </div>
 
                             <div x-show="loggedIn() || userCheckLoading" class="meme-connect-wallet">

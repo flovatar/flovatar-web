@@ -27,7 +27,7 @@
                     <button x-show="loggedIn() && remainingMinutesToSale <= 0" @click.prevent.stop.debounce="purchasePack()" class="btn btn-pink btn-lg">
                         <span class="inner">BUY NOW</span>
                     </button>
-                    <button x-show="!loggedIn()" @click.prevent.stop.debounce="fcl.authenticate()" class="btn btn-pink btn-lg">
+                    <button x-show="!loggedIn()" @click.prevent.stop.debounce="{!! \App\Support\PasskeyLogin::connectAction('fcl.authenticate()') !!}" class="btn btn-pink btn-lg">
                         <span class="inner">Connect your Wallet</span>
                     </button>
                 </div>

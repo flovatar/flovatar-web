@@ -7,7 +7,7 @@
             <button class="nav-opener"><i class="icon-menu"></i></button>
             <ul class="nav">
                 <li x-show="!loggedIn() && !userCheckLoading" class="jshidden show-mobile">
-                    <button @click.prevent.stop="fcl.authenticate()" class="btn"><span class="inner">Connect Wallet</span></button>
+                    <button @click.prevent.stop="{!! \App\Support\PasskeyLogin::connectAction() !!}" class="btn"><span class="inner">{{ \App\Support\PasskeyLogin::enabled() ? 'Sign in' : 'Connect Wallet' }}</span></button>
                 </li>
                 <!--
                 <li class="{{request()->routeIs('getstarted') ? 'active ' : ''}}"><a href="{{ route('getstarted') }}">Get Started</a></li>
@@ -53,7 +53,7 @@
                 </li>
 
                 <li x-show="!loggedIn() && !userCheckLoading" class="jshidden hide-mobile">
-                    <button @click.prevent.stop="fcl.authenticate()" class="btn"><span class="inner">Connect Wallet</span></button>
+                    <button @click.prevent.stop="{!! \App\Support\PasskeyLogin::connectAction() !!}" class="btn"><span class="inner">{{ \App\Support\PasskeyLogin::enabled() ? 'Sign in' : 'Connect Wallet' }}</span></button>
                 </li>
             </ul>
             <div class="user-menu" x-show="loggedIn() || userCheckLoading">
@@ -64,6 +64,10 @@
                         <dd x-show="showProfileName && name()" ><a x-bind:href="'https://find.xyz/'+name()" target="_blank" x-text="name()"></a></dd>
                         <dt>Wallet ID</dt>
                         <dd @click.prevent.stop="copyAddress()" x-text="address()"></dd>
+@if(\App\Support\PasskeyLogin::enabled())
+                        <dt>Signed in with</dt>
+                        <dd class="auth-type" x-text="(user && user.authType == 'passkey') ? 'Passkey' : (isDapperWallet() ? 'Dapper' : 'Flow Wallet')"></dd>
+@endif
                         <dt x-show="!isDapperWallet()">Balance</dt>
                         <dd x-text="balance()+' FLOW'" x-show="!isDapperWallet()"></dd>
                         <dt x-show="dustEnabled">&nbsp;</dt>
@@ -74,6 +78,9 @@
                     <ul class="sub-nav">
                         <li class="{{request()->routeIs('collection') ? 'active ' : ''}}"><a x-bind:href="name() ? '/collection/'+name() : '/collection/'+address()">My Collection</a></li>
                         <li class="{{request()->routeIs('transactions') ? 'active ' : ''}}"><a x-bind:href="'/transactions/'+address()">My Transactions</a></li>
+@if(\App\Support\PasskeyLogin::enabled())
+                        <li x-show="user && user.authType == 'passkey'"><a href="#" @click.prevent.stop="$dispatch('open-passkey-account')">Passkey account &amp; devices</a></li>
+@endif
                         <li x-show="!isDapperWallet()"><a href="https://app.increment.fi/swap?in=A.1654653399040a61.FlowToken&out=A.921ea449dffec68a.FlovatarDustToken" target="_blank">Buy ÐUST</a></li>
                         @if(config('flovatar.isTest'))
                             <li><a href="https://testnet-faucet.onflow.org/fund-account" target="_blank" data-modal >Top up wallet</a></li>

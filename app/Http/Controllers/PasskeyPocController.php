@@ -8,6 +8,8 @@ use App\Models\PasskeyTransaction;
 use App\Services\Passkey\FlowTransaction;
 use App\Services\Passkey\PasskeyCrypto;
 use App\Services\Passkey\PasskeyPoc;
+use App\Services\Passkey\TemplateRegistry;
+use App\Support\PasskeyLogin;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -23,8 +25,8 @@ use Throwable;
  */
 class PasskeyPocController extends Controller
 {
-    private const SESSION_ACCOUNT = 'passkey_poc.account';
-    private const SESSION_CREDENTIAL = 'passkey_poc.credential';
+    private const SESSION_ACCOUNT = PasskeyLogin::SESSION_ACCOUNT;
+    private const SESSION_CREDENTIAL = PasskeyLogin::SESSION_CREDENTIAL;
 
     public function __construct()
     {
@@ -255,8 +257,11 @@ class PasskeyPocController extends Controller
         $request->session()->regenerate();
         $request->session()->put(self::SESSION_ACCOUNT, $account->id);
         $request->session()->put(self::SESSION_CREDENTIAL, $cred->id);
+        if (PasskeyLogin::enabled()) {
+            PasskeyLogin::loginSite($request, $address);
+        }
 
-        return response()->json(['address' => $address, 'txId' => $txId, 'csrf' => $request->session()->token()]);
+        return response()->json(['address' => $address, 'txId' => $txId, 'csrf' => $request->session()->token(), 'auth_type' => 'passkey']);
     }
 
     // ------------------------------------------------------------------ sign in
@@ -309,13 +314,19 @@ class PasskeyPocController extends Controller
         $request->session()->regenerate();
         $request->session()->put(self::SESSION_ACCOUNT, $cred->passkey_account_id);
         $request->session()->put(self::SESSION_CREDENTIAL, $cred->id);
+        if (PasskeyLogin::enabled()) {
+            PasskeyLogin::loginSite($request, $cred->account->address);
+        }
 
-        return response()->json(['address' => $cred->account->address, 'key_index' => $cred->key_index, 'csrf' => $request->session()->token()]);
+        return response()->json(['address' => $cred->account->address, 'key_index' => $cred->key_index, 'csrf' => $request->session()->token(), 'auth_type' => 'passkey']);
     }
 
     public function logout(Request $request): JsonResponse
     {
         $request->session()->forget([self::SESSION_ACCOUNT, self::SESSION_CREDENTIAL]);
+        if (PasskeyLogin::enabled()) {
+            PasskeyLogin::logoutSite($request);
+        }
         $request->session()->regenerate();
 
         return response()->json(['ok' => true, 'csrf' => $request->session()->token()]);
@@ -410,6 +421,78 @@ class PasskeyPocController extends Controller
         } catch (Throwable $e) {
             return $this->fail('Could not prepare the transaction: '.$e->getMessage(), 502, $e);
         }
+    }
+
+    /**
+     * Site transaction from the allowlist (resources/js/flow/fcl-tx.js): {template: sha256 of the wallet Cadence,
+     * args: JSON-Cadence}. The Cadence comes from the server-side manifest, never from the client.
+     */
+    public function txTemplate(Request $request): JsonResponse
+    {
+        abort_unless(PasskeyLogin::enabled(), 404);
+        [$account, $signer] = $this->requireLogin($request);
+        $data = $request->validate([
+            'template' => 'required|string|max:80',
+            'args' => 'present|array|max:32',
+        ]);
+        $limit = (int) config('passkey.limits.txs_per_account_per_hour');
+        if (PasskeyTransaction::where('passkey_account_id', $account->id)->where('created_at', '>=', now()->subHour())->count() >= $limit) {
+            return $this->fail('Too many transactions in the last hour for this account. Please wait a little.', 429);
+        }
+        try {
+            $registry = new TemplateRegistry;
+            $tpl = $registry->find($data['template']);
+            $args = $registry->validateArgs($tpl['cadence'], $data['args']);
+            $code = $registry->resolve($tpl['cadence']);
+        } catch (Throwable $e) {
+            return $this->fail($e->getMessage(), 422);
+        }
+        try {
+            $out = $this->poc()->prepareUserTxCode($account, $signer, $tpl['id'], $code, $args, ['template' => $tpl['id']]);
+        } catch (Throwable $e) {
+            return $this->fail('Could not prepare the transaction: '.$e->getMessage(), 502, $e);
+        }
+
+        return response()->json($out + ['label' => $tpl['label'], 'template' => $tpl['id']]);
+    }
+
+    /** Passkey account panel: address, devices (credentials + on-chain keys), FLOW balance, recent transactions. */
+    public function account(Request $request): JsonResponse
+    {
+        abort_unless(PasskeyLogin::enabled(), 404);
+        [$account, $cred] = $this->current($request);
+        if (! $account || ! $cred || $account->status !== 'active') {
+            return response()->json(['authenticated' => false])->header('Cache-Control', 'private, no-store');
+        }
+        $chain = null;
+        try {
+            $chain = $this->poc()->flow()->account($account->address);
+        } catch (Throwable $e) {
+            Log::warning('passkey: chain read failed: '.$e->getMessage());
+        }
+        $keys = collect($chain['keys'] ?? [])->keyBy('index');
+        $creds = $account->credentials()->orderBy('id')->get();
+
+        return response()->json([
+            'authenticated' => true,
+            'auth_type' => 'passkey',
+            'address' => $account->address,
+            'email' => $account->email,
+            'gift_tx' => $account->gift_tx,
+            'created_at' => optional($account->created_at)->toIso8601String(),
+            'credential' => ['id' => $cred->id, 'key_index' => $cred->key_index, 'label' => $cred->label],
+            'devices' => $creds->map(fn ($c) => [
+                'id' => $c->id, 'label' => $c->label, 'status' => $c->status, 'key_index' => $c->key_index,
+                'this' => $c->id === $cred->id, 'backed_up' => (bool) $c->backed_up,
+                'last_used_at' => optional($c->last_used_at)->toIso8601String(),
+                'on_chain' => $c->key_index !== null && $keys->has($c->key_index) && ! $keys[$c->key_index]['revoked'],
+                'add_key_tx' => $c->add_key_tx,
+            ])->values(),
+            'keys' => array_map(fn ($k) => ['index' => $k['index'], 'weight' => $k['weight'], 'revoked' => $k['revoked'], 'sequence_number' => $k['sequence_number']], $chain['keys'] ?? []),
+            'flow_balance' => $chain['balance'] ?? null,
+            'transactions' => $account->transactions()->latest('id')->limit(10)->get(['kind', 'tx_id', 'status', 'signed_by', 'created_at']),
+            'flowscan' => config('passkey.flowscan'),
+        ])->header('Cache-Control', 'private, no-store');
     }
 
     public function txSubmit(Request $request): JsonResponse

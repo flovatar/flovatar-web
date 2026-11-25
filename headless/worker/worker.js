@@ -42,6 +42,7 @@ const PROXY = [
   /^\/meme-maker\/?$/, /^\/fub(-sale|-test)?\/?$/, /^\/land-sale\/?$/, /^\/twitter\//, /^\/chat(\/|$)/,
   /^\/admin(\/|$)/, /^\/sanctum\//, /^\/livewire\//, /^\/filament\//, /^\/css\/filament\//, /^\/js\/filament\//,
   /^\/transactions\/0x[a-f0-9]{16}\/?$/, /^\/collection\/api\//,
+  /^\/passkey(\/|$)/,                                                 // passkey sign-in + sponsored signing (session)
 ];
 
 // Anonymous, user-agnostic GETs that may be cached at the edge (honours the origin's Cache-Control).

@@ -77,21 +77,53 @@ class PasskeyPoc
     public function sendAsSponsor(string $cadence, array $args, string $kind, ?int $accountId = null): array
     {
         $sponsor = self::sponsorAddress();
-        $keyIndex = (int) config('passkey.sponsor.key_index');
 
-        return Cache::lock('passkey:sponsor-proposer', 90)->block(60, function () use ($sponsor, $keyIndex, $cadence, $args, $kind, $accountId) {
+        return $this->withProposalKey(function (int $keyIndex) use ($sponsor, $cadence, $args, $kind, $accountId) {
             $tx = new FlowTransaction(
                 self::cadence($cadence), $args, $this->flow->latestSealedBlockId(), (int) config('passkey.compute_limit'),
                 $sponsor, $keyIndex, $this->flow->sequenceNumber($sponsor, $keyIndex), $sponsor, [$sponsor],
             );
             $tx->addEnvelopeSignature($sponsor, $keyIndex, $this->sponsor->sign($tx->envelopeMessage()));
             $id = $this->flow->send($tx);
-            $log = PasskeyTransaction::create(['passkey_account_id' => $accountId, 'kind' => $kind, 'tx_id' => $id, 'signed_by' => 'sponsor']);
+            $log = PasskeyTransaction::create(['passkey_account_id' => $accountId, 'kind' => $kind, 'tx_id' => $id, 'signed_by' => 'sponsor#'.$keyIndex]);
             $result = $this->flow->wait($id, 45);
             $log->update(['status' => $result['error'] !== '' ? 'Failed' : $result['status'], 'error' => $result['error'] ?: null]);
 
             return [$id, $result];
         });
+    }
+
+    /** Sponsor proposal keys (config passkey.sponsor.proposal_keys, default: key_index only). */
+    public static function proposalKeys(): array
+    {
+        $keys = array_map('intval', (array) config('passkey.sponsor.proposal_keys', []));
+
+        return $keys ?: [(int) config('passkey.sponsor.key_index')];
+    }
+
+    /**
+     * Run $fn with a free sponsor proposal key (its own sequence number). One lock per key: with N keys, N sponsor
+     * transactions can be in flight; further callers wait up to 60 s for a key.
+     */
+    public function withProposalKey(callable $fn)
+    {
+        $keys = self::proposalKeys();
+        $deadline = microtime(true) + 60;
+        do {
+            shuffle($keys);
+            foreach ($keys as $k) {
+                $lock = Cache::lock('passkey:sponsor-proposer:'.$k, 90);
+                if ($lock->get()) {
+                    try {
+                        return $fn($k);
+                    } finally {
+                        $lock->release();
+                    }
+                }
+            }
+            usleep(500_000);
+        } while (microtime(true) < $deadline);
+        throw new RuntimeException('The sponsor is busy, please try again in a minute');
     }
 
     /** Create a Flow account whose only key is $publicKeyHex. Returns [address, txId]. */
@@ -120,12 +152,19 @@ class PasskeyPoc
      */
     public function prepareUserTx(PasskeyAccount $account, PasskeyCredential $signer, string $kind, string $cadence, array $args, array $meta = []): array
     {
+        return $this->prepareUserTxCode($account, $signer, $kind, self::cadence($cadence), $args, $meta);
+    }
+
+    /** Same as prepareUserTx() with ready Cadence (allowlisted site templates, see TemplateRegistry). */
+    public function prepareUserTxCode(PasskeyAccount $account, PasskeyCredential $signer, string $kind, string $code, array $args, array $meta = []): array
+    {
         if ($signer->status !== 'active' || $signer->key_index === null || (int) $signer->passkey_account_id !== (int) $account->id) {
             throw new RuntimeException('This passkey cannot sign for the account yet');
         }
+        $this->waitForPrevious($account);
         $address = $account->address;
         $tx = new FlowTransaction(
-            self::cadence($cadence), $args, $this->flow->latestSealedBlockId(), (int) config('passkey.compute_limit'),
+            $code, $args, $this->flow->latestSealedBlockId(), (int) config('passkey.compute_limit'),
             $address, (int) $signer->key_index, $this->flow->sequenceNumber($address, (int) $signer->key_index),
             self::sponsorAddress(), [$address],
         );
@@ -140,6 +179,25 @@ class PasskeyPoc
             'credentialId' => $signer->credential_id,
             'kind' => $kind,
         ];
+    }
+
+    /**
+     * The proposal key's sequence number is read at the sealed height: if the account's previous passkey transaction
+     * is not sealed yet, the new one would reuse its number and be rejected. Wait (max ~25 s) for it to seal.
+     */
+    public function waitForPrevious(PasskeyAccount $account, int $timeoutSeconds = 25): void
+    {
+        $last = PasskeyTransaction::where('passkey_account_id', $account->id)->where('signed_by', 'like', 'passkey#%')
+            ->where('created_at', '>=', now()->subMinutes(3))->latest('id')->first();
+        if (! $last || in_array($last->status, ['Sealed', 'Failed', 'Expired'], true)) {
+            return;
+        }
+        $r = $this->flow->wait($last->tx_id, $timeoutSeconds);
+        $status = $r['error'] !== '' ? 'Failed' : $r['status'];
+        $last->update(['status' => $status, 'error' => $r['error'] ?: null]);
+        if (! in_array($status, ['Sealed', 'Failed', 'Expired'], true)) {
+            throw new RuntimeException('Your previous transaction is still being sealed. Please try again in a few seconds.');
+        }
     }
 
     /**

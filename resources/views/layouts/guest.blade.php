@@ -69,6 +69,10 @@
     {{-- static page on R2 (headless:build): runtime config for resources/js/headless.js --}}
     <script>window.HEADLESS = @json(\App\Support\Headless::bootstrap());</script>
     @endif
+@if(\App\Support\PasskeyLogin::enabled())
+    {{-- testnet passkey sign-in: static-safe runtime config for resources/js/passkey.js --}}
+    <script>window.PASSKEY_LOGIN = @json(\App\Support\PasskeyLogin::bootstrap());</script>
+@endif
     <script src="{{ mix('js/app.js') }}" defer></script>
 </head>
 <body class="{{request()->routeIs('home', 'builder', 'builder-psyche', 'flobot.builder', 'builder.flobot', 'pack', 'pack.buy', 'pack.login', 'fub', 'fub.sale', 'fub.test', 'land.sale') ? 'header-transparent' : ''}} {{request()->routeIs('fub.test') ? 'blueprint' : ''}}">
@@ -119,6 +123,9 @@
     @endif
 
     @include('partials/modals')
+@if(\App\Support\PasskeyLogin::enabled())
+        @include('partials/passkey-auth')
+@endif
 
 
     <!-- transaction loader -->

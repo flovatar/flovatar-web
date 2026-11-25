@@ -188,6 +188,9 @@ window.transError = function(transaction){
     return '';
 }
 
+// Passkey sign-in (resources/js/passkey.js) feeds its account through the same path as an FCL wallet user.
+window.applyUser = function(user){ return updateUser(user); };
+
 async function updateUser(user){
     console.log('update user');
     console.log(user);

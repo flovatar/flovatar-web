@@ -1,4 +1,4 @@
-import * as fcl from "@onflow/fcl"
+import * as fcl from "./fcl-tx"
 import * as t from "@onflow/types"
 
 // Packs v2: buy a DUST pack with an authorisation from POST /pack/reserve (bound to this wallet, expiring).

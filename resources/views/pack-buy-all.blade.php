@@ -18,7 +18,7 @@
                         <button x-show="loggedIn()" @click.prevent.stop.debounce="purchasePackAll('deluxe')" class="btn btn-pink btn-lg">
                             <span class="inner">BUY NOW</span>
                         </button>
-                        <button x-show="!loggedIn()" @click.prevent.stop.debounce="fcl.authenticate()" class="btn btn-pink btn-lg">
+                        <button x-show="!loggedIn()" @click.prevent.stop.debounce="{!! \App\Support\PasskeyLogin::connectAction('fcl.authenticate()') !!}" class="btn btn-pink btn-lg">
                             <span class="inner">Connect your Wallet</span>
                         </button>
                     </div>
@@ -33,7 +33,7 @@
                         <button x-show="loggedIn()" @click.prevent.stop.debounce="purchasePackAll('standard')" class="btn btn-pink btn-lg">
                             <span class="inner">BUY NOW</span>
                         </button>
-                        <button x-show="!loggedIn()" @click.prevent.stop.debounce="fcl.authenticate()" class="btn btn-pink btn-lg">
+                        <button x-show="!loggedIn()" @click.prevent.stop.debounce="{!! \App\Support\PasskeyLogin::connectAction('fcl.authenticate()') !!}" class="btn btn-pink btn-lg">
                             <span class="inner">Connect your Wallet</span>
                         </button>
                     </div>
@@ -48,7 +48,7 @@
                         <button x-show="loggedIn()" @click.prevent.stop.debounce="purchasePackAll('flobit')" class="btn btn-pink btn-lg">
                             <span class="inner">BUY NOW</span>
                         </button>
-                        <button x-show="!loggedIn()" @click.prevent.stop.debounce="fcl.authenticate()" class="btn btn-pink btn-lg">
+                        <button x-show="!loggedIn()" @click.prevent.stop.debounce="{!! \App\Support\PasskeyLogin::connectAction('fcl.authenticate()') !!}" class="btn btn-pink btn-lg">
                             <span class="inner">Connect your Wallet</span>
                         </button>
                     </div>
@@ -63,7 +63,7 @@
                         <button x-show="loggedIn()" @click.prevent.stop.debounce="purchasePackAll('terrakit')" class="btn btn-pink btn-lg">
                             <span class="inner">BUY NOW</span>
                         </button>
-                        <button x-show="!loggedIn()" @click.prevent.stop.debounce="fcl.authenticate()" class="btn btn-pink btn-lg">
+                        <button x-show="!loggedIn()" @click.prevent.stop.debounce="{!! \App\Support\PasskeyLogin::connectAction('fcl.authenticate()') !!}" class="btn btn-pink btn-lg">
                             <span class="inner">Connect your Wallet</span>
                         </button>
                     </div>

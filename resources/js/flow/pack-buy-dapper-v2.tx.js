@@ -1,4 +1,4 @@
-import * as fcl from "@onflow/fcl"
+import * as fcl from "./fcl-tx"
 import * as t from "@onflow/types"
 
 // Packs v2 (Dapper wallet): buy a pack with FlowUtilityToken and an authorisation from POST /pack/reserve

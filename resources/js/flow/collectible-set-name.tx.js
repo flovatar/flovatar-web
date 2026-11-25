@@ -1,4 +1,4 @@
-import * as fcl from "@onflow/fcl"
+import * as fcl from "./fcl-tx"
 import * as t from "@onflow/types"
 import {collectibleAddStoryTx} from "./collectible-add-story.tx";
 

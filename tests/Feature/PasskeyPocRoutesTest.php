@@ -15,4 +15,19 @@ class PasskeyPocRoutesTest extends TestCase
         $this->assertFalse(Route::has('passkey.register.options'));
         $this->assertFalse(Route::has('passkey.tx.submit'));
     }
+
+    public function test_site_integration_is_off_by_default(): void
+    {
+        $this->assertFalse(\App\Support\PasskeyLogin::enabled());
+        $this->assertSame('fcl.authenticate()', \App\Support\PasskeyLogin::connectAction());
+        $this->assertSame('fcl.signUp()', \App\Support\PasskeyLogin::connectAction('fcl.signUp()'));
+        $this->assertFalse(Route::has('passkey.tx.template'));
+        $this->assertFalse(Route::has('passkey.account'));
+    }
+
+    public function test_login_nonce_shape_unchanged_when_off(): void
+    {
+        $json = $this->getJson('/login/nonce')->assertOk()->json();
+        $this->assertSame(['nonce', 'message', 'authenticated', 'address'], array_keys($json));
+    }
 }

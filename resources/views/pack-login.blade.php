@@ -29,7 +29,7 @@
                             <p>Choose Flow Wallet (browser extension or mobile app) or Dapper Wallet to connect.</p>
                             <p>If it's the first time you visit the site, you will be asked to initialize your account before you can use the Flovatar smart contract.</p>
                         </div>
-                        <a x-show="!loggedIn()" @click.prevent.stop="if(!loggedIn()){fcl.authenticate();}" href="#" class="btn-o">Connect Wallet</a>
+                        <a x-show="!loggedIn()" @click.prevent.stop="{!! 'if(!loggedIn()){'.\App\Support\PasskeyLogin::connectAction('fcl.authenticate()').';}' !!}" href="#" class="btn-o">Connect Wallet</a>
                     </li>
                     <li x-bind:class="loggedIn() ? '{{Auth::check() ?  'completed' : 'active' }}' : ''">
                         <div class="txt-wrap">
