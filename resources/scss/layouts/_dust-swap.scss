@@ -1,0 +1,71 @@
+// ĐUST ⇄ FLOW swap (KB notes/dust-swap.md): only rendered when DUST_SWAP_ENABLED.
+.dust-rate-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(245, 197, 66, .55);
+    background: rgba(245, 197, 66, .12);
+    color: #f5c542;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.4;
+    white-space: nowrap;
+    text-decoration: none;
+    em { font-style: normal; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #ff8a65; }
+    &.is-low { border-color: rgba(255, 138, 101, .6); background: rgba(255, 138, 101, .12); }
+    &:hover { text-decoration: none; background: rgba(245, 197, 66, .2); }
+}
+#main-nav .nav > li.dust-rate-chip-li { display: flex; align-items: center; }
+
+.dust-swap-pay {
+    .dust-swap-slippage {
+        display: inline-flex; align-items: center; gap: 6px; font-size: 13px; opacity: .85;
+        select { width: auto; padding: 2px 6px; font-size: 13px; background: #fff; color: #111; border-radius: 6px; }
+    }
+}
+.impact-ok { color: inherit; }
+.impact-warn { color: #f5a623 !important; opacity: 1 !important; }
+.impact-block { color: #ff5c5c !important; opacity: 1 !important; }
+
+.dust-swap-section {
+    padding: 32px 0 8px;
+    .dust-swap-widget {
+        max-width: 460px;
+        margin: 0 auto;
+        padding: 22px 24px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, .06);
+        border: 1px solid rgba(255, 255, 255, .14);
+    }
+    .dust-swap-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; h2 { margin: 0; font-size: 26px; } }
+    .dust-swap-sub { font-size: 14px; opacity: .8; }
+    .dust-swap-row {
+        margin-bottom: 6px;
+        label { display: block; font-size: 13px; opacity: .8; margin-bottom: 4px; }
+    }
+    .dust-swap-input {
+        display: flex; align-items: center; gap: 10px;
+        padding: 10px 14px; border-radius: 12px;
+        background: #fff; color: #111;
+        input {
+            flex: 1; min-width: 0; border: 0; outline: 0; background: transparent;
+            color: #111; -webkit-text-fill-color: #111; font-size: 20px; font-weight: 700; padding: 0;
+            &::placeholder { color: #999; -webkit-text-fill-color: #999; }
+        }
+        .out { flex: 1; font-size: 20px; font-weight: 700; }
+        .unit { font-weight: 700; font-size: 14px; color: #555; }
+        &.is-out { background: rgba(255, 255, 255, .85); }
+    }
+    .dust-swap-bal { display: flex; justify-content: space-between; font-size: 12px; opacity: .85; margin-top: 4px; a { font-weight: 700; } }
+    .dust-swap-flip { display: flex; justify-content: center; margin: 6px 0; }
+    .dust-swap-details {
+        list-style: none; padding: 0; margin: 12px 0 6px; font-size: 13px;
+        li { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid rgba(255, 255, 255, .08); }
+        select { width: auto; padding: 2px 6px; font-size: 13px; background: #fff; color: #111; border-radius: 6px; }
+    }
+    .dust-note { font-size: 13px; margin: 6px 0; }
+    .dust-swap-cta { margin-top: 14px; .btn { width: 100%; } }
+    .dust-swap-foot { font-size: 12px; opacity: .7; margin-top: 12px; line-height: 1.45; }
+}
