@@ -122,6 +122,10 @@
     > .btn, .btn { margin-top: 20px; }
   }
 
+  @include media('<tablet') {
+    .passkey-form .btn .inner, .msg-box > div > .btn .inner { font-size: 19px; line-height: 1.15; }
+  }
+
   .passkey-verify {
     margin: 12px 0;
     padding: 12px;

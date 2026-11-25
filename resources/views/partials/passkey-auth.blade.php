@@ -61,7 +61,7 @@
                                     </p>
                                 </div>
                             </template>
-                            <button type="submit" class="btn btn-pink" :disabled="busy" data-passkey="signup" x-show="!existingEmail"><span class="inner" x-text="codeSentTo ? 'Confirm code & create my passkey' : 'Send me a code'">Send me a code</span></button>
+                            <button type="submit" class="btn btn-pink" :disabled="busy" data-passkey="signup" x-show="!existingEmail"><span class="inner" x-text="codeSentTo ? 'Confirm & create passkey' : 'Send me a code'">Send me a code</span></button>
                             <p class="passkey-info" x-show="existingEmail">You already have an account with this email: use <b>Sign in with my passkey</b> below. <a href="#" @click.prevent.stop="changeEmail()">Use another email</a></p>
                         </form>
                         <p class="passkey-info" x-show="info" x-text="info"></p>
