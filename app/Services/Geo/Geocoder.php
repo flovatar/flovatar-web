@@ -133,10 +133,11 @@ class Geocoder
             if ($label === '') {
                 continue;
             }
-            $row = ['label' => $label, 'lat' => round((float) $c[1], 6), 'lon' => round((float) $c[0], 6)];
-            if (in_array($row, $out, true)) {
+            // same label twice (e.g. a building mapped as node + way) only confuses the picker: keep the first
+            if (in_array($label, array_column($out, 'label'), true)) {
                 continue;
             }
+            $row = ['label' => $label, 'lat' => round((float) $c[1], 6), 'lon' => round((float) $c[0], 6)];
             $out[] = $row;
             if (count($out) >= $limit) {
                 break;
