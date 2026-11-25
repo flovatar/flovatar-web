@@ -99,7 +99,7 @@
                             </dl>
 
                             <h3>Deposit</h3>
-                            <p class="passkey-note">Network fees are on us. To buy with FLOW or ĐUST, send tokens to your address above@if(config('flovatar.isTest')) (testnet: <a :href="faucetUrl()" target="_blank" rel="noopener">Flow faucet</a>)@endif. ĐUST also comes from claiming in your collection.</p>
+                            <p class="passkey-note">Network fees are on us. To buy with FLOW or ĐUST, send tokens to your address above. @if(config('flovatar.isTest'))Testnet: get free FLOW from the <a :href="faucetUrl()" target="_blank" rel="noopener">Flow faucet</a>. @endif ĐUST also comes from claiming in your collection.</p>
 
                             <template x-if="!account.gift_tx">
                                 <p><button type="button" class="btn btn-green" @click.prevent.stop="claimGift()" :disabled="busy" data-passkey="gift"><span class="inner">Get my starter Flobit</span></button></p>
