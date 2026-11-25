@@ -113,7 +113,11 @@ class PasskeyKmsCheck extends Command
                     $pool->as('tx'.$i)->path(base_path())->timeout(120)->command($cmd);
                 }
             })->start()->wait();
-            foreach ($results as $name => $r) {
+            if ($results->collect()->count() !== $n) {
+                $this->error('expected '.$n.' results, got '.$results->collect()->count());
+                $ok = false;
+            }
+            foreach ($results->collect() as $name => $r) {
                 $out = trim($r->output().$r->errorOutput());
                 $this->line($name.': '.$out);
                 $ok = $ok && $r->successful();
