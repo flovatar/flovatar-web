@@ -16,6 +16,7 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10",
         "lbuchs/webauthn": "^2.2",
+        "aws/aws-sdk-php": "^3.300",
         "league/flysystem-aws-s3-v3": "^3.0",
         "phrity/websocket": "^4.1",
         "predis/predis": "^2.0",
