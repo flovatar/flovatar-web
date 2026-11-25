@@ -54,10 +54,18 @@ return [
         'token' => env('SENDER_MAIL_TOKEN'),
         'url' => env('SENDER_MAIL_URL', 'https://api.sender.net/v2/subscribers')
     ],
-    'google_maps' => [
-        // Off until the owner provides a key: no Maps script is loaded and the GEO Location editor is hidden.
-        'enabled' => (bool) env('GOOGLE_MAPS_ENABLED', false),
-        'api_key' => env('GOOGLE_MAPS_API_KEY'),
+    'geo' => [
+        // GEO Location editor (Flovatar / Psyche Likee setPosition, Đ10): free OpenStreetMap stack, no API key.
+        // Search via our /api/v2/geo proxy (Photon, Nominatim fallback for explicit searches only, cached, 1 req/s to
+        // Nominatim), click-on-map picker = Leaflet (public/vendor/leaflet-1.9.4) + the tile URL below.
+        // Replaces Google Maps (GOOGLE_MAPS_* are no longer read). App\Services\Geo\Geocoder.
+        'enabled' => (bool) env('GEO_LOCATION_ENABLED', true),
+        'photon_url' => env('GEO_PHOTON_URL', 'https://photon.komoot.io'),
+        'photon_per_minute' => (int) env('GEO_PHOTON_PER_MINUTE', 120),
+        'nominatim_url' => env('GEO_NOMINATIM_URL', 'https://nominatim.openstreetmap.org'),
+        'contact' => env('GEO_CONTACT', ''), // optional e-mail/URL added to the geocoder User-Agent
+        'tile_url' => env('GEO_TILE_URL', 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'),
+        'tile_attribution' => env('GEO_TILE_ATTRIBUTION', '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'),
     ],
     'graffle' => [
         // Shared secret required on POST /graffle (header X-Graffle-Secret, Bearer token or ?secret=)

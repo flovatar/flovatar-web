@@ -91,6 +91,9 @@ Route::prefix('v2')
         Route::get('templates/{flowId}', [$p, 'template'])->whereNumber('flowId')->name('api.v2.template');
         Route::get('packs', [$p, 'packs'])->name('api.v2.packs');
         Route::get('rankings', [$p, 'rankings'])->name('api.v2.rankings');
+        // GEO Location editor: OSM geocoding proxy (cached; upstream limits enforced in App\Services\Geo\Geocoder)
+        Route::get('geo/search', [\App\Http\Controllers\Api\V2\GeoController::class, 'search'])->name('api.v2.geo.search');
+        Route::get('geo/reverse', [\App\Http\Controllers\Api\V2\GeoController::class, 'reverse'])->name('api.v2.geo.reverse');
         Route::get('{segment}/{id}', [\App\Http\Controllers\Api\V2\ItemController::class, 'showSegment'])
             ->where('segment', 'flovatars|flobots|collectibles|components')->whereNumber('id')->name('api.v2.item');
     });
