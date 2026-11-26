@@ -765,8 +765,9 @@ if (CFG) {
         get problems() {
             if (!this.cfg) { return []; }
             const p = validateScene(this.cfg, this.rarity, this.layers, this.tintValue, this.infos);
+            // the contract marks the display required (all rarities); before that the builder required it once art existed
             if (this.isRequired(DISPLAY_LAYER) && this.sceneLayers.includes(DISPLAY_LAYER) && !this.layers[DISPLAY_LAYER]) { p.push('Pick a display'); }
-            return p;
+            return [...new Set(p)];
         },
         get selectedInfo() { const id = this.layers[this.tab]; return id ? this.infos[id] || null : null; },
         isAnimated(t) { return !!(t && t.metadata && (t.metadata.animated || /anim/i.test(String(t.metadata.motion || '')))) || /\(animated\)/i.test((t && t.description) || ''); },
@@ -1726,7 +1727,8 @@ if (CFG) {
                 .sort((a, b) => order.indexOf(a) - order.indexOf(b));
         },
         get canChangeSky() { return this.changeLayers.includes('sky'); },
-        get canChooseDisplay() { return this.isOwner && !!this.island && !!this.island.canChooseDisplay; },
+        // one-time display for islands minted before it existed: only while the contract setting displayMigration is on
+        get canChooseDisplay() { return this.isOwner && !!this.island && !!this.island.canChooseDisplay && !!(this.cfg && this.cfg.displayMigration); },
         layerNoun(layer) { return mutableNoun(layer); },
         /** A mutable, optional layer can be removed (set_layer with templateId nil): "No sky" / "No effect". */
         layerRemovable(layer) { return this.isMutable(layer) && !this.layerRequired(layer); },
@@ -1740,6 +1742,7 @@ if (CFG) {
         openLayer(layer) {
             if (!this.cfg || this.busy) { return; }
             const cur = (this.island.layers || {})[layer] || null;
+            if (!this.changeLayers.includes(layer) && !(layer === DISPLAY_LAYER && this.canChooseDisplay)) { return; }
             this.layerPick = {layer, choice: cur, original: cur, oneTime: layer === DISPLAY_LAYER && !cur && !this.isMutable(layer)};
             if (layer === DISPLAY_LAYER && !cur) { const o = this.layerOptionsOf(layer)[0]; if (o) { this.layerPick.choice = o.id; } }
             this.renderPickThumbs();
