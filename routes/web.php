@@ -161,7 +161,7 @@ Route::get('api/image/jpg/{flovatarId}', [FlovatarImageController::class,'jpg'])
     ->name('flovatarimageapijpg');
 // Static renders (resvg -> R2): full.png | full.jpg | nobg.png | thumb.jpg | og.jpg
 Route::get('api/image/r/{type}/{flowId}/{variant}', \App\Http\Controllers\RenderedImageController::class)
-    ->where('type', 'flovatar|flobot|collectible|template')
+    ->where('type', 'flovatar|flobot|collectible|template|island')
     ->whereNumber('flowId')
     ->where('variant', 'full\.png|full\.jpg|nobg\.png|thumb\.jpg|og\.jpg|anim\.gif|anim\.mp4')
     ->name('renderedimage');
@@ -348,6 +348,12 @@ if (\App\Support\DustQuests::active()) {
 // TerraKit wallet check (read-only, chain-first): TERRAKIT_CHECK_MODE (legacy TERRAKIT_CHECK_ENABLED).
 if (\App\Support\TerrakitCheck::active()) {
     Route::middleware('stealth:terrakit')->group(__DIR__.'/terrakit.php');
+}
+
+// Asteroid Islands (redeem TerraKit land deeds, island pages, residents): ISLANDS_MODE (off|stealth|on), and only where an
+// island contract address is configured (App\Support\Islands::active(); mainnet has none yet).
+if (\App\Support\Islands::active()) {
+    Route::middleware('stealth:islands')->group(__DIR__.'/islands.php');
 }
 
 // Stealth gate: /__stealth/{secret} sets the signed fl_s cookie (STEALTH_SECRET in .env; ?off=1 clears it).

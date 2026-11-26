@@ -51,6 +51,15 @@ class ProcessGraffleEvents extends BaseJob
 
         // ĐUST marketplace (NFTStorefrontV2 listings paid in FlovatarDustToken) + Listing.ResourceDestroyed of any
         // currency: handled before the legacy branches, which treat every storefront listing as a Dapper listing.
+        // Asteroid Islands (own contract, ISLANDS_MODE): island events + NonFungibleToken.Deposited of island NFTs.
+        $islands = new \App\Services\Islands\IslandEventProcessor();
+        if ($islands->handles($event)) {
+            if ($islands->process($event)) {
+                $this->event->update(['synced' => true]);
+            }
+            return;
+        }
+
         $dustMarket = new \App\Services\Market\DustStorefrontProcessor();
         if ($dustMarket->handles($event)) {
             if ($dustMarket->process($event)) {

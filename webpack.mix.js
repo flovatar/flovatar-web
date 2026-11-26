@@ -45,7 +45,7 @@ mix.sass('resources/scss/app.scss', 'css/')
 mix.js('resources/js/app.js', 'js/');
 
 // Per-feature stylesheets for the lazy bundles (moved out of public/ by bin/fx-assets.mjs)
-['p', 'm', 's', 'q', 't'].forEach((code) => mix.sass(`resources/scss/fx/${code}.scss`, 'fx/'));
+['p', 'm', 's', 'q', 't', 'i'].forEach((code) => mix.sass(`resources/scss/fx/${code}.scss`, 'fx/'));
     // .postCss('resources/css/app.css', 'public/css', [
     //     require('postcss-import'),
     //     require('tailwindcss')('./tailwind.config.js'),

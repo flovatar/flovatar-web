@@ -52,7 +52,7 @@ class FlowStream extends Command
 
         $types = FlowEventTypes::all();
         $filter = [
-            'addresses' => ['0x'.FlowEventTypes::contractAddress()],
+            'addresses' => array_merge(['0x'.FlowEventTypes::contractAddress()], FlowEventTypes::extraAddresses()),
             'event_types' => FlowEventTypes::globalTypes(),
         ];
         $backoff = 1;

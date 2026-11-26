@@ -41,7 +41,7 @@ class RenderEnqueue extends Command
 
             return self::SUCCESS;
         }
-        $types = $this->argument('type') === 'all' ? ItemRenderer::TYPES : [$this->argument('type')];
+        $types = $this->argument('type') === 'all' ? ItemRenderer::types() : [$this->argument('type')];
         $fixed = $this->option('priority') !== null ? (int) $this->option('priority') : null;
         $total = 0;
         foreach ($types as $type) {
@@ -50,7 +50,7 @@ class RenderEnqueue extends Command
 
                 continue;
             }
-            if (! in_array($type, ItemRenderer::TYPES, true)) {
+            if (! in_array($type, ItemRenderer::types(), true)) {
                 $this->error('unknown type '.$type);
 
                 return self::FAILURE;

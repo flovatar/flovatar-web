@@ -45,6 +45,13 @@ class FlowEventTypes
 
     const STANDARD_DEPOSIT_NFTS = ['Flobot.NFT'];
 
+    /** Asteroid Islands (FlovatarAsteroidIsland, own contract; indexed only while App\Support\Islands::active()). */
+    const ISLAND_EVENTS = [
+        'Terraformed', 'IslandLayersChanged', 'IslandNameChanged', 'IslandDescriptionChanged', 'IslandMetadataChanged',
+        'ResidentSet', 'ResidentCleared', 'ResidentMoved',
+        'TemplateCreated', 'TemplateSvgAppended', 'TemplateEnabled', 'TemplateMetadataChanged', 'SettingChanged',
+    ];
+
     const NFT_CONTRACTS = ['Flovatar.NFT', 'FlovatarComponent.NFT', 'FlovatarDustCollectible.NFT',
         'FlovatarDustCollectibleAccessory.NFT', 'Flobot.NFT', 'FlovatarPack.Pack'];
 
@@ -63,6 +70,29 @@ class FlowEventTypes
         $a = static::contractAddress();
 
         return array_map(fn ($e) => "A.$a.$e", self::CONTRACT_EVENTS);
+    }
+
+    /** A.<islands>.FlovatarAsteroidIsland.<event> while the islands feature is active (else []). */
+    public static function islandTypes(): array
+    {
+        if (! \App\Support\Islands::active()) {
+            return [];
+        }
+
+        return array_map(fn ($e) => \App\Support\Islands::typeId($e), self::ISLAND_EVENTS);
+    }
+
+    public static function isIsland(string $type): bool
+    {
+        return \App\Support\Islands::active() && str_starts_with($type, 'A.'.\App\Support\Islands::contractHex().'.FlovatarAsteroidIsland.');
+    }
+
+    /** Extra contract addresses the stream must follow (the island contract when it lives elsewhere). */
+    public static function extraAddresses(): array
+    {
+        $hex = \App\Support\Islands::active() ? \App\Support\Islands::contractHex() : '';
+
+        return ($hex !== '' && $hex !== static::contractAddress()) ? ['0x'.$hex] : [];
     }
 
     public static function storefrontTypes(): array
@@ -93,8 +123,12 @@ class FlowEventTypes
     public static function standardDepositNftTypes(): array
     {
         $a = static::contractAddress();
+        $types = array_map(fn ($c) => "A.$a.$c", self::STANDARD_DEPOSIT_NFTS);
+        if (\App\Support\Islands::active()) {
+            $types[] = \App\Support\Islands::typeId('NFT'); // island transfers (the contract has no own Deposit event)
+        }
 
-        return array_map(fn ($c) => "A.$a.$c", self::STANDARD_DEPOSIT_NFTS);
+        return $types;
     }
 
     /** Global event types that need a server-side filter (stream subscription by type, not by address). */
@@ -105,7 +139,7 @@ class FlowEventTypes
 
     public static function all(): array
     {
-        return array_merge(static::contractTypes(), static::storefrontTypes(), static::standardTypes());
+        return array_merge(static::contractTypes(), static::islandTypes(), static::storefrontTypes(), static::standardTypes());
     }
 
     public static function isStorefront(string $type): bool

@@ -27,6 +27,12 @@ class ItemRenderer
 {
     public const TYPES = ['flovatar', 'flobot', 'collectible', 'template'];
 
+    /** Render types in use: TYPES + 'island' while Asteroid Islands are active (ISLANDS_MODE stealth|on). */
+    public static function types(): array
+    {
+        return \App\Support\Islands::active() ? array_merge(self::TYPES, ['island']) : self::TYPES;
+    }
+
     public array $timings = [];
 
     /** Browser-job priority for new renders: null = event path (new item 90 / changed 80); backfills set a low one. */
@@ -39,6 +45,14 @@ class ItemRenderer
     /** @return array{full: string, nobg: ?string}|null composed SVG(s) exactly as the site shows them */
     public function source(string $type, int $flowId): ?array
     {
+        if ($type === 'island') {
+            $island = \App\Support\Islands::active() ? \App\Models\Island::where('flow_id', $flowId)->first() : null;
+            if (! $island || ! $island->layers) {
+                return null;
+            }
+            // resvg can't run resident CSS combos: residents are pre-flattened (IslandScene::full($island, true))
+            return ['full' => app(\App\Services\Islands\IslandScene::class)->full($island, true), 'nobg' => null];
+        }
         $model = match ($type) {
             'flovatar' => Flovatar::where('flow_id', $flowId)->first(),
             'flobot' => Flobot::where('flow_id', $flowId)->first(),
@@ -66,6 +80,7 @@ class ItemRenderer
             'flobot' => Flobot::query(),
             'collectible' => DustCollectible::query(),
             'template' => FlovatarTemplate::query(),
+            'island' => \App\Models\Island::query(),
             default => throw new RuntimeException('unknown type '.$type),
         };
     }
@@ -131,6 +146,11 @@ class ItemRenderer
                 'type' => $type, 'flow_id' => $flowId, 'hash' => $hash, 'variants' => $variants,
                 'base' => config('render.public_url').'/'.$base.'/'.$hash.'/', 'rendered_at' => now()->toIso8601String(),
             ], JSON_UNESCAPED_SLASHES), ['ContentType' => 'application/json', 'CacheControl' => 'public, max-age=60']);
+            if ($type === 'island' && isset($files['full.png'])) {
+                // stable thumbnail URL for the contract's Display view (settings thumbnailURL …/island/png/{id}.png)
+                $disk->put((string) config('render.prefix').'island/png/'.$flowId.'.png', $files['full.png'][0],
+                    ['ContentType' => 'image/png', 'CacheControl' => 'public, max-age=300']);
+            }
             $this->timings['upload'] = (int) round((microtime(true) - $t) * 1000);
 
             $bytes = array_sum(array_map(fn ($f) => strlen($f[0]), $files));
@@ -178,7 +198,9 @@ class ItemRenderer
         $this->timings['flatten'] = (int) round((microtime(true) - $t) * 1000);
 
         $t = microtime(true);
-        $png = $this->rasterizer->png($flat, $size, $size);
+        // islands are portrait (3025.27 × 4033.12): keep the scene's aspect ratio; every other item is square
+        $height = $type === 'island' ? self::heightFor($src['full'], $size) : $size;
+        $png = $this->rasterizer->png($flat, $size, $height);
         $files['full.png'] = [$png, 'image/png'];
         if ($flatNobg !== null) {
             $files['nobg.png'] = [$this->rasterizer->png($flatNobg, $size, $size), 'image/png'];
@@ -195,11 +217,22 @@ class ItemRenderer
         return $files;
     }
 
-    /** PNG -> JPEG on white (transparent items), resized to $size. GD: ~10x cheaper than Imagick here. */
+    /** Output height for a width, from the root viewBox aspect ratio (square when unknown). */
+    public static function heightFor(string $svg, int $width): int
+    {
+        if (preg_match('/<svg\b[^>]*\bviewBox="\s*[-\d.]+[\s,]+[-\d.]+[\s,]+([\d.]+)[\s,]+([\d.]+)\s*"/i', $svg, $m) && (float) $m[1] > 0) {
+            return max(1, (int) round($width * (float) $m[2] / (float) $m[1]));
+        }
+
+        return $width;
+    }
+
+    /** PNG -> JPEG on white (transparent items), resized to $size wide (aspect kept). GD: ~10x cheaper than Imagick here. */
     public function jpeg(\GdImage $src, int $size): string
     {
-        $out = $this->canvas($size, $size);
-        imagecopyresampled($out, $src, 0, 0, 0, 0, $size, $size, imagesx($src), imagesy($src));
+        $h = imagesx($src) === imagesy($src) ? $size : max(1, (int) round($size * imagesy($src) / imagesx($src)));
+        $out = $this->canvas($size, $h);
+        imagecopyresampled($out, $src, 0, 0, 0, 0, $size, $h, imagesx($src), imagesy($src));
 
         return $this->toJpeg($out);
     }
@@ -225,7 +258,8 @@ class ItemRenderer
             $big = imagescale($mid, $w, $h, IMG_BILINEAR_FIXED);
             imagecopy($out, $big, 0, 0, 0, 0, $w, $h);
         }
-        imagecopyresampled($out, $src, (int) (($w - $h) / 2), 0, 0, 0, $h, $h, $sw, imagesy($src));
+        $dw = $sw === imagesy($src) ? $h : (int) round($h * $sw / imagesy($src)); // portrait items (islands) keep their aspect
+        imagecopyresampled($out, $src, (int) (($w - $dw) / 2), 0, 0, 0, $dw, $h, $sw, imagesy($src));
 
         return $this->toJpeg($out);
     }

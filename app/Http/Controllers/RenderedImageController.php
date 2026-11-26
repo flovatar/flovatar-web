@@ -39,6 +39,7 @@ class RenderedImageController extends Controller
             'flobot' => Flobot::where('flow_id', $flowId)->exists(),
             'collectible' => DustCollectible::where('flow_id', $flowId)->exists(),
             'template' => FlovatarTemplate::where('flow_id', $flowId)->exists(),
+            'island' => \App\Support\Islands::active() && \App\Models\Island::where('flow_id', $flowId)->exists(),
             default => false,
         };
         if (! $exists) {
@@ -50,6 +51,7 @@ class RenderedImageController extends Controller
             'flobot' => '/api/image/flobot/'.$flowId,
             'collectible' => '/api/image/collectible/'.$flowId,
             'template' => '/api/image/template/'.$flowId,
+            'island' => '/islands/'.$flowId.'/full.svg',
         };
 
         return redirect($svg, 302)->header('Cache-Control', 'no-store');
