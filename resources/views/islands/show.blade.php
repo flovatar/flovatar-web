@@ -26,7 +26,7 @@
         <div class="isp-grid" x-show="status === 'ready'" x-cloak>
             {{-- ================= scene ================= --}}
             <div class="isp-stage">
-                <div class="isp-frame" x-ref="frame" :class="[island ? 'isl-r-' + island.rarity : '', {'is-zoom': zoom, 'is-live': needsLive, 'is-targeting': !!(drag || selected)}]" data-islands="scene-frame">
+                <div class="isp-frame" x-ref="frame" :class="(island ? 'isl-r-' + island.rarity : '') + (zoom ? ' is-zoom' : '') + (needsLive ? ' is-live' : '') + ((drag || selected) ? ' is-targeting' : '')" data-islands="scene-frame">
                     <div class="isp-cam" :style="camStyle" :class="{on: zoomOn}">
                         <img class="isp-scene" :src="sceneSrc" :alt="island && (island.rawName || island.designation)" data-islands="scene" draggable="false">
                         {{-- residents the browser couldn't inline (cross-origin art) while previewing --}}
@@ -152,46 +152,6 @@
                     </template>
                 </div>
 
-                {{-- residents: read-only for visitors; the owner edits them here and in the scene (pending until Save) --}}
-                <div class="isp-card isp-residents" data-islands="residents">
-                    <h2>Residents</h2>
-                    <h3>In the scene <small x-text="premiumSlots.filter((s) => isOwner ? plan[s.chain] : residentAt(s.chain)).length + ' / ' + premiumSlots.length"></small></h3>
-                    <ul class="isp-rlist">
-                        <template x-for="s in premiumSlots" :key="s.chain">
-                            <li :class="{empty: !(isOwner ? planned(s.chain) : residentAt(s.chain)), pending: isOwner && slotChanged(s.chain)}" :data-slot="s.slot">
-                                <b class="isp-rslot" x-text="s.slot"></b>
-                                <template x-for="r in [isOwner ? planned(s.chain) : residentAt(s.chain)].filter(Boolean)" :key="r.type + r.id">
-                                    <span class="isp-rnft" :class="{invalid: !r.pending && !isValid(r)}">
-                                        <img :src="thumb(r)" alt="" loading="lazy"><a :href="nftLink(r)" x-text="nftName(r)"></a>
-                                        <small class="isl-slot-why" x-show="!r.pending && !isValid(r)" x-text="reasonText(r)"></small>
-                                        <button type="button" class="isp-x" x-show="isOwner" @click="removeFrom(s.chain)" :aria-label="'Remove from ' + s.slot">×</button>
-                                    </span>
-                                </template>
-                                <span class="muted" x-show="!(isOwner ? planned(s.chain) : residentAt(s.chain))">free</span>
-                            </li>
-                        </template>
-                    </ul>
-                    <h3>On the display <small x-text="displayList(isOwner).length + ' / ' + standardSlots.length"></small>
-                        <button type="button" class="isl-link" x-show="hasDisplay && carousel.length" @click="openZoom()">open</button></h3>
-                    <p class="muted" x-show="!hasDisplay && !(island && island.canChooseDisplay)">This island has no display.</p>
-                    <p class="muted" x-show="!hasDisplay && island && island.canChooseDisplay">No display yet<span x-show="isOwner">: choose one above (one time)</span>. NFTs placed here show once it has one.</p>
-                    <ol class="isp-rlist isp-dlist" data-islands="display-list">
-                        <template x-for="(r, i) in displayList(isOwner)" :key="r.chainSlot">
-                            <li :class="{pending: isOwner && slotChanged(r.chainSlot)}" :data-slot="r.slot">
-                                <span class="isp-rnft" :class="{invalid: !r.pending && !isValid(r)}">
-                                    <img :src="thumb(r)" alt="" loading="lazy"><a :href="nftLink(r)" x-text="nftName(r)"></a>
-                                    <small class="isp-onscreen" x-show="i === 0 && hasDisplay">on screen</small>
-                                    <small class="isl-slot-why" x-show="!r.pending && !isValid(r)" x-text="reasonText(r)"></small>
-                                    <button type="button" class="isl-link" x-show="isOwner && i > 0" @click="showFirst(r.chainSlot)">show first</button>
-                                    <button type="button" class="isp-x" x-show="isOwner" @click="removeFrom(r.chainSlot)" :aria-label="'Remove ' + nftName(r) + ' from the display'">×</button>
-                                </span>
-                            </li>
-                        </template>
-                    </ol>
-                    <p class="muted" x-show="!displayList(isOwner).length">Nothing on the display yet.</p>
-                    <button type="button" class="isl-link" x-show="isOwner && invalidCount" @click="clearInvalidPlan()" x-text="'Remove ' + invalidCount + ' moved-out'"></button>
-                </div>
-
                 {{-- the owner's collection: desktop = a box under the details; phones = a bottom sheet --}}
                 <div class="isp-card isp-collection" x-show="isOwner" x-cloak data-drop="remove" data-islands="collection">
                     <button type="button" class="isp-sheet-handle" @click="sheetOpen = !sheetOpen" :aria-expanded="sheetOpen">
@@ -222,6 +182,49 @@
                         </template>
                     </ul>
                 </div>
+                {{-- residents: read-only for visitors; the owner edits them here and in the scene (pending until Save) --}}
+                <div class="isp-card isp-residents" data-islands="residents">
+                    <h2>Residents</h2>
+                    <h3>In the scene <small x-text="premiumSlots.filter((s) => isOwner ? plan[s.chain] : residentAt(s.chain)).length + ' / ' + premiumSlots.length"></small></h3>
+                    <ul class="isp-rlist">
+                        <template x-for="s in premiumSlots" :key="s.chain">
+                            <li :class="{empty: !(isOwner ? planned(s.chain) : residentAt(s.chain)), pending: isOwner && slotChanged(s.chain)}" :data-slot="s.slot">
+                                <b class="isp-rslot" x-text="s.slot"></b>
+                                <template x-for="r in [isOwner ? planned(s.chain) : residentAt(s.chain)].filter(Boolean)" :key="r.type + r.id">
+                                    <span class="isp-rnft" :class="{invalid: !r.pending && !isValid(r)}">
+                                        <img :src="thumb(r)" alt="" loading="lazy"><a :href="nftLink(r)" x-text="nftName(r)"></a>
+                                        <small class="isl-slot-why" x-show="!r.pending && !isValid(r)" x-text="reasonText(r)"></small>
+                                        <button type="button" class="isp-x" x-show="isOwner" @click="removeFrom(s.chain)" :aria-label="'Remove from ' + s.slot">×</button>
+                                    </span>
+                                </template>
+                                <span class="muted" x-show="!(isOwner ? planned(s.chain) : residentAt(s.chain))">free</span>
+                            </li>
+                        </template>
+                    </ul>
+                    <div class="isp-dzone" :data-drop="isOwner ? 'display' : null" :class="{target: isOwner && !!(drag || selected) && targetActive('display'), hover: dropHover === 'display'}">
+                        <h3>On the display <small x-text="displayList(isOwner).length + ' / ' + standardSlots.length"></small>
+                            <button type="button" class="isl-link" x-show="hasDisplay && carousel.length" @click="openZoom()">open</button></h3>
+                        <p class="muted" x-show="!hasDisplay && !(island && island.canChooseDisplay)">This island has no display.</p>
+                        <p class="muted" x-show="!hasDisplay && island && island.canChooseDisplay">No display yet<span x-show="isOwner">: choose one above (one time)</span>. NFTs placed here show once it has one.</p>
+                        <ol class="isp-rlist isp-dlist" data-islands="display-list">
+                            <template x-for="(r, i) in displayList(isOwner)" :key="r.chainSlot">
+                                <li :class="{pending: isOwner && slotChanged(r.chainSlot)}" :data-slot="r.slot">
+                                    <span class="isp-rnft" :class="{invalid: !r.pending && !isValid(r)}">
+                                        <img :src="thumb(r)" alt="" loading="lazy"><a :href="nftLink(r)" x-text="nftName(r)"></a>
+                                        <small class="isp-onscreen" x-show="i === 0 && hasDisplay">on screen</small>
+                                        <small class="isl-slot-why" x-show="!r.pending && !isValid(r)" x-text="reasonText(r)"></small>
+                                        <button type="button" class="isl-link" x-show="isOwner && i > 0" @click="showFirst(r.chainSlot)">show first</button>
+                                        <button type="button" class="isp-x" x-show="isOwner" @click="removeFrom(r.chainSlot)" :aria-label="'Remove ' + nftName(r) + ' from the display'">×</button>
+                                    </span>
+                                </li>
+                            </template>
+                        </ol>
+                        <button type="button" class="isp-btn isp-btn-sm" x-show="isOwner && selected && targetActive('display')" @click="place(selected, 'display')" data-islands="to-display">Put it on the display</button>
+                    </div>
+                    <p class="muted" x-show="!displayList(isOwner).length">Nothing on the display yet.</p>
+                    <button type="button" class="isl-link" x-show="isOwner && invalidCount" @click="clearInvalidPlan()" x-text="'Remove ' + invalidCount + ' moved-out'"></button>
+                </div>
+
             </div>
         </div>
     </div>

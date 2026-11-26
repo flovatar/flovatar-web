@@ -48,6 +48,10 @@ test('parseScreen follows the contract grammar (x,y,w,h or + 8 quad numbers) and
     assert.deepEqual(parseScreen('100,200,300,150'), {x: 100, y: 200, w: 300, h: 150, quad: []});
     assert.deepEqual(parseScreen('10,20,100,50,10,20,110,25,108,72,12,70').quad, [10, 20, 110, 25, 108, 72, 12, 70]);
     assert.deepEqual(parseScreen({x: 1, y: 2, w: 3, h: 4, quad: []}), {x: 1, y: 2, w: 3, h: 4, quad: []});
+    // the contract's separate `quad` metadata key ("x1,y1 x2,y2 x3,y3 x4,y4"); a broken quad = no screen
+    assert.deepEqual(parseScreen('10,20,100,50', '10,20 110,25 108,72 12,70').quad, [10, 20, 110, 25, 108, 72, 12, 70]);
+    assert.equal(parseScreen('10,20,100,50', '10,20 110,25'), null);
+    assert.deepEqual(templateScreen({metadata: {screen: '1,2,3,4', quad: '1,2 4,2 4,6 1,6'}}).quad, [1, 2, 4, 2, 4, 6, 1, 6]);
     assert.deepEqual(parseScreen('{"x":1,"y":2,"w":3,"h":4,"quad":[[1,2],[4,2],[4,6],[1,6]]}').quad, [1, 2, 4, 2, 4, 6, 1, 6]);
     for (const bad of ['', '1,2,3', '1,2,0,4', '1,2,3,-4', 'a,b,c,d', '1,2,3,4,5', '1,2,3,200000']) { assert.equal(parseScreen(bad), null, bad); }
     assert.deepEqual(templateScreen(cfg.templates[4]), {x: 100, y: 200, w: 300, h: 150, quad: []});

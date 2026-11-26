@@ -432,6 +432,8 @@ class IslandsTest extends TestCase
         $this->assertSame(['x' => 100.0, 'y' => 200.0, 'w' => 300.0, 'h' => 150.0, 'quad' => []], IslandScene::parseScreen('100,200,300,150'));
         $this->assertSame([10.0, 20.0, 110.0, 20.0, 110.0, 70.0, 10.0, 70.0], IslandScene::parseScreen('0,0,100,50,10,20,110,20,110,70,10,70')['quad']);
         $this->assertSame(1.0, IslandScene::parseScreen('{"x":1,"y":2,"w":3,"h":4}')['x']);
+        $this->assertSame([10.0, 20.0, 110.0, 25.0, 108.0, 72.0, 12.0, 70.0], IslandScene::parseScreen('10,20,100,50', '10,20 110,25 108,72 12,70')['quad']);
+        $this->assertNull(IslandScene::parseScreen('10,20,100,50', '10,20 110,25'));
         foreach (['', '1,2,3', '1,2,0,4', 'a,b,c,d', '1,2,3,-4', '1,2,3,4,5'] as $bad) {
             $this->assertNull(IslandScene::parseScreen($bad), $bad);
         }

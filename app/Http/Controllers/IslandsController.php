@@ -124,7 +124,7 @@ class IslandsController extends Controller
                 'svgFrontLength' => (int) $t->svg_front_length, 'hash' => substr((string) $t->svg_hash, 0, 12),
                 'usage' => (int) $t->usage,
                 'anchors' => (object) IslandScene::parseAnchors((array) $t->metadata), 'metadata' => (object) (array) $t->metadata,
-                'screen' => IslandScene::parseScreen(((array) $t->metadata)['screen'] ?? null),
+                'screen' => IslandScene::parseScreen(((array) $t->metadata)['screen'] ?? null, ((array) $t->metadata)['quad'] ?? null),
             ])->values()->all());
         $cfg['templates'] = $templates;
         $cfg['tierScale'] = config('islands.tier_scale');
