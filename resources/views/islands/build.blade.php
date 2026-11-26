@@ -34,7 +34,7 @@
                                 <img class="isb-cat-icon isb-cat-icon-on" :src="tabIcon(t.key, true)" alt="" width="84" height="76" decoding="async">
                             </span>
                             <span class="isb-cat-badge" x-show="tabBadge(t.key)" x-text="tabBadge(t.key)"></span>
-                            <span class="isb-cat-dot" x-show="t.key === 'tint' && tintValue" :style="tintValue ? 'background:' + tintValue : ''" aria-hidden="true"></span>
+                            <template x-if="t.key === 'tint' && tintValue"><span class="isb-cat-dot" :style="{background: tintValue}" aria-hidden="true"></span></template>
                         </button>
                     </li>
                 </template>
