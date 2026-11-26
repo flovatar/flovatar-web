@@ -120,6 +120,9 @@ class IslandScene
         for ($i = 1; $i <= $n; $i++) {
             $out['P'.$i] = $found['P'.$i] ?? $defaults['P'.$i];
         }
+        if (isset($found['caretaker'])) {
+            $out['caretaker'] = $found['caretaker'];
+        }
 
         return $out;
     }
@@ -130,7 +133,8 @@ class IslandScene
         $out = [];
         $norm = function ($slot, $x, $y, $s, $z, $flip) use (&$out) {
             $slot = strtoupper(trim((string) $slot));
-            if (! preg_match('/^P\d{1,3}$/', $slot) || ! is_numeric($x) || ! is_numeric($y)) {
+            $slot = $slot === 'CARETAKER' ? 'caretaker' : $slot;
+            if (! (preg_match('/^P\d{1,3}$/', $slot) || $slot === 'caretaker') || ! is_numeric($x) || ! is_numeric($y)) {
                 return;
             }
             $out[$slot] = [(float) $x, (float) $y, is_numeric($s) && (float) $s > 0 ? (float) $s : 0.0,
@@ -148,7 +152,7 @@ class IslandScene
             }
         }
         foreach ($meta as $k => $v) {
-            if (preg_match('/^anchor\.(P\d{1,3})$/i', (string) $k, $m)) {
+            if (preg_match('/^anchor\.(P\d{1,3}|caretaker)$/i', (string) $k, $m)) {
                 $p = array_map('trim', explode(',', (string) $v));
                 $norm($m[1], $p[0] ?? null, $p[1] ?? null, $p[2] ?? null, $p[3] ?? 'front', $p[4] ?? false);
             }
@@ -157,15 +161,15 @@ class IslandScene
         return $out;
     }
 
-    /** One row on the island surface (2023 art: surface ≈ y 2230 between x ≈ 900 and 2150). Scale 0 = tier default. */
+    /** One row on the island surface (2023 art: deck ≈ y 2660 between x ≈ 1000 and 2150). Scale 0 = tier default. */
     public static function defaultAnchors(string $rarity, int $n): array
     {
         $out = [];
-        $x0 = 950.0;
-        $x1 = 2100.0;
+        $x0 = 1000.0;
+        $x1 = 2150.0;
         for ($i = 1; $i <= $n; $i++) {
             $x = $n === 1 ? ($x0 + $x1) / 2 : $x0 + ($x1 - $x0) * ($i - 1) / ($n - 1);
-            $out['P'.$i] = [round($x, 1), 2230.0, 0.0, 'front', false];
+            $out['P'.$i] = [round($x, 1), 2660.0, 0.0, 'front', false];
         }
 
         return $out;
@@ -185,7 +189,7 @@ class IslandScene
         foreach ($island->residents()->where('valid', true)->get() as $r) {
             $logical = Islands::logicalSlot($island->rarity, $r->slot, $n, $model);
             $family = Islands::familyOf($r->nft_type);
-            if (Islands::isPremiumSlot($logical) && $family) {
+            if ((Islands::isPremiumSlot($logical) || ($r->slot === 'caretaker' && $family === 'Flobot')) && $family) {
                 $out[] = ['slot' => $logical, 'type' => $r->nft_type, 'id' => (int) $r->nft_id, 'family' => $family];
             }
         }
@@ -195,11 +199,13 @@ class IslandScene
     }
 
     /** Placement group for one resident (shadow + nested SVG image), or '' without art. */
-    public function residentGroup(string $slot, array $anchor, string $family, string $svg, string $rarity): string
+    public function residentGroup(string $slot, array $anchor, string $family, string $svg, string $rarity, ?string $typeId = null): string
     {
         [$ax, $ay, $scale, , $flip] = $anchor;
+        // family scale: contract setting residentScale.<typeId> (what getSvg uses), else config/islands.php families
+        $fam = $typeId !== null ? (($this->config()['residentScale'] ?? [])[$typeId] ?? null) : null;
         $k = ($scale > 0 ? $scale : (float) config('islands.tier_scale.'.$rarity, 0.16))
-            * (float) config('islands.families.'.$family.'.scale', 1.0);
+            * (is_numeric($fam) ? (float) $fam : (float) config('islands.families.'.$family.'.scale', 1.0));
         $k = round($k, 5);
         $tx = round($ax - self::FOOT[0] * $k, 2);
         $ty = round($ay - self::FOOT[1] * $k, 2);
@@ -219,8 +225,7 @@ class IslandScene
         $templates = $this->templates(array_values($layers));
         $svg = $this->scene($layers, $island->tint, (int) $island->flow_id, $templates);
         $anchors = $this->anchors($island->rarity, $layers, $templates);
-        $back = '';
-        $front = '';
+        $groups = ['back' => [], 'front' => [], 'caretaker' => []];
         foreach ($this->premiumResidents($island) as $r) {
             $anchor = $anchors[$r['slot']] ?? null;
             $art = $anchor ? $this->art->svg($r['type'], $r['id']) : null;
@@ -230,21 +235,23 @@ class IslandScene
             if ($flatten) {
                 $art = $this->flattener->flatten($art);
             }
-            $g = $this->residentGroup($r['slot'], $anchor, $r['family'], $art, $island->rarity);
-            if ($anchor[3] === 'back') {
-                $back .= $g;
-            } else {
-                $front .= $g;
-            }
+            $g = $this->residentGroup($r['slot'], $anchor, $r['family'], $art, $island->rarity, $r['type']);
+            $groups[$r['slot'] === 'caretaker' ? 'caretaker' : $anchor[3]][] = [$anchor[1], $g];
         }
+        // like the contract: residents sorted by anchor y inside a group (farther = drawn first)
+        $join = function (array $list) {
+            usort($list, fn ($a, $b) => $a[0] <=> $b[0]);
 
-        return self::inject($svg, $back, $front);
+            return implode('', array_column($list, 1));
+        };
+
+        return self::inject($svg, $join($groups['back']), $join($groups['front']), $join($groups['caretaker']));
     }
 
     /** Fill the residents-back / residents-front placeholders (appended before </svg> when the order has none). */
-    public static function inject(string $svg, string $back, string $front): string
+    public static function inject(string $svg, string $back, string $front, string $caretaker = ''): string
     {
-        foreach (['residents-back' => $back, 'residents-front' => $front] as $id => $content) {
+        foreach (['residents-back' => $back, 'residents-front' => $front, 'caretaker' => $caretaker] as $id => $content) {
             if ($content === '') {
                 continue;
             }

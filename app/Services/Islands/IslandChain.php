@@ -115,6 +115,16 @@ CDC);
             'budget' => $budget,
             'premiumTypes' => $premiumTypes,
             'residentPolicy' => (string) ($settings['residentPolicy'] ?? 'open'),
+            'residentScale' => (function () use ($settings) {
+                $out = [];
+                foreach ($settings as $k => $v) {
+                    if (str_starts_with((string) $k, 'residentScale.') && is_numeric($v)) {
+                        $out[substr((string) $k, 14)] = (float) $v;
+                    }
+                }
+
+                return $out;
+            })(),
             'maxName' => (int) ($settings['nameMaxLength'] ?? 32),
             'maxDescription' => (int) ($settings['descriptionMaxLength'] ?? 500),
         ];
@@ -153,13 +163,14 @@ CDC, [['type' => 'UInt64', 'value' => (string) $id], ['type' => 'Bool', 'value' 
      * Refresh the island_templates cache from chain. SVG is (re)fetched when the lengths changed or it is missing.
      * @return array{templates:int, fetched:int}
      */
-    public function syncTemplates(bool $force = false): array
+    public function syncTemplates(bool $force = false, array $forceIds = []): array
     {
+        $forceIds = array_map('intval', $forceIds);
         $fetched = 0;
         $infos = $this->templateInfos();
         foreach ($infos as $t) {
             $row = IslandTemplate::firstOrNew(['flow_id' => (int) $t['id']]);
-            $needSvg = $force || ! $row->exists || (int) $row->svg_length !== (int) $t['svgLength']
+            $needSvg = $force || in_array((int) $t['id'], $forceIds, true) || ! $row->exists || (int) $row->svg_length !== (int) $t['svgLength']
                 || (int) $row->svg_front_length !== (int) $t['svgFrontLength'] || $row->svg === null;
             $row->fill([
                 'layer' => (string) $t['layer'],

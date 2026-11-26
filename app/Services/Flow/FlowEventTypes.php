@@ -49,7 +49,8 @@ class FlowEventTypes
     const ISLAND_EVENTS = [
         'Terraformed', 'IslandLayersChanged', 'IslandNameChanged', 'IslandDescriptionChanged', 'IslandMetadataChanged',
         'ResidentSet', 'ResidentCleared', 'ResidentMoved',
-        'TemplateCreated', 'TemplateSvgAppended', 'TemplateEnabled', 'TemplateMetadataChanged', 'SettingChanged',
+        'TemplateCreated', 'TemplateSvgAppended', 'TemplateSvgReplaced', 'TemplateEnabled', 'TemplateMetadataChanged',
+        'SettingChanged', 'TypeRuleChanged',
     ];
 
     const NFT_CONTRACTS = ['Flovatar.NFT', 'FlovatarComponent.NFT', 'FlovatarDustCollectible.NFT',

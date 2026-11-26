@@ -112,7 +112,7 @@ class IslandsController extends Controller
                 'id' => (int) $t->flow_id, 'layer' => $t->layer, 'rarity' => $t->rarity, 'name' => $t->name,
                 'description' => $t->description, 'enabled' => $t->enabled, 'svgLength' => (int) $t->svg_length,
                 'svgFrontLength' => (int) $t->svg_front_length, 'hash' => substr((string) $t->svg_hash, 0, 12),
-                'anchors' => IslandScene::parseAnchors((array) $t->metadata), 'metadata' => (array) $t->metadata,
+                'anchors' => (object) IslandScene::parseAnchors((array) $t->metadata), 'metadata' => (object) (array) $t->metadata,
             ])->values()->all());
         $cfg['templates'] = $templates;
         $cfg['tierScale'] = config('islands.tier_scale');
@@ -197,7 +197,8 @@ class IslandsController extends Controller
             'id' => (int) $i->flow_id, 'designation' => $i->designation, 'name' => $i->display_name, 'rarity' => $i->rarity,
             'owner' => $i->flow_address, 'residents' => (int) $i->residents_count, 'capacity' => Islands::capacity($i->rarity),
             'fused' => (bool) $i->fused, 'url' => '/islands/'.$i->flow_id,
-            'image' => ItemImages::url('island', $i->flow_id, 'thumb.jpg', false) ?? '/islands/'.$i->flow_id.'/full.svg',
+            // transparent PNG (the JPG variants are flattened on white, wrong on the night-sky cards)
+            'image' => ItemImages::url('island', $i->flow_id, 'full.png', false) ?? '/islands/'.$i->flow_id.'/full.svg',
         ];
     }
 
