@@ -122,8 +122,8 @@
 
             <div class="belt-actions">
                 <a href="/islands/build" class="btn btn-pink"><span class="inner">Terraform an island</span></a>
-                <div class="belt-views" role="group" aria-label="View">
-                    <button type="button" :class="{'active': view === 'belt'}" :aria-pressed="view === 'belt' ? 'true' : 'false'" x-show="canWebgl" x-cloak @click="setView('belt')">3D belt</button>
+                <div class="belt-views" role="group" aria-label="View" x-show="canWebgl" x-cloak>
+                    <button type="button" :class="{'active': view === 'belt'}" :aria-pressed="view === 'belt' ? 'true' : 'false'" @click="setView('belt')">3D belt</button>
                     <button type="button" :class="{'active': view === 'list'}" :aria-pressed="view === 'list' ? 'true' : 'false'" @click="setView('list')">List</button>
                 </div>
             </div>

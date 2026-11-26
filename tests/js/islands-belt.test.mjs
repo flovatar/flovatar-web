@@ -58,8 +58,9 @@ test('positions follow wall-clock time: same place for everyone, one period late
 });
 
 test('sprites shrink as the belt fills up (orbits never change)', () => {
-    assert.equal(sizeScaleFor(1), 1);
-    assert.equal(sizeScaleFor(7), 1);
+    assert.equal(sizeScaleFor(1), 1.5);
+    assert.equal(sizeScaleFor(7), 1.5);
+    assert.equal(sizeScaleFor(71), 1.5);
     assert.equal(sizeScaleFor(160), 1);
     assert.ok(Math.abs(sizeScaleFor(640) - 0.5) < 1e-9);
     assert.equal(sizeScaleFor(2000), 0.5);

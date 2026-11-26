@@ -22,11 +22,11 @@ export const PERIOD_INNER = 150;
 export const ISLAND_SIZE = [3.3, 4.1, 5.2];
 /**
  * A handful of islands can be drawn large; a full belt needs smaller sprites or it hides the planet. Scale of the
- * sprite size for a belt of n islands (1 up to 160 islands, then shrinking with the square root, never below 0.5).
- * Only the drawn size changes with n, never an orbit.
+ * sprite size for a belt of n islands: 1.5 up to about 70 islands, then shrinking with the square root (1 at 160),
+ * never below 0.5. Only the drawn size changes with n, never an orbit.
  */
 export function sizeScaleFor(n) {
-    return Math.max(0.5, Math.min(1, Math.sqrt(160 / Math.max(1, n))));
+    return Math.max(0.5, Math.min(1.5, Math.sqrt(160 / Math.max(1, n))));
 }
 
 /** 2026-11-26T00:00:00Z: positions are a function of (id, now - epoch). */
