@@ -244,6 +244,7 @@ class Islands
             'packRanges' => self::packRanges(),
             'designationPrefix' => self::designationPrefix(),
             'sector' => self::sector(),
+            'sizeMeter' => (bool) config('islands.show_size_meter', false),
             'belt' => [
                 'center' => (string) config('islands.belt.center_name', ''),
                 'demo' => (bool) config('islands.belt.demo', false),

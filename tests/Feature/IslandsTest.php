@@ -165,7 +165,15 @@ class IslandsTest extends TestCase
         $this->assertStringContainsString('property="og:title" content="Rock Garden · K313/0001', $r->getContent());
         $this->assertStringContainsString('x-data="islandPage(1)"', $r->getContent());
 
-        $this->get('/islands/build')->assertOk()->assertHeader('X-Robots-Tag', 'noindex, nofollow');
+        $b = $this->get('/islands/build')->assertOk()->assertHeader('X-Robots-Tag', 'noindex, nofollow');
+        $this->assertStringContainsString('x-data="islandsBuilder"', $b->getContent());
+        // the size budget is internal: no size meter, no KB / byte figure anywhere in the builder by default
+        $this->assertDoesNotMatchRegularExpression('/\bKB\b|\bkB\b|bytes|isb-meter|data-islands="budget"/i', $b->getContent());
+        $this->assertFalse(\App\Support\Islands::bootstrap()['sizeMeter']);
+        config(['islands.show_size_meter' => true]);
+        $this->assertStringContainsString('data-islands="budget"', $this->get('/islands/build')->getContent());
+        $this->assertTrue(\App\Support\Islands::bootstrap()['sizeMeter']);
+        config(['islands.show_size_meter' => false]);
 
         // scene = contract getSvg() byte for byte (testnet fixture)
         $this->assertSame($this->fixture['expected'], $this->get('/islands/1/scene.svg')->assertOk()->getContent());

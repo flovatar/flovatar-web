@@ -29,6 +29,39 @@ export function sizeScaleFor(n) {
     return Math.max(0.5, Math.min(1.5, Math.sqrt(160 / Math.max(1, n))));
 }
 
+/**
+ * Default ("home") camera framing for a belt whose islands reach the given apoapsis radii, on a viewport of the given
+ * aspect (width / height) with a vertical field of view of `fov` degrees.
+ *
+ * - A handful of islands: frame the inner half of them closely (the planet is large, the outer few drift in and out of
+ *   the frame as the camera turns). The framed radius then widens smoothly (log scale) to the whole belt from about
+ *   160 islands on, i.e. the old "fit the belt" view.
+ * - Portrait screens: the camera looks down more steeply (the belt ellipse gets rounder and uses the tall screen) and
+ *   the framing is fitted to the narrow width, allowing a slight crop at the sides.
+ * Returns {dist, elevation (rad), radius (framed world radius)}.
+ */
+export function homeFrame(apo, aspect = 16 / 9, fov = 46) {
+    const n = apo.length;
+    const s = Array.from(apo).sort((a, b) => a - b);
+    const q = (p) => s[Math.min(n - 1, Math.max(0, Math.floor((n - 1) * p)))];
+    const full = n ? 0.5 * q(0.85) + 0.5 * s[n - 1] : BELT_INNER * 1.5;
+    const close = Math.min(full, Math.max(PLANET_RADIUS * 2.3, n ? q(0.5) + 3 : BELT_INNER * 1.5));
+    const t = Math.max(0, Math.min(1, Math.log(Math.max(1, n) / 8) / Math.log(160 / 8)));
+    const w = t * t * (3 - 2 * t);
+    const radius = close + (full - close) * w;
+    const a = Math.max(0.3, Math.min(4, aspect || 1));
+    const portrait = Math.max(0, Math.min(0.6, 1 - a));
+    const elevation = Math.min(1.0, 0.30 + portrait * 1.2);
+    const tv = Math.tan(fov * Math.PI / 360);
+    const th = tv * a;
+    const crop = 1 + portrait * 0.5;                           // portrait: up to ~20% of the ring may leave the sides
+    const dh = radius / (th * crop);
+    // near edge of the tilted ring (bottom of the frame): height R sin(el) at depth d - R cos(el); a little crop is fine
+    const dv = 0.85 * radius * (Math.sin(elevation) / tv + Math.cos(elevation)) + 2;
+    const dist = Math.max(dh, dv, PLANET_RADIUS * 1.6 / Math.min(tv, th), PLANET_RADIUS * 2.6);
+    return {dist: Math.min(dist, 320), elevation, radius};
+}
+
 /** 2026-11-26T00:00:00Z: positions are a function of (id, now - epoch). */
 export const BELT_EPOCH = 1795651200;
 

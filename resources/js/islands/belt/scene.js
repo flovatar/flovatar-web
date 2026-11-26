@@ -21,7 +21,7 @@ import {
     Texture, Vector3, Vector4, WebGLRenderer, WebGLRenderTarget,
 } from 'three';
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
-import {BELT_EPOCH, BELT_INNER, BELT_OUTER, PLANET_RADIUS, RARITY_COLORS, meanAnomalyAt, orbitFor, orbitPath, rand01, sizeScaleFor, solveKepler} from './orbits.mjs';
+import {BELT_EPOCH, BELT_INNER, BELT_OUTER, PLANET_RADIUS, RARITY_COLORS, homeFrame, meanAnomalyAt, orbitFor, orbitPath, rand01, sizeScaleFor, solveKepler} from './orbits.mjs';
 import * as GL from './shaders';
 
 const TAU = Math.PI * 2;
@@ -34,6 +34,7 @@ const ATMO_RADIUS = PLANET_RADIUS * 1.42;
 const MIN_PX = 18;          // islands never get smaller than this on screen (CSS px)
 const NEAR_PX = 150;        // on-screen height from which an island gets its own sprite
 const HOVER_PX = 46;        // a highlighted island is drawn at least this tall, so its art can be read
+const MAX_FRAC = 0.42;      // ...and, unless highlighted, never taller than this share of the viewport (close fly-bys)
 const REBASE_SECONDS = 1800; // shader time is folded back into the orbit phases (float precision)
 
 function rnd(a, b) { return a + Math.random() * (b - a); }
@@ -93,6 +94,7 @@ export class BeltScene {
         this.uTime = {value: 0};        // orbit time
         this.uCloud = {value: 0};       // cloud / twinkle time
         this.uPxWorld = {value: 0.001};
+        this.uMaxPx = {value: 400};
         this.uDpr = {value: this.dpr};
         this.uViewport = {value: new Vector4(1, 1, 0, 0)};
 
@@ -326,19 +328,23 @@ export class BeltScene {
         this.home();
     }
 
-    /** Default view: the whole belt, seen from a little above its plane. */
+    /**
+     * Default view, seen from a little above the belt plane (orbits.mjs homeFrame): close while the belt holds a handful
+     * of islands, widening as it fills up; steeper and fitted to the width on portrait screens.
+     */
     home(animate = false) {
-        const aspect = this.camera.aspect || 1;
-        const fit = Math.max(62, Math.min(125, (this.extent || 40) * 1.5 + 6));
-        const dist = aspect >= 1 ? fit : Math.min(175, fit + (1 - aspect) * 70);
+        const f = homeFrame(this.apo || [], this.camera.aspect || 1, FOV);
+        const dist = f.dist;
         this.homeDist = dist;
+        this.homeElevation = f.elevation;
+        this.controls.maxDistance = Math.max(210, dist * 1.3);
         if (animate) {
             this.followId = null;
             this.returning = true;
             this.controls.minDistance = PLANET_RADIUS * 1.75;
             return;
         }
-        const el = 0.30;
+        const el = f.elevation;
         this.controls.target.set(0, 0, 0);
         this.camera.position.set(Math.sin(0.5) * Math.cos(el) * dist, Math.sin(el) * dist, Math.cos(0.5) * Math.cos(el) * dist);
         this.controls.update();
@@ -380,8 +386,7 @@ export class BeltScene {
             byPage.get(key).push(i);
         }
         // the default view frames the belt that exists today (a few inner islands -> closer, the full belt -> wider)
-        apo.sort((a, b) => a - b);
-        this.extent = n ? 0.5 * apo[Math.floor((n - 1) * 0.85)] + 0.5 * apo[n - 1] : BELT_INNER * 1.5;
+        this.apo = apo;
         // halos add up: the more islands, the fainter each one (common islands lose theirs in a full belt)
         const dim = Math.max(0.3, Math.min(1, Math.sqrt(120 / Math.max(1, n))));
         this.glowGain = new Vector3(this.low || n > 600 ? 0 : 0.10 * dim, 0.26 * dim, 0.42 * dim);
@@ -430,7 +435,7 @@ export class BeltScene {
         return new ShaderMaterial({
             vertexShader: GL.ISLAND_VERT, fragmentShader: GL.ISLAND_FRAG, alphaToCoverage: this.coverage,
             uniforms: {
-                uTime: this.uTime, uGrid: {value: gridU}, uPxWorld: this.uPxWorld, uMinPx: {value: MIN_PX}, uHoverPx: {value: HOVER_PX}, uSway: {value: this.reduced ? 0 : 1},
+                uTime: this.uTime, uGrid: {value: gridU}, uPxWorld: this.uPxWorld, uMaxPx: this.uMaxPx, uMinPx: {value: MIN_PX}, uHoverPx: {value: HOVER_PX}, uSway: {value: this.reduced ? 0 : 1},
                 uMap: {value: map || null}, uHasMap: {value: map ? 1 : 0}, uCoverage: {value: this.coverage ? 1 : 0}, uHaze: {value: new Color('#1a0b3a')},
             },
         });
@@ -442,7 +447,7 @@ export class BeltScene {
         mesh.frustumCulled = false;
         const glow = new Mesh(this._geometry(attrs, list.length), new ShaderMaterial({
             vertexShader: GL.GLOW_VERT, fragmentShader: GL.GLOW_FRAG, transparent: true, blending: AdditiveBlending, depthWrite: false,
-            uniforms: {uTime: this.uTime, uPxWorld: this.uPxWorld, uMinPx: {value: MIN_PX}, uHoverPx: {value: HOVER_PX}, uGain: {value: this.glowGain}},
+            uniforms: {uTime: this.uTime, uPxWorld: this.uPxWorld, uMaxPx: this.uMaxPx, uMinPx: {value: MIN_PX}, uHoverPx: {value: HOVER_PX}, uGain: {value: this.glowGain}},
         }));
         glow.frustumCulled = false;
         glow.renderOrder = 3;
@@ -637,6 +642,7 @@ export class BeltScene {
         const st = this.state[i];
         const world = this.orbits[i].size * (st === 2 ? 0.55 : (st === 1 ? 1.16 : 1));
         out.h = Math.max(world / (this.uPxWorld.value * w), st === 1 ? HOVER_PX : MIN_PX * (st === 2 ? 0.6 : 1));
+        if (st !== 1) { out.h = Math.min(out.h, this.uMaxPx.value); }
         out.w = w;
         return out;
     }
@@ -928,6 +934,7 @@ export class BeltScene {
         this.camera.aspect = w / h;
         this.camera.updateProjectionMatrix();
         this.uPxWorld.value = 2 * Math.tan(FOV * Math.PI / 360) / h;
+        this.uMaxPx.value = Math.max(120, h * MAX_FRAC);
         this.uDpr.value = this.dpr;
         this.uViewport.value.set(w * this.dpr / 2, h * this.dpr / 2, 0, 0);
         for (const b of this.bolts) { b.mesh.material.uniforms.uWidth.value = 4.6 * this.dpr; }

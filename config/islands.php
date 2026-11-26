@@ -59,6 +59,11 @@ return [
     // TerraKit pack ids (FlovatarPack) shown with an "Open pack" button in the redeem flow (same ranges as /terrakit/check).
     'pack_ranges' => env('ISLANDS_PACK_ID_RANGES', env('TERRAKIT_PACK_ID_RANGES', '10800-15799')),
 
+    // Internal art-production aid: show the scene size meter (bytes of the chosen templates vs the contract's per-rarity
+    // budget) and per-part sizes in the builder. OFF for users (the budget is an internal limit; when a combination is
+    // ever over it, the builder only says it can't be terraformed). Kept for later use, e.g. a FUB builder.
+    'show_size_meter' => (bool) env('ISLANDS_SHOW_SIZE_METER', false),
+
     // Chain reads (templates, config) are cached this many seconds.
     'chain_cache_seconds' => (int) env('ISLANDS_CHAIN_CACHE', 300),
 

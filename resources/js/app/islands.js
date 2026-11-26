@@ -4,9 +4,10 @@
  * Alpine components:
  *   islandsBelt        /islands             full-viewport WebGL belt (lazy chunk "b", ../islands/belt/*) with filters, search,
  *                                           tooltip + modal; island list as fallback / accessible view
- *   islandsBuilder     /islands/build       redeem: wallet inventory (land deeds, TerraKit packs → open), pick 1 deed or fuse 5,
- *                                           build the scene (rarity-locked templates, budget meter, tint), live preview,
- *                                           confirm (deeds are BURNED), sign the terraform tx
+ *   islandsBuilder     /islands/build       builder v2 (Sportvatar-builder UX): tabs Deeds / scene layers / Tint with
+ *                                           thumbnail grids, live animated preview, randomize, permalink hash; redeem =
+ *                                           pick 1 deed or fuse 5 (packs can be opened in place), review dialog (deeds are
+ *                                           BURNED), sign the terraform tx. No size figures for users (sizeMeter flag)
  *   islandPage         /islands/{id}        scene with premium residents, standard-resident carousel, owner tools
  *                                           (name/description, residents: set / move / clear)
  *   islandsCollection  /collection/{addr}   "Islands" tab
@@ -19,7 +20,7 @@
 import Alpine from 'alpinejs';
 import * as fcl from '@onflow/fcl';
 import {WALLET_CADENCE, PREVIEW_CADENCE, RESIDENTS_CADENCE, WALLET_NFTS_CADENCE, DISPLAYS_CADENCE, OWNERSHIP_CADENCE} from '../islands/cadence.mjs';
-import {composeScene, displayFix, sceneBytes, islandRarity, validateScene, isHexColor, slotList, httpUrl, designation, setDesignationPrefix, normalizeAddress, RARITIES} from '../islands/compose.mjs';
+import {composeScene, displayFix, sceneBytes, islandRarity, validateScene, friendlyChainError, isHexColor, slotList, httpUrl, designation, setDesignationPrefix, normalizeAddress, RARITIES} from '../islands/compose.mjs';
 import {islandsFromManifest, demoIslands, parseIslandQuery} from '../islands/belt/orbits.mjs';
 import {islandTerraformTx} from '../flow/island-terraform.tx';
 import {islandSetResidentsTx} from '../flow/island-set-residents.tx';
@@ -515,10 +516,32 @@ if (CFG) {
     }));
 
     // --------------------------------------------------------------------------- /islands/build
+    // Builder v2 (KB islands-build.md §E): Sportvatar-builder layout and interaction — category tabs (Deeds, the scene
+    // layers, Tint) with thumbnail grids, a big live preview with rarity / burn badges and a tool bar, review + sign in
+    // a dialog. Anyone can play with it (a preview rarity without a wallet); terraforming needs the deed(s).
+    // Size budgets are never shown to users (sizeMeter = internal flag ISLANDS_SHOW_SIZE_METER).
+    const svgs = {};               // template id -> {svg, svgFront, svgLength, svgFrontLength} (outside Alpine: big strings)
+    const thumbUrls = new Map();   // scene key -> object URL
+    const LAYER_LABELS = {sky: 'Sky', base: 'Base', structure: 'Structure', fub: 'FUB', foreground: 'Foreground', fx: 'Effects'};
+    const TINTS = ['#EF2AC1', '#91E3F9', '#FFEE50', '#52F618', '#FF6E03', '#AED7F7', '#8A4BFF', '#E8384F', '#2FD4B1'];
+    // chance that Randomize fills an optional layer
+    const RANDOM_FILL = {sky: 1, structure: 0.85, fub: 0.5, foreground: 0.65, fx: 0.6};
+
+    async function loadSvg(id) {
+        if (!svgs[id]) { svgs[id] = await loadTemplate(id); }
+        return svgs[id];
+    }
+
+    function sceneUrl(cfg, layers, tint) {
+        const svg = composeScene(cfg, layers, tint, null, svgs);
+        return URL.createObjectURL(new Blob([displayFix(svg)], {type: 'image/svg+xml'}));
+    }
+
     Alpine.data('islandsBuilder', () => ({
         ...walletMixin(),
         cfg: null,
-        status: 'idle',      // idle | loading | ready | error
+        cfgError: false,
+        status: 'idle',      // wallet inventory: idle | loading | ready | error
         error: '',
         inv: null,
         packs: [],
@@ -526,24 +549,51 @@ if (CFG) {
         packMessage: '',
         mode: 'single',      // single | fuse
         selected: [],        // deed ids
-        step: 'deeds',       // deeds | build | confirm | signing | done
+        tab: 'deeds',        // deeds | <layer> | tint
+        previewRarity: 'common',
         layers: {},
         tintOn: false,
-        tint: '#5fb04a',
+        tint: TINTS[0],
         preview: '',
         previewBusy: false,
-        chainCheck: '',      // '' | checking | ok | <error>
+        thumbs: {},          // option key -> object URL (current tab)
+        notice: '',
+        sizeMeter: !!CFG.sizeMeter,
+        // review / sign
+        review: false,
+        snap: null,          // what the dialog shows / signs
+        step: 'build',       // build | review | signing | done
+        chainCheck: '',      // '' | checking | ok | <message>
         understood: false,
         txId: '',
         txStatus: '',
+        txError: '',
         islandId: null,
+        tints: TINTS,
+        rarities: RARITIES,
 
         async init() {
-            try { this.cfg = await loadConfig(); } catch (e) { this.status = 'error'; this.error = 'The island service is not reachable right now. Try again in a minute.'; return; }
-            this.watchUser(() => this.loadInventory());
+            try { this.cfg = await loadConfig(); } catch (e) { this.cfgError = true; return; }
+            this.readHash();
+            if (!Object.keys(this.layers).length) { this.defaultScene(); } else { this.renderPreview(); }
+            this.prefetch(this.rarity);
+            this.$watch('rarity', (r, old) => {
+                if (!r || r === old) { return; }
+                const kept = Object.values(this.layers).every((id) => this.infos[id] && this.infos[id].rarity === r);
+                if (!kept) {
+                    this.notice = this.fromDeeds ? 'Your island will be ' + r + ', so the parts switched to ' + r + ' art: every part matches the island\u2019s rarity.' : '';
+                    this.defaultScene();
+                }
+                if (!this.tintAllowed) { this.tintOn = false; }
+                if (this.tab !== 'deeds' && this.tab !== 'tint' && !this.sceneLayers.includes(this.tab)) { this.tab = 'base'; }
+                if (this.tab === 'tint' && !this.tintAllowed) { this.tab = 'base'; }
+                this.prefetch(r);
+            });
+            this.$watch('tab', () => this.renderThumbs());
+            this.watchUser((u) => { if (u) { this.loadInventory(); } else { this.inv = null; this.selected = []; this.status = 'idle'; } });
         },
 
-        // ---------------- inventory
+        // ---------------- wallet inventory
         async loadInventory() {
             if (!this.user) { return; }
             this.status = 'loading';
@@ -560,11 +610,12 @@ if (CFG) {
             }
         },
         deedsOf(r) { return this.inv ? this.inv.deeds.filter((d) => d.rarity === r) : []; },
-        rarities: RARITIES,
         get hasDeeds() { return !!(this.inv && this.inv.deeds.length); },
+        get deedCount() { return this.inv ? this.inv.deeds.length : 0; },
 
         async openPack(id) {
             if (this.openingPack) { return; }
+            if (this.dapper()) { this.packMessage = 'Dapper Wallet can\u2019t open this pack here. Use Flow Wallet.'; return; }
             this.openingPack = id;
             this.packMessage = '';
             const before = new Set((this.inv.deeds || []).map((d) => d.id));
@@ -576,15 +627,19 @@ if (CFG) {
                 const fresh = this.inv.deeds.filter((d) => !before.has(d.id));
                 this.packMessage = 'Pack #' + id + ' opened.' + (fresh.length ? ' New land deed: ' + fresh.map((d) => d.rarity + ' #' + d.id).join(', ') + '.' : '');
             } catch (e) {
-                this.packMessage = 'Pack #' + id + ' wasn\u2019t opened: ' + txErrorText(e);
+                this.packMessage = 'Pack #' + id + ' wasn\u2019t opened: ' + friendlyChainError(txErrorText(e));
             }
             this.openingPack = null;
         },
 
         // ---------------- deed selection
-        setMode(m) { this.mode = m; this.selected = []; },
+        setMode(m) { if (this.mode !== m) { this.mode = m; this.selected = []; } },
         isSelected(id) { return this.selected.includes(id); },
+        pickIndex(id) { return this.selected.indexOf(id) + 1; },
+        deedDisabled(d) { return this.mode === 'fuse' && d.rarity === 'legendary'; },
         toggleDeed(d) {
+            if (this.deedDisabled(d)) { return; }
+            this.notice = '';
             if (this.mode === 'single') { this.selected = this.isSelected(d.id) ? [] : [d.id]; return; }
             if (this.isSelected(d.id)) { this.selected = this.selected.filter((x) => x !== d.id); return; }
             const r = this.selectedRarity;
@@ -595,75 +650,295 @@ if (CFG) {
         canFuse(r) { return r !== 'legendary' && this.deedsOf(r).length >= 5; },
         get selectedDeeds() { return this.inv ? this.inv.deeds.filter((d) => this.selected.includes(d.id)) : []; },
         get selectedRarity() { const d = this.selectedDeeds[0]; return d ? d.rarity : null; },
-        get rarity() {
+        /** The deed choice is complete: 1 deed, or 5 of one rarity in fuse mode. */
+        get deedsReady() {
             const ds = this.selectedDeeds;
-            if (!ds.length || ds.some((d) => d.rarity !== ds[0].rarity)) { return null; }
-            return islandRarity(ds[0].rarity, ds.length);
+            if (this.mode === 'single') { return ds.length === 1; }
+            return ds.length === 5 && ds.every((d) => d.rarity === ds[0].rarity) && !!islandRarity(ds[0].rarity, 5);
         },
+        /** Rarity being designed: from the deed choice (also while fusing is incomplete), else the preview rarity. */
+        get rarity() {
+            const r = this.selectedRarity;
+            if (r) { return this.mode === 'fuse' ? (islandRarity(r, 5) || r) : r; }
+            return this.previewRarity;
+        },
+        get fromDeeds() { return !!this.selectedRarity; },
+        setPreviewRarity(r) { if (!this.fromDeeds && RARITIES.includes(r)) { this.previewRarity = r; } },
         get selectionHint() {
-            if (this.mode === 'single') { return this.selected.length ? 'Your island will be ' + this.rarity + '.' : 'Pick one land deed.'; }
+            if (!this.user) { return 'Connect the wallet that holds your TerraKit land deeds.'; }
+            if (this.status === 'loading') { return 'Reading your wallet\u2026'; }
+            if (!this.hasDeeds) { return this.packs.length ? 'Open a TerraKit pack to get its land deed.' : 'This wallet has no TerraKit land deeds.'; }
+            if (this.mode === 'single') { return this.selected.length ? 'One ' + this.selectedRarity + ' deed: a ' + this.rarity + ' island.' : 'Pick the land deed to redeem.'; }
             const n = this.selected.length;
-            if (n < 5) { return 'Pick ' + (5 - n) + ' more deed' + (5 - n === 1 ? '' : 's') + ' of the same rarity.'; }
+            if (n < 5) { return n ? 'Pick ' + (5 - n) + ' more ' + this.selectedRarity + ' deed' + (5 - n === 1 ? '' : 's') + ' to fuse.' : 'Pick 5 deeds of the same rarity.'; }
             return '5 ' + this.selectedRarity + ' deeds fuse into one ' + this.rarity + ' island.';
         },
-        goBuild() {
-            if (!this.rarity) { return; }
-            this.step = 'build';
-            this.defaultScene();
-            window.scrollTo({top: 0, behavior: 'smooth'});
-        },
+        deedImage(d) { return '/api/image/template/' + d.templateId; },
 
-        // ---------------- scene
+        // ---------------- tabs
         get sceneLayers() {
+            if (!this.cfg) { return []; }
             const order = (this.cfg.sceneOrder || []).filter((e) => e[0] !== '@' && !e.endsWith(':front'));
             return order.filter((name) => ((this.cfg.layers[name] || {}).allowed || []).includes(this.rarity));
         },
+        get tabs() {
+            const t = [{key: 'deeds', label: 'Deeds'}];
+            for (const name of this.sceneLayers) { t.push({key: name, label: this.layerLabel(name)}); }
+            if (this.tintAllowed) { t.push({key: 'tint', label: 'Tint'}); }
+            return t;
+        },
+        layerLabel(name) { return LAYER_LABELS[name] || name; },
+        setTab(k) { this.tab = k; this.$nextTick(() => { const g = this.$refs.grid; if (g) { g.scrollTop = 0; g.scrollLeft = 0; } }); },
+        isLayerTab() { return this.tab !== 'deeds' && this.tab !== 'tint'; },
+        tabBadge(k) {
+            if (k === 'deeds') { return this.selected.length ? String(this.selected.length) : ''; }
+            return '';
+        },
+        tabThumb(k) {
+            if (k === 'deeds' || k === 'tint') { return ''; }
+            const id = this.layers[k];
+            return id ? this.thumbs['sel:' + k] || '' : '';
+        },
+        nextTab() {
+            const keys = this.tabs.map((t) => t.key);
+            const i = keys.indexOf(this.tab);
+            if (i >= 0 && i < keys.length - 1) { this.setTab(keys[i + 1]); }
+        },
+
+        // ---------------- scene
         isRequired(name) { return ((this.cfg.layers[name] || {}).required || []).includes(this.rarity); },
         optionsFor(name) { return (this.cfg.templates || []).filter((t) => t.layer === name && t.rarity === this.rarity && t.enabled); },
-        get infos() { const m = {}; for (const t of (this.cfg.templates || [])) { m[t.id] = t; } return m; },
-        get tintAllowed() { return (this.cfg.tintRarities || []).includes(this.rarity); },
-        get budget() { return (this.cfg.budget || {})[this.rarity] || 0; },
-        get bytes() { return sceneBytes(this.layers, this.infos); },
-        get budgetPct() { return this.budget ? Math.min(100, Math.round(this.bytes * 100 / this.budget)) : 0; },
-        kb(n) { return (Math.round(Number(n || 0) / 100) / 10).toLocaleString() + ' KB'; },
-        get problems() { return validateScene(this.cfg, this.rarity, this.layers, this.tintValue, this.infos); },
-        get tintValue() { return this.tintAllowed && this.tintOn && isHexColor(this.tint) ? this.tint : null; },
+        get infos() { const m = {}; for (const t of ((this.cfg && this.cfg.templates) || [])) { m[t.id] = t; } return m; },
+        get tintAllowed() { return !!this.cfg && (this.cfg.tintRarities || []).includes(this.rarity); },
+        get tintValue() { return this.tintAllowed && this.tintOn && isHexColor(this.tint) ? this.tint.toLowerCase() : null; },
+        get problems() { return this.cfg ? validateScene(this.cfg, this.rarity, this.layers, this.tintValue, this.infos) : []; },
+        get selectedInfo() { const id = this.layers[this.tab]; return id ? this.infos[id] || null : null; },
+        isAnimated(t) { return !!(t && t.metadata && (t.metadata.animated || /anim/i.test(String(t.metadata.motion || '')))) || /\(animated\)/i.test((t && t.description) || ''); },
+        usedBy(t) { const n = Number((t && t.usage) || 0); return n === 1 ? '1 island' : n + ' islands'; },
         missingLayers() { return this.sceneLayers.filter((n) => this.isRequired(n) && !this.optionsFor(n).length); },
         defaultScene() {
             const layers = {};
             for (const name of this.sceneLayers) {
                 const opts = this.optionsFor(name);
-                if (this.isRequired(name) && opts.length) { layers[name] = opts[0].id; }
+                if (opts.length && (this.isRequired(name) || name === 'sky' || name === 'structure')) { layers[name] = opts[0].id; }
             }
             this.layers = layers;
             this.tintOn = false;
-            this.renderPreview();
+            this.changed();
+        },
+        randomize() {
+            const layers = {};
+            for (const name of this.sceneLayers) {
+                const opts = this.optionsFor(name);
+                if (!opts.length) { continue; }
+                if (this.isRequired(name) || Math.random() < (RANDOM_FILL[name] ?? 0.6)) { layers[name] = opts[Math.floor(Math.random() * opts.length)].id; }
+            }
+            this.layers = layers;
+            if (this.tintAllowed) {
+                this.tintOn = Math.random() < 0.45;
+                if (this.tintOn) { this.tint = TINTS[Math.floor(Math.random() * TINTS.length)]; }
+            }
+            this.notice = '';
+            this.changed();
         },
         pick(name, id) {
             const l = {...this.layers};
-            if (id === null || id === '' || id === undefined) { delete l[name]; } else { l[name] = Number(id); }
+            if (id === null || id === '' || id === undefined) {
+                if (this.isRequired(name)) { return; }
+                delete l[name];
+            } else { l[name] = Number(id); }
             this.layers = l;
+            this.notice = '';
+            this.changed();
+        },
+        setTint(v) {
+            if (v === null) { this.tintOn = false; } else if (isHexColor(v)) { this.tint = v; this.tintOn = true; }
+            this.changed();
+        },
+        changed() {
+            this.writeHash();
             this.renderPreview();
+            this.renderThumbs();
+        },
+        prefetch(r) {
+            if (!this.cfg) { return; }
+            for (const t of (this.cfg.templates || []).filter((x) => x.rarity === r && x.enabled)) { loadSvg(t.id).catch(() => {}); }
         },
         async renderPreview() {
+            if (!this.cfg) { return; }
             this.previewBusy = true;
-            this.chainCheck = '';
             try {
-                const ids = Object.values(this.layers);
-                const tpls = {};
-                for (const t of await Promise.all(ids.map((id) => loadTemplate(id)))) { tpls[t.id] = t; }
-                const svg = composeScene(this.cfg, this.layers, this.tintValue, null, tpls);
-                if (this.preview) { URL.revokeObjectURL(this.preview); }
-                this.preview = URL.createObjectURL(new Blob([displayFix(svg)], {type: 'image/svg+xml'}));
+                await Promise.all(Object.values(this.layers).map((id) => loadSvg(id)));
+                const url = sceneUrl(this.cfg, this.layers, this.tintValue);
+                const old = this.preview;
+                this.preview = url;
+                if (old) { setTimeout(() => URL.revokeObjectURL(old), 2000); }
             } catch (e) { console.log(e); }
             this.previewBusy = false;
         },
-        goConfirm() {
-            if (this.problems.length) { return; }
-            this.step = 'confirm';
+        /** Option thumbnails of the active tab: the current scene with that option swapped in (no sky, except on Sky). */
+        optionLayers(name, id) {
+            const l = {...this.layers};
+            if (name !== 'sky') { delete l.sky; }
+            if (id === null) { delete l[name]; } else { l[name] = id; }
+            return l;
+        },
+        thumbKey(name, id) { return name + ':' + (id === null ? 'none' : id); },
+        thumb(name, id) { return this.thumbs[this.thumbKey(name, id)] || ''; },
+        async renderThumbs() {
+            if (!this.cfg) { return; }
+            const token = this._thumbToken = {};
+            const jobs = [];
+            // selected part of every layer (category tabs + info card)
+            for (const name of this.sceneLayers) {
+                if (this.layers[name]) { jobs.push(['sel:' + name, {[name]: this.layers[name]}, name === 'sky' ? null : this.tintValue]); }
+            }
+            if (this.isLayerTab()) {
+                const name = this.tab;
+                if (!this.isRequired(name)) { jobs.push([this.thumbKey(name, null), this.optionLayers(name, null), this.tintValue]); }
+                for (const t of this.optionsFor(name)) { jobs.push([this.thumbKey(name, t.id), this.optionLayers(name, t.id), this.tintValue]); }
+            }
+            const next = {};
+            for (const [key, layers, tint] of jobs) {
+                const sig = JSON.stringify([layers, tint]);
+                let url = thumbUrls.get(sig);
+                if (!url) {
+                    try { await Promise.all(Object.values(layers).map((id) => loadSvg(id))); } catch (e) { continue; }
+                    if (token !== this._thumbToken) { return; }
+                    url = sceneUrl(this.cfg, layers, tint);
+                    thumbUrls.set(sig, url);
+                }
+                next[key] = url;
+            }
+            if (token !== this._thumbToken) { return; }
+            this.thumbs = next;
+            // keep the cache bounded: drop URLs no longer shown
+            if (thumbUrls.size > 160) {
+                const live = new Set(Object.values(next));
+                for (const [sig, url] of thumbUrls) { if (!live.has(url)) { URL.revokeObjectURL(url); thumbUrls.delete(sig); } }
+            }
+        },
+
+        // ---------------- permalink (#r=epic&sky=28&base=31&tint=ef2ac1), like the Sportvatar builder's hash
+        writeHash() {
+            const p = new URLSearchParams();
+            p.set('r', this.rarity);
+            for (const name of this.sceneLayers) { if (this.layers[name]) { p.set(name, String(this.layers[name])); } }
+            if (this.tintValue) { p.set('tint', this.tintValue.slice(1)); }
+            history.replaceState(null, '', window.location.pathname + window.location.search + '#' + p.toString());
+        },
+        readHash() {
+            const h = window.location.hash.replace(/^#/, '');
+            if (!h) { return; }
+            const p = new URLSearchParams(h);
+            const r = p.get('r');
+            if (RARITIES.includes(r)) { this.previewRarity = r; }
+            const layers = {};
+            for (const name of this.sceneLayers) {
+                const id = Number(p.get(name));
+                const t = this.infos[id];
+                if (t && t.layer === name && t.rarity === this.rarity && t.enabled) { layers[name] = id; }
+            }
+            if (this.sceneLayers.every((n) => !this.isRequired(n) || layers[n])) { this.layers = layers; }
+            const tint = '#' + (p.get('tint') || '');
+            if (this.tintAllowed && isHexColor(tint)) { this.tint = tint; this.tintOn = true; }
+        },
+
+        // ---------------- tools
+        async savePng() {
+            if (!this.preview) { return; }
+            const img = new Image();
+            img.src = this.preview;
+            try { await img.decode(); } catch (e) { return; }
+            const c = document.createElement('canvas');
+            c.width = 1200; c.height = Math.round(1200 * 4033 / 3025);
+            c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+            c.toBlob((b) => {
+                if (!b) { return; }
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(b);
+                a.download = 'island-' + this.rarity + '-preview.png';
+                document.body.appendChild(a); a.click(); a.remove();
+                setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+            }, 'image/png');
+        },
+        // size meter: internal art-production aid only (ISLANDS_SHOW_SIZE_METER)
+        get budget() { return (this.cfg && this.cfg.budget || {})[this.rarity] || 0; },
+        get bytes() { return this.cfg ? sceneBytes(this.layers, this.infos) : 0; },
+        get budgetPct() { return this.budget ? Math.min(100, Math.round(this.bytes * 100 / this.budget)) : 0; },
+        kb(n) { return (Math.round(Number(n || 0) / 100) / 10).toLocaleString() + ' KB'; },
+
+        // ---------------- main button (Sportvatar: one call to action under the preview, a warning tooltip above it)
+        get cta() {
+            if (!this.cfg) { return {label: 'Terraform', disabled: true, hint: ''}; }
+            if (!this.user) { return {label: 'Connect to terraform', action: 'connect', hint: ''}; }
+            if (this.dapper()) { return {label: 'Terraform', disabled: true, hint: 'Dapper Wallet can\u2019t sign this transaction. Use Flow Wallet.'}; }
+            if (this.status === 'loading') { return {label: 'Reading wallet\u2026', disabled: true, hint: ''}; }
+            if (this.status === 'error') { return {label: 'Try again', action: 'reload', hint: this.error}; }
+            if (!this.hasDeeds) { return {label: this.packs.length ? 'Open a pack' : 'No land deeds', action: this.packs.length ? 'deeds' : '', disabled: !this.packs.length, hint: this.selectionHint}; }
+            if (!this.deedsReady) { return {label: this.mode === 'fuse' ? 'Pick 5 deeds' : 'Pick your deed', action: 'deeds', hint: this.tab === 'deeds' ? '' : this.selectionHint}; }
+            if (this.missingLayers().length) { return {label: 'Terraform', disabled: true, hint: 'No ' + this.rarity + ' art for ' + this.missingLayers().map((n) => this.layerLabel(n)).join(', ') + ' yet.'}; }
+            if (this.problems.length) { return {label: 'Terraform', disabled: true, hint: this.problems[0]}; }
+            return {label: 'Terraform island', action: 'review', hint: ''};
+        },
+        ctaClick() {
+            const c = this.cta;
+            if (c.disabled) { return; }
+            if (c.action === 'connect') { this.connect(); } else if (c.action === 'reload') { this.loadInventory(); } else if (c.action === 'review') { this.openReview(); } else if (c.action === 'deeds') {
+                this.setTab('deeds');
+                this.$nextTick(() => { const g = this.$refs.grid; if (g && g.scrollIntoView) { g.scrollIntoView({block: 'nearest', behavior: 'smooth'}); } });
+            }
+        },
+        get stepState() {
+            return {
+                deeds: this.deedsReady || this.step === 'done' ? 'done' : (this.tab === 'deeds' && !this.review ? 'active' : ''),
+                design: this.review || this.step === 'done' ? 'done' : (this.tab !== 'deeds' ? 'active' : ''),
+                terraform: this.step === 'done' ? 'done' : (this.review ? 'active' : ''),
+            };
+        },
+        get burnText() {
+            if (!this.fromDeeds) { return 'Pick a land deed to terraform \u2022 '; }
+            const n = this.selected.length;
+            if (this.mode === 'fuse' && n < 5) { return 'Fuse 5 ' + this.selectedRarity + ' deeds \u2022 ' + n + ' of 5 picked \u2022 '; }
+            return 'You will burn ' + (n === 1 ? 'a ' + this.selectedRarity + ' deed' : n + ' ' + this.selectedRarity + ' deeds') + ' \u2022 ';
+        },
+
+        // ---------------- review + sign (dialog)
+        openReview() {
+            if (!this.deedsReady || this.problems.length || !this.user || this.dapper()) { return; }
+            this._returnFocus = document.activeElement;
+            // snapshot: the dialog keeps showing what is being signed (the inventory reloads after the burn)
+            const deeds = this.selectedDeeds.map((d) => ({id: d.id, rarity: d.rarity, templateId: d.templateId}));
+            this.snap = {
+                rarity: this.rarity, deeds, fused: deeds.length === 5, deedRarity: this.selectedRarity, tint: this.tintValue,
+                parts: this.sceneLayers.map((n) => ({layer: this.layerLabel(n), name: this.layerName(n)})),
+                url: sceneUrl(this.cfg, this.layers, this.tintValue),
+            };
+            this.review = true;
+            this.step = 'review';
             this.understood = false;
+            this.txError = '';
+            this.txStatus = '';
+            document.documentElement.classList.add('isb-modal-open');
             this.checkOnChain();
-            window.scrollTo({top: 0, behavior: 'smooth'});
+            this.$nextTick(() => { const el = this.$refs.reviewClose; if (el) { el.focus(); } });
+        },
+        closeReview() {
+            if (this.step === 'signing') { return; }
+            this.review = false;
+            if (this.step !== 'done') { this.step = 'build'; }
+            document.documentElement.classList.remove('isb-modal-open');
+            const el = this._returnFocus;
+            if (el && el.focus && document.contains(el)) { el.focus({preventScroll: true}); }
+        },
+        onEscape() { if (this.review) { this.closeReview(); } },
+        trapFocus(e) {
+            const card = this.$refs.reviewCard;
+            if (!card) { return; }
+            const els = [...card.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])')].filter((el) => el.offsetParent !== null);
+            if (!els.length) { e.preventDefault(); return; }
+            const first = els[0], last = els[els.length - 1];
+            if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); } else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
         },
         async checkOnChain() {
             this.chainCheck = 'checking';
@@ -675,35 +950,39 @@ if (CFG) {
                     arg(this.tintValue, t.Optional(t.String)),
                 ]});
                 this.chainCheck = 'ok';
-            } catch (e) { this.chainCheck = txErrorText(e); }
+            } catch (e) { this.chainCheck = friendlyChainError(txErrorText(e)) || 'The island contract can\u2019t check this scene right now.'; }
         },
-        layerName(name) { const id = this.layers[name]; return id && this.infos[id] ? this.infos[id].name : 'none'; },
-
-        // ---------------- sign
-        get canSign() { return this.step === 'confirm' && this.understood && this.chainCheck === 'ok' && !this.dapper() && !!this.user; },
+        layerName(name) { const id = this.layers[name]; return id && this.infos[id] ? this.infos[id].name : 'None'; },
+        get canSign() { return this.step === 'review' && this.understood && this.chainCheck === 'ok' && this.deedsReady && !this.dapper() && !!this.user; },
         async terraform() {
             if (!this.canSign) { return; }
             this.step = 'signing';
             this.txStatus = 'Confirm the transaction in your wallet\u2026';
-            this.error = '';
+            this.txError = '';
             try {
                 this.txId = await islandTerraformTx(this.selected, this.layers, this.tintValue);
                 this.txStatus = 'Terraforming\u2026 waiting for the Flow blockchain to seal the transaction.';
                 const tx = await sealed(this.txId);
                 const ev = (tx.events || []).find((e) => /\.FlovatarAsteroidIsland\.Terraformed$/.test(e.type));
                 this.islandId = ev ? Number(ev.data.id) : null;
-                this.txStatus = 'Your island is ready.';
-                this.step = 'done';
-                if (this.islandId) {
-                    await refreshIsland(this.islandId, this.user.addr);
-                    setTimeout(() => { window.location.href = '/islands/' + this.islandId + '?new=1'; }, 1200);
-                }
-            } catch (e) {
-                this.step = 'confirm';
                 this.txStatus = '';
-                this.error = this.dapper() ? 'Dapper Wallet can\u2019t sign this transaction.' : txErrorText(e);
+                this.step = 'done';
+                if (this.islandId) { refreshIsland(this.islandId, this.user.addr); }
+                this.loadInventory();
+            } catch (e) {
+                this.step = 'review';
+                this.txStatus = '';
+                this.txError = this.dapper() ? 'Dapper Wallet can\u2019t sign this transaction.' : friendlyChainError(txErrorText(e));
                 this.loadInventory();
             }
+        },
+        startOver() {
+            this.review = false;
+            this.step = 'build';
+            this.islandId = null;
+            this.txId = '';
+            document.documentElement.classList.remove('isb-modal-open');
+            this.setTab('deeds');
         },
     }));
 

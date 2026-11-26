@@ -4,7 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {composeScene, sceneBytes, islandRarity, validateScene, slotList, defaultAnchors, residentTransform, httpUrl, designation, normalizeAddress} from '../../resources/js/islands/compose.mjs';
+import {composeScene, sceneBytes, islandRarity, validateScene, withinBudget, friendlyChainError, OVER_BUDGET_MESSAGE, slotList, defaultAnchors, residentTransform, httpUrl, designation, normalizeAddress} from '../../resources/js/islands/compose.mjs';
 
 const fx = JSON.parse(fs.readFileSync(new URL('../Fixtures/islands-scene-1.json', import.meta.url), 'utf8'));
 
@@ -39,7 +39,13 @@ test('budget + validation mirror validateScene', () => {
         3: {id: 3, layer: 'base', rarity: 'epic', enabled: true, svgLength: 1, svgFrontLength: 0}};
     assert.deepEqual(validateScene(cfg, 'common', {base: 1}, null, infos), []);
     assert.equal(sceneBytes({base: 1, sky: 2}, infos), 11);
-    assert.ok(validateScene(cfg, 'common', {base: 1, sky: 2}, null, infos).some((e) => /budget/.test(e)));
+    // over budget: still rejected, but with a generic message (no size / byte figure ever reaches the user)
+    const over = validateScene(cfg, 'common', {base: 1, sky: 2}, null, infos);
+    assert.deepEqual(over, [OVER_BUDGET_MESSAGE]);
+    assert.ok(!/\d|budget|KB|byte/i.test(over[0]));
+    assert.equal(withinBudget(cfg, 'common', {base: 1, sky: 2}, infos), false);
+    assert.equal(withinBudget(cfg, 'common', {base: 1}, infos), true);
+    assert.equal(withinBudget({}, 'common', {base: 1, sky: 2}, infos), true);
     assert.ok(validateScene(cfg, 'common', {}, null, infos).some((e) => /base/.test(e)));
     assert.ok(validateScene(cfg, 'common', {base: 3}, null, infos).some((e) => /rarity/.test(e)));
     assert.ok(validateScene(cfg, 'common', {base: 1}, '#112233', infos).some((e) => /Tint/.test(e)));
@@ -80,4 +86,10 @@ test('displayFix declares xmlns:xlink only when needed', async () => {
     assert.equal(displayFix(displayFix(a)), displayFix(a));
     const b = '<svg xmlns="http://www.w3.org/2000/svg"><g/></svg>';
     assert.equal(displayFix(b), b);
+});
+
+test('chain errors shown to users never carry size figures', () => {
+    assert.equal(friendlyChainError('Scene exceeds the size budget for epic (212000 > 200000)'), OVER_BUDGET_MESSAGE);
+    assert.equal(friendlyChainError('Template rarity doesn\u2019t match the island (rarity lock)'), 'Template rarity doesn\u2019t match the island (rarity lock)');
+    assert.ok(!/KB|bytes/.test(friendlyChainError('Something odd: 120 KB of 300 KB, 4000 bytes')));
 });

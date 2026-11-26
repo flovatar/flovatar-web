@@ -122,6 +122,7 @@ class IslandsController extends Controller
                 'id' => (int) $t->flow_id, 'layer' => $t->layer, 'rarity' => $t->rarity, 'name' => $t->name,
                 'description' => $t->description, 'enabled' => $t->enabled, 'svgLength' => (int) $t->svg_length,
                 'svgFrontLength' => (int) $t->svg_front_length, 'hash' => substr((string) $t->svg_hash, 0, 12),
+                'usage' => (int) $t->usage,
                 'anchors' => (object) IslandScene::parseAnchors((array) $t->metadata), 'metadata' => (object) (array) $t->metadata,
             ])->values()->all());
         $cfg['templates'] = $templates;
