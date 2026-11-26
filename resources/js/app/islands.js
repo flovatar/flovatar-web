@@ -547,6 +547,7 @@ if (CFG) {
     // get "You can change the … any time." (built in layerNote, never hardcoded per layer); the display explains itself
     const LAYER_NOTES = {
         display: 'Your island\u2019s display shows your other NFTs: every NFT you place on its display slots plays on this screen. Visitors tap it to browse them.',
+        fub: 'Reserve a FUB Lot for your future FUB. The FUB building is added later, after your island is minted, when you publish a FUB.',
     };
     const TINTS = ['#EF2AC1', '#91E3F9', '#FFEE50', '#52F618', '#FF6E03', '#AED7F7', '#8A4BFF', '#E8384F', '#2FD4B1'];
     // chance that Randomize fills an optional layer
