@@ -787,7 +787,8 @@ if (CFG) {
         thumb(name, id) { return this.thumbs[this.thumbKey(name, id)] || ''; },
         async renderThumbs() {
             if (!this.cfg) { return; }
-            const token = this._thumbToken = {};
+            // a number, not an object: Alpine wraps stored objects in proxies, so an identity check would never match
+            const token = this._thumbToken = (this._thumbToken || 0) + 1;
             const jobs = [];
             // selected part of every layer (category tabs + info card)
             for (const name of this.sceneLayers) {
