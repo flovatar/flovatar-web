@@ -260,7 +260,7 @@
                             <ul class="isb-burn-deeds">
                                 <template x-for="d in snap.deeds" :key="d.id"><li><img :src="'/api/image/template/' + d.templateId" alt=""><span x-text="'#' + d.id"></span></li></template>
                             </ul>
-                            <p>They are destroyed for good when the island is created. This can't be undone, and the island's scene can't be changed later.</p>
+                            <p><span x-text="snap.deeds.length === 1 ? 'It is' : 'They are'"></span> destroyed for good when the island is created. This can't be undone, and the island's scene can't be changed later.</p>
                             <label><input type="checkbox" x-model="understood" data-islands="understood" :disabled="step === 'signing'">
                                 <span>I understand: burn <span x-text="snap.deeds.length"></span> land deed<span x-show="snap.deeds.length > 1">s</span> and create this island.</span></label>
                         </div>
