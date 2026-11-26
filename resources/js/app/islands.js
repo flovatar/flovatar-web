@@ -1440,9 +1440,22 @@ if (CFG) {
             };
             if (touch) { timer = setTimeout(() => { armed = true; begin(start.x, start.y); }, 280); }
             const blockScroll = (ev) => { if (moved && ev.cancelable) { ev.preventDefault(); } };
+            let scrolling = false;
+            let lastY = start.y;
             const move = (ev) => {
                 const far = Math.hypot(ev.clientX - start.x, ev.clientY - start.y) >= 7;
-                if (!armed) { if (far) { clearTimeout(timer); cleanup(); } return; }
+                if (!armed) {
+                    // items are touch-action: none (so a long-press drag can't be stolen by a pan): a swipe that starts
+                    // before the long-press scrolls the collection grid by hand
+                    if (far || scrolling) {
+                        clearTimeout(timer);
+                        scrolling = true;
+                        const g = el.closest('.isp-col-grid');
+                        if (g) { g.scrollTop += lastY - ev.clientY; }
+                        lastY = ev.clientY;
+                    }
+                    return;
+                }
                 if (!moved) { if (!far) { return; } begin(ev.clientX, ev.clientY); }
                 ev.preventDefault();
                 this.drag = {...this.drag, x: ev.clientX, y: ev.clientY};
@@ -1465,6 +1478,7 @@ if (CFG) {
             const cancel = () => { cleanup(); this.drag = null; this.dropHover = ''; };
             const up = (ev) => {
                 cleanup();
+                if (scrolling) { this._suppressClick = Date.now(); return; }
                 if (!moved) { return; }
                 const t = document.elementFromPoint(ev.clientX, ev.clientY);
                 const d = t && t.closest('[data-drop]');
