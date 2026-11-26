@@ -253,4 +253,14 @@ class IslandsTest extends TestCase
 
         return $island;
     }
+
+    public function test_display_fix_declares_xlink_namespace(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><use xlink:href="#a"/></svg>';
+        $fixed = \App\Services\Islands\IslandScene::displayFix($svg);
+        $this->assertStringStartsWith('<svg xmlns:xlink="http://www.w3.org/1999/xlink" xmlns=', $fixed);
+        $this->assertSame($fixed, \App\Services\Islands\IslandScene::displayFix($fixed));
+        $plain = '<svg xmlns="http://www.w3.org/2000/svg"><g/></svg>';
+        $this->assertSame($plain, \App\Services\Islands\IslandScene::displayFix($plain));
+    }
 }

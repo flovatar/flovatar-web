@@ -71,7 +71,7 @@ class IslandsController extends Controller
         $hash = $this->scene->fullHash($island);
         $svg = Cache::remember('islands:full:'.$id.':'.$hash, 3600, fn () => $this->scene->full($island, false));
 
-        return response($svg, 200, [
+        return response(IslandScene::displayFix($svg), 200, [
             'Content-Type' => 'image/svg+xml',
             'Cache-Control' => 'public, max-age=60, s-maxage=60',
             'ETag' => '"'.$hash.'"',
@@ -86,7 +86,7 @@ class IslandsController extends Controller
         $island = Island::where('flow_id', $id)->firstOrFail();
         abort_unless($island->layers, 404);
 
-        return response($this->scene->scene((array) $island->layers, $island->tint, (int) $island->flow_id), 200, [
+        return response(IslandScene::displayFix($this->scene->scene((array) $island->layers, $island->tint, (int) $island->flow_id)), 200, [
             'Content-Type' => 'image/svg+xml',
             'Cache-Control' => 'public, max-age=300',
             'X-Content-Type-Options' => 'nosniff',

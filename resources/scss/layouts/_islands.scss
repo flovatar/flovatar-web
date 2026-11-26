@@ -73,6 +73,7 @@ $isl-orange: #FF6E03;
 // belt: a horizontally scrolling asteroid belt on wide screens, a grid on phones
 .isl-belt-track {
   display: grid; grid-auto-flow: column; grid-auto-columns: 220px; gap: 18px; overflow-x: auto; padding: 18px 4px 26px; scroll-snap-type: x mandatory;
+  scrollbar-width: thin; scrollbar-color: rgba(174, 215, 247, .35) transparent;
   background: radial-gradient(ellipse at 50% 60%, rgba(174, 215, 247, .12), transparent 70%);
   @include media('<tablet') { grid-auto-flow: row; grid-template-columns: repeat(2, 1fr); grid-auto-columns: auto; overflow: visible; }
 }

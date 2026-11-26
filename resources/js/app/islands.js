@@ -18,7 +18,7 @@
 import Alpine from 'alpinejs';
 import * as fcl from '@onflow/fcl';
 import {WALLET_CADENCE, PREVIEW_CADENCE, RESIDENTS_CADENCE, WALLET_NFTS_CADENCE, DISPLAYS_CADENCE, OWNERSHIP_CADENCE} from '../islands/cadence.mjs';
-import {composeScene, sceneBytes, islandRarity, validateScene, isHexColor, slotList, httpUrl, designation, normalizeAddress, RARITIES} from '../islands/compose.mjs';
+import {composeScene, displayFix, sceneBytes, islandRarity, validateScene, isHexColor, slotList, httpUrl, designation, normalizeAddress, RARITIES} from '../islands/compose.mjs';
 import {islandTerraformTx} from '../flow/island-terraform.tx';
 import {islandSetResidentsTx} from '../flow/island-set-residents.tx';
 import {islandClearResidentsTx} from '../flow/island-clear-residents.tx';
@@ -326,7 +326,7 @@ if (CFG) {
                 for (const t of await Promise.all(ids.map((id) => loadTemplate(id)))) { tpls[t.id] = t; }
                 const svg = composeScene(this.cfg, this.layers, this.tintValue, null, tpls);
                 if (this.preview) { URL.revokeObjectURL(this.preview); }
-                this.preview = URL.createObjectURL(new Blob([svg], {type: 'image/svg+xml'}));
+                this.preview = URL.createObjectURL(new Blob([displayFix(svg)], {type: 'image/svg+xml'}));
             } catch (e) { console.log(e); }
             this.previewBusy = false;
         },
