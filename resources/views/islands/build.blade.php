@@ -97,6 +97,8 @@
             </div>
 
             <div class="isb-grid-wrap">
+                {{-- phones: the info card is hidden on part tabs, so the layer note sits above the part strip --}}
+                <p class="isb-info-note isb-mnote" :class="'isb-note-' + tab" x-show="isLayerTab() && layerNote(tab)" x-text="isLayerTab() ? layerNote(tab) : ''" x-cloak></p>
                 <div class="isb-grid" x-ref="grid" data-islands="grid">
                     {{-- deeds --}}
                     <template x-if="tab === 'deeds'">
