@@ -227,7 +227,10 @@ class IslandsController extends Controller
             'tx' => $island->terraform_tx, 'premiumSlots' => $n, 'slotModel' => $model,
             'slots' => Islands::slots($island->rarity, $n, $model), 'residentsList' => $residents,
             'anchors' => $this->scene->anchors($island->rarity, (array) $island->layers, $templates),
-            'layerNames' => collect($templates)->map(fn ($t) => $t->name)->all(),
+            // layer => template name, in scene order (templates() is keyed by template id)
+            'layerNames' => (object) collect((array) $island->layers)
+                ->sortBy(fn ($tid, $layer) => array_search($layer, ['sky', 'base', 'structure', 'fub', 'foreground', 'fx'], true))
+                ->map(fn ($tid) => isset($templates[$tid]) ? $templates[$tid]->name : '#'.$tid)->all(),
             'full' => '/islands/'.$island->flow_id.'/full.svg?h='.$this->scene->fullHash($island),
             'png' => ItemImages::url('island', $island->flow_id, 'full.png', false),
         ];
