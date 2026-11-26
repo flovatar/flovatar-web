@@ -285,7 +285,7 @@
                         <p>Your island is in orbit<span x-show="islandId">: <b class="isb-designation" x-text="designation(islandId)"></b></span>. Welcome to the Kaax Asteroid Belt.</p>
                         <p class="muted" x-show="txId">Transaction <a :href="explorer(txId)" target="_blank" rel="noopener" class="mono" x-text="short(txId)"></a></p>
                         <div class="isb-modal-actions">
-                            <a x-show="islandId" :href="'/islands/' + islandId + '?new=1'" class="isb-btn isb-btn-cta" data-islands="visit"><span>Go check it out</span></a>
+                            <a x-show="islandId" :href="'/islands/' + islandId + '?new=1' + (user ? '&owner=' + user.addr : '')" class="isb-btn isb-btn-cta" data-islands="visit"><span>Go check it out</span></a>
                             <button type="button" class="isb-btn" @click="startOver()"><span>Terraform another</span></button>
                         </div>
                     </div>
