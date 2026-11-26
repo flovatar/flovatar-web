@@ -51,7 +51,14 @@ class ItemRenderer
                 return null;
             }
             // resvg can't run resident CSS combos: residents are pre-flattened (IslandScene::full($island, true))
-            return ['full' => app(\App\Services\Islands\IslandScene::class)->full($island, true), 'nobg' => null];
+            $scene = app(\App\Services\Islands\IslandScene::class);
+
+            return [
+                'full' => $scene->full($island, true),
+                // islands with a sky layer are a full opaque frame: nobg.png = the same scene without the sky, the
+                // cut-out the WebGL belt floats in space (App\Services\Islands\IslandBelt). No sky -> full.png is it.
+                'nobg' => isset(((array) $island->layers)['sky']) ? $scene->full($island, true, ['sky']) : null,
+            ];
         }
         $model = match ($type) {
             'flovatar' => Flovatar::where('flow_id', $flowId)->first(),
@@ -203,7 +210,7 @@ class ItemRenderer
         $png = $this->rasterizer->png($flat, $size, $height);
         $files['full.png'] = [$png, 'image/png'];
         if ($flatNobg !== null) {
-            $files['nobg.png'] = [$this->rasterizer->png($flatNobg, $size, $size), 'image/png'];
+            $files['nobg.png'] = [$this->rasterizer->png($flatNobg, $size, $type === 'island' ? $height : $size), 'image/png'];
         }
         $this->timings['resvg'] = (int) round((microtime(true) - $t) * 1000);
 

@@ -43,6 +43,10 @@ class Stealth
     /** Lazy JS/CSS bundle per feature (webpack chunk public/fx/<code>.js → storage/app/fx, served by FxAssetController). */
     public const BUNDLES = ['passkey' => 'p', 'dust_market' => 'm', 'swap' => 's', 'quests' => 'q', 'terrakit' => 't', 'islands' => 'i'];
 
+    /** Secondary chunks a feature bundle imports on demand (same gate, never listed in window.__FX): code => feature.
+     *  b = the WebGL belt of /islands (three.js scene, loaded by the islands bundle only on that page). */
+    public const LAZY_CHUNKS = ['b' => 'islands'];
+
     /** Paths owned by a feature: in stealth mode anonymous requests without a stealth cookie get a plain 404 before any
      *  session/throttle middleware runs (StealthRoutes). Request::is() patterns. */
     public const PATHS = [
@@ -154,7 +158,7 @@ class Stealth
     {
         $f = array_search($code, self::BUNDLES, true);
 
-        return $f === false ? null : $f;
+        return $f === false ? (self::LAZY_CHUNKS[$code] ?? null) : $f;
     }
 
     // ------------------------------------------------------------------ gate

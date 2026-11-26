@@ -2,7 +2,8 @@
  * Asteroid Islands (ISLANDS_MODE; KB notes/islands-build.md) — lazy feature bundle "i".
  *
  * Alpine components:
- *   islandsBelt        /islands             belt overview + "My islands" tab (connected wallet)
+ *   islandsBelt        /islands             full-viewport WebGL belt (lazy chunk "b", ../islands/belt/*) with filters, search,
+ *                                           tooltip + modal; island list as fallback / accessible view
  *   islandsBuilder     /islands/build       redeem: wallet inventory (land deeds, TerraKit packs → open), pick 1 deed or fuse 5,
  *                                           build the scene (rarity-locked templates, budget meter, tint), live preview,
  *                                           confirm (deeds are BURNED), sign the terraform tx
@@ -18,7 +19,8 @@
 import Alpine from 'alpinejs';
 import * as fcl from '@onflow/fcl';
 import {WALLET_CADENCE, PREVIEW_CADENCE, RESIDENTS_CADENCE, WALLET_NFTS_CADENCE, DISPLAYS_CADENCE, OWNERSHIP_CADENCE} from '../islands/cadence.mjs';
-import {composeScene, displayFix, sceneBytes, islandRarity, validateScene, isHexColor, slotList, httpUrl, designation, normalizeAddress, RARITIES} from '../islands/compose.mjs';
+import {composeScene, displayFix, sceneBytes, islandRarity, validateScene, isHexColor, slotList, httpUrl, designation, setDesignationPrefix, normalizeAddress, RARITIES} from '../islands/compose.mjs';
+import {islandsFromManifest, demoIslands, parseIslandQuery} from '../islands/belt/orbits.mjs';
 import {islandTerraformTx} from '../flow/island-terraform.tx';
 import {islandSetResidentsTx} from '../flow/island-set-residents.tx';
 import {islandClearResidentsTx} from '../flow/island-clear-residents.tx';
@@ -36,6 +38,19 @@ const templateCache = {};
 
 function setup() {
     if (CFG && CFG.contract) { fcl.config().put('0xIslands', CFG.contract); }
+    if (CFG) { setDesignationPrefix(CFG.designationPrefix); }
+}
+
+/** WebGL probe without keeping a context (the belt scene is a lazy chunk; this decides belt vs list first). */
+function webglLikely() {
+    try {
+        const c = document.createElement('canvas');
+        const gl = window.WebGLRenderingContext && (c.getContext('webgl2') || c.getContext('webgl'));
+        if (!gl) { return false; }
+        const lose = gl.getExtension('WEBGL_lose_context');
+        if (lose) { lose.loseContext(); }
+        return true;
+    } catch (e) { return false; }
 }
 
 async function getJson(url) {
@@ -135,31 +150,344 @@ if (CFG) {
     setup();
 
     // --------------------------------------------------------------------------- /islands
+    // Full-viewport WebGL belt (lazy chunk "b": ../islands/belt/scene.js) + filters / search / tooltip / modal, with
+    // the island list as the fallback (no WebGL, prefers-reduced-motion, ?view=list) and as the accessible view.
+    // The three.js scene and the island array live OUTSIDE Alpine's reactive data (a Proxy around either is slow).
+    let beltScene = null;
+    let beltItems = [];        // frozen island objects (real + ?demo placeholders)
+    let beltTex = null;
+
     Alpine.data('islandsBelt', () => ({
         ...walletMixin(),
-        tab: 'belt',
-        mine: [],
+        view: 'list',            // belt | list
+        ready: false,            // manifest loaded: the Alpine list replaces the server-rendered one
+        loadError: false,
+        canWebgl: false,
+        reduced: false,
+        sceneState: 'idle',      // idle | loading | ready | failed
+        version: 0,              // bumped when beltItems changes
+        total: 0,
+        counts: {common: 0, epic: 0, legendary: 0},
+        rarity: 'all',
+        mineOnly: false,
+        query: '',
+        searchMsg: '',
+        suggestions: [],
+        listLimit: 60,
+        listFocus: null,
+        hoverItem: null,
+        pinItem: null,
+        modal: null,
+        detail: null,
+        detailStatus: 'idle',
+        demo: 0,
+        fps: null,
+        showFps: false,
+        hint: true,
+        touch: false,
+        panelOpen: true,
+        following: false,
         inv: null,
         mineStatus: 'idle',
+        center: (CFG.belt && CFG.belt.center) || '',
+        sector: CFG.sector || 'K313',
+
         init() {
-            if (window.location.hash === '#mine') { this.tab = 'mine'; }
-            this.watchUser(() => this.loadMine());
+            const qs = new URLSearchParams(window.location.search);
+            this.reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+            this.canWebgl = window.__beltGL !== undefined ? !!window.__beltGL : webglLikely();
+            const want = qs.get('view');
+            this.view = want === 'list' || !this.canWebgl ? 'list' : (want === 'belt' || !this.reduced ? 'belt' : 'list');
+            this.showFps = qs.get('fps') === '1';
+            this.touch = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+            this.panelOpen = !(window.matchMedia && window.matchMedia('(max-width: 767px)').matches);
+            if (window.location.hash === '#mine') { this.mineOnly = true; }
+            if (CFG.belt && CFG.belt.demo && qs.has('demo')) {
+                const n = parseInt(qs.get('demo'), 10);
+                this.demo = Math.max(0, Math.min(5000, n > 1 ? n : (n === 0 ? 0 : (CFG.belt.demoDefault || 2000))));
+            }
+            this._focus = parseInt(qs.get('focus'), 10) || null;
+            this.watchUser((u) => { if (u) { this.loadMine(); } else { this.mineOnly = false; this.applyFilter(); } });
+            this.$watch('rarity', () => this.applyFilter());
+            this.$watch('mineOnly', () => this.applyFilter());
+            this.load();
         },
-        showMine() { this.tab = 'mine'; history.replaceState(null, '', '#mine'); if (this.user) { this.loadMine(); } },
+
+        async load() {
+            try {
+                const m = await getJson('/api/islands/belt');
+                setDesignationPrefix(m.prefix);
+                let items = islandsFromManifest(m);
+                beltTex = {grid: m.cell, atlases: m.atlases || {}, sprite: m.sprite};
+                if (this.demo > 0) { items = items.concat(demoIslands(items, this.demo, m.cell.per, m.prefix)); }
+                this.setItems(items);
+                this.ready = true;
+                if (this.view === 'belt') { await this.startScene(); }
+                if (this._focus) { const i = this.find(this._focus); if (i) { this.go(i); } }
+            } catch (e) {
+                console.error(e);
+                this.loadError = true;
+                this.view = 'list';
+            }
+        },
+
+        setItems(items) {
+            beltItems = Object.freeze(items.map((i) => Object.freeze(i)));
+            const c = {common: 0, epic: 0, legendary: 0};
+            for (const i of beltItems) { c[i.rarity]++; }
+            this.counts = c;
+            this.total = beltItems.length;
+            this.version++;
+            if (beltScene) { beltScene.setIslands(beltItems, beltTex); this.applyFilter(); }
+        },
+
+        // ---------------------------------------------------------------- 3D scene
+        async startScene() {
+            if (beltScene) { beltScene.start(); return; }
+            if (this.sceneState === 'loading') { return; }
+            this.sceneState = 'loading';
+            try {
+                const {BeltScene} = await import(/* webpackChunkName: "b" */ '../islands/belt/scene');
+                await this.$nextTick();
+                const low = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || Math.min(window.innerWidth, window.innerHeight) < 600;
+                beltScene = new BeltScene(this.$refs.canvas, {
+                    reducedMotion: this.reduced, low,
+                    onHover: (item, x, y) => this.onHover(item, x, y),
+                    onSelect: (item, e) => this.onSelect(item, e),
+                    onTrack: (s) => this.onTrack(s),
+                    onInteract: () => { this.hint = false; },
+                    onStats: (st) => { if (this.showFps) { this.fps = {...st}; } },
+                    onLost: () => { this.sceneState = 'failed'; this.view = 'list'; },
+                });
+                window.__belt = beltScene; // QA / fps measurements
+                beltScene.setIslands(beltItems, beltTex);
+                this.applyFilter();
+                beltScene.start();
+                this.sceneState = 'ready';
+                document.documentElement.classList.add('belt-3d');
+            } catch (e) {
+                console.error(e);
+                this.sceneState = 'failed';
+                this.view = 'list';
+                document.documentElement.classList.remove('belt-3d');
+            }
+        },
+
+        setView(v) {
+            if (v === this.view) { return; }
+            this.view = v;
+            const u = new URL(window.location.href);
+            u.searchParams.set('view', v);
+            history.replaceState(null, '', u.toString());
+            this.hoverItem = null;
+            if (v === 'belt') {
+                document.documentElement.classList.add('belt-3d');
+                this.$nextTick(() => this.startScene().then(() => beltScene && beltScene.resize()));
+            } else {
+                document.documentElement.classList.remove('belt-3d');
+                if (beltScene) { beltScene.stop(); }
+                this.pinItem = null;
+            }
+        },
+
+        // ---------------------------------------------------------------- filters / list
+        matches(i) {
+            if (this.rarity !== 'all' && i.rarity !== this.rarity) { return false; }
+            if (this.mineOnly && (!this.user || i.owner !== this.user.addr)) { return false; }
+            return true;
+        },
+        filtering() { return this.rarity !== 'all' || this.mineOnly; },
+        applyFilter() {
+            this.listLimit = 60;
+            if (beltScene) { beltScene.setFilter(this.filtering() ? (i) => this.matches(i) : null); }
+            if (this.pinItem && !this.pinItem.center && !this.matches(this.pinItem)) { this.unpin(); }
+        },
+        filtered() { return this.version >= 0 && this.filtering() ? beltItems.filter((i) => this.matches(i)) : beltItems; },
+        listItems() { return this.filtered().slice(0, this.listLimit); },
+        shown() { return this.filtered().length; },
+        mineCount() { return this.version >= 0 && this.user ? beltItems.filter((i) => i.owner === this.user.addr).length : 0; },
+        toggleMine() {
+            this.mineOnly = !this.mineOnly;
+            history.replaceState(null, '', this.mineOnly ? '#mine' : window.location.pathname + window.location.search);
+        },
+        find(id) { return beltItems.find((i) => i.id === id) || null; },
+        image(i) {
+            if (!i) { return ''; }
+            if (i.key && beltTex) { return beltTex.sprite.replace('{id}', i.demo ? i.src : i.id).replace('{key}', i.key); }
+            return '/islands/' + i.id + '/full.svg';
+        },
+        title(i) { return i ? (i.name || (i.demo ? 'Placeholder island' : 'Unnamed island')) : ''; },
+
+        // ---------------------------------------------------------------- search
+        onQuery() {
+            this.searchMsg = '';
+            const q = this.query.trim().toLowerCase();
+            this.suggestions = q.length >= 2 && parseIslandQuery(q) === null
+                ? beltItems.filter((i) => i.name && i.name.toLowerCase().includes(q)).slice(0, 6) : [];
+        },
+        search() {
+            const q = this.query.trim();
+            if (q === '') { return; }
+            const id = parseIslandQuery(q);
+            const hit = id !== null ? this.find(id) : (this.suggestions[0] || beltItems.find((i) => i.name && i.name.toLowerCase().includes(q.toLowerCase())) || null);
+            if (!hit) {
+                this.searchMsg = id !== null ? 'No island ' + designation(id) + ' in the belt yet.' : 'No island with that name. Try a number, e.g. ' + designation(1) + '.';
+                return;
+            }
+            this.go(hit);
+        },
+        /** Fly the camera to an island (3D) or scroll to its card (list). */
+        go(i) {
+            this.suggestions = [];
+            this.searchMsg = '';
+            this.query = i.designation;
+            if (!this.matches(i)) { this.rarity = 'all'; this.mineOnly = false; this.applyFilter(); }
+            if (this.view === 'belt' && beltScene) {
+                this.hint = false;
+                this.following = beltScene.focus(i.id);
+                this.pin(i);
+                if (window.matchMedia && window.matchMedia('(max-width: 767px)').matches) { this.panelOpen = false; }
+                return;
+            }
+            const at = this.filtered().indexOf(i);
+            if (at >= this.listLimit) { this.listLimit = at + 12; }
+            this.listFocus = i.id;
+            this.$nextTick(() => {
+                const el = this.$root.querySelector('[data-island-card="' + i.id + '"]');
+                if (el) { el.scrollIntoView({behavior: this.reduced ? 'auto' : 'smooth', block: 'center'}); el.focus({preventScroll: true}); }
+            });
+        },
+        resetView() {
+            if (beltScene) { beltScene.focus(null); }
+            this.following = false;
+            this.unpin();
+        },
+
+        // ---------------------------------------------------------------- tooltip
+        tipItem() { return this.hoverItem || this.pinItem; },
+        tipPinned() { return !this.hoverItem && !!this.pinItem; },
+        onHover(item, x, y) {
+            if (this.modal) { return; }
+            const cur = this.hoverItem;
+            const same = item ? (cur && (item.center ? !!cur.center : cur.id === item.id && !cur.center)) : !cur;
+            if (!same) {
+                this.hoverItem = item || null;
+                this.syncHighlight();
+                if (!item && this.pinItem && this.pinItem.center && this._pinAt) { this.placeTip(this._pinAt.x + 14, this._pinAt.y + 14, this._pinAt.x - 14); }
+            }
+            if (item) { this.placeTip(x + 16, y + 18, x - 16); }
+        },
+        onSelect(item, e) {
+            this.hint = false;
+            if (!item) { this.unpin(); return; }
+            if (item.center) { this.hoverItem = null; this.pinItem = item; this._pinAt = {x: e.x, y: e.y}; this.syncHighlight(); this.$nextTick(() => this.placeTip(e.x + 14, e.y + 14, e.x - 14)); return; }
+            if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+                // first tap = tooltip + highlight, second tap on the same island = details
+                if (this.pinItem && this.pinItem.id === item.id) { this.openModal(item); } else { this.pin(item); }
+                return;
+            }
+            this.openModal(item);
+        },
+        pin(i) { this.hoverItem = null; this.pinItem = i; this.syncHighlight(); },
+        unpin() { this.pinItem = null; this.syncHighlight(); },
+        syncHighlight() {
+            const t = this.tipItem();
+            if (beltScene) { beltScene.setHighlight(t && !t.center ? t.id : null); }
+        },
+        /** Scene callback, every frame while an island is highlighted: keep the pinned tooltip above it. */
+        onTrack(s) {
+            if (this.hoverItem || !this.pinItem || this.pinItem.center) { return; }
+            const tip = this.$refs.tip;
+            if (!tip) { return; }
+            tip.style.visibility = s.visible ? 'visible' : 'hidden';
+            const w = tip.offsetWidth, h = tip.offsetHeight, r = this.$refs.stage.getBoundingClientRect();
+            let x = s.x - r.left - w / 2, y = s.y - r.top - s.h * 0.34 - h - 12;
+            if (y < 70) { y = s.y - r.top + s.h * 0.5 + 12; }
+            x = Math.max(8, Math.min(r.width - w - 8, x));
+            y = Math.max(8, Math.min(r.height - h - 8, y));
+            tip.style.transform = 'translate3d(' + Math.round(x) + 'px,' + Math.round(y) + 'px,0)';
+        },
+        placeTip(x, y, flipX) {
+            const tip = this.$refs.tip;
+            if (!tip) { return; }
+            const r = this.$refs.stage.getBoundingClientRect();
+            const w = tip.offsetWidth || 220, h = tip.offsetHeight || 80;
+            let tx = x - r.left, ty = y - r.top;
+            if (tx + w > r.width - 8) { tx = flipX - r.left - w; }
+            if (ty + h > r.height - 8) { ty = y - r.top - h - 36; }
+            tip.style.visibility = 'visible';
+            tip.style.transform = 'translate3d(' + Math.round(Math.max(8, tx)) + 'px,' + Math.round(Math.max(8, ty)) + 'px,0)';
+        },
+
+        // ---------------------------------------------------------------- modal
+        async openModal(i) {
+            if (!i || i.center) { return; }
+            this._returnFocus = document.activeElement;
+            this.hoverItem = null;
+            this.modal = i;
+            this.detail = null;
+            this.detailStatus = i.demo ? 'demo' : 'loading';
+            document.documentElement.classList.add('belt-modal-open');
+            this.$nextTick(() => { const b = this.$refs.modalClose; if (b) { b.focus(); } });
+            if (i.demo) { return; }
+            try {
+                const d = await getJson('/api/islands/' + i.id);
+                if (this.modal === i) { this.detail = d; this.detailStatus = 'done'; }
+            } catch (e) { if (this.modal === i) { this.detailStatus = 'error'; } }
+        },
+        closeModal() {
+            if (!this.modal) { return; }
+            this.modal = null;
+            document.documentElement.classList.remove('belt-modal-open');
+            const el = this._returnFocus;
+            if (el && el.focus && document.contains(el)) { el.focus({preventScroll: true}); }
+        },
+        /** Keep Tab inside the dialog. */
+        trapFocus(e) {
+            const els = [...this.$refs.modalCard.querySelectorAll('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])')].filter((el) => el.offsetParent !== null);
+            if (!els.length) { e.preventDefault(); return; }
+            const first = els[0], last = els[els.length - 1];
+            if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); } else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        },
+        flyFromModal() { const i = this.modal; this.closeModal(); if (i) { if (this.view !== 'belt') { this.setView('belt'); } this.$nextTick(() => this.go(i)); } },
+        onEscape() {
+            if (this.modal) { this.closeModal(); } else if (this.suggestions.length) { this.suggestions = []; } else if (this.pinItem) { this.unpin(); } else if (this.following) { this.resetView(); }
+        },
+        premiumResidents() { return this.detail ? (this.detail.residentsList || []).filter((r) => r.premium && r.valid && r.slot !== 'caretaker') : []; },
+        standardCount() { return this.detail ? (this.detail.residentsList || []).filter((r) => !r.premium && r.valid && r.slot !== 'caretaker').length : 0; },
+        residentThumb(r) {
+            if (r.family === 'Flovatar') { return '/api/image/r/flovatar/' + r.id + '/thumb.jpg'; }
+            if (r.family === 'Flobot') { return '/api/image/r/flobot/' + r.id + '/thumb.jpg'; }
+            if (r.family === 'FlovatarDustCollectible') { return '/api/image/r/collectible/' + r.id + '/thumb.jpg'; }
+            return '';
+        },
+        familyLabel(r) { return (CFG.families && CFG.families[r.family] && CFG.families[r.family].label) || 'NFT'; },
+        terraformed() {
+            if (!this.detail || !this.detail.terraformedAt) { return ''; }
+            const d = new Date(this.detail.terraformedAt);
+            return isNaN(d) ? '' : d.toLocaleDateString(undefined, {year: 'numeric', month: 'short', day: 'numeric'});
+        },
+
+        // ---------------------------------------------------------------- my islands (connected wallet)
         async loadMine() {
             if (!this.user || this.mineStatus === 'loading') { return; }
             this.mineStatus = 'loading';
             try {
-                const [list, inv] = await Promise.all([getJson('/api/islands?owner=' + this.user.addr), readInventory(this.user.addr)]);
-                this.mine = list.islands || [];
+                const inv = await readInventory(this.user.addr);
                 this.inv = inv;
-                // freshly terraformed islands the indexer hasn't seen yet
+                // freshly terraformed islands the indexer hasn't seen yet: read them from chain and add them to the belt
+                const fresh = [];
                 for (const id of (inv.islands || []).map(Number)) {
-                    if (!this.mine.find((i) => i.id === id)) {
+                    if (!this.find(id)) {
                         const d = await refreshIsland(id, this.user.addr);
-                        if (d) { this.mine.push(d); }
+                        if (d) {
+                            const r = Math.max(0, RARITIES.indexOf(d.rarity));
+                            fresh.push({id: d.id, r, rarity: d.rarity, name: d.rawName || '', residents: d.residents, capacity: d.capacity, owner: d.owner, updated: 0,
+                                hasCell: false, key: '', page: '_', slot: 0, designation: d.designation, url: d.url, demo: false});
+                        }
                     }
                 }
+                if (fresh.length) { this.setItems([...beltItems.filter((i) => !i.demo), ...fresh, ...beltItems.filter((i) => i.demo)]); }
                 this.mineStatus = 'done';
             } catch (e) { console.log(e); this.mineStatus = 'error'; }
         },

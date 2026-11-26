@@ -7,7 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * Asteroid Island (FlovatarAsteroidIsland.NFT), indexed from chain events (App\Services\Islands\IslandEventProcessor).
- * flow_id = on-chain serial; designation K-334/####. full_svg = the composed scene with premium residents embedded
+ * flow_id = on-chain serial; designation = prefix + 4 digits, e.g. K313/0001
+ * (prefix = contract setting designationPrefix, App\Support\Islands::designationPrefix()). full_svg = the composed scene with premium residents embedded
  * (App\Services\Islands\IslandScene) — the input of the static renderer (ItemRenderer type "island").
  */
 class Island extends Model

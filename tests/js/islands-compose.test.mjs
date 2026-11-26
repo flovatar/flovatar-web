@@ -69,7 +69,7 @@ test('resident placement keeps the foot point on the anchor', () => {
 test('misc helpers', () => {
     assert.equal(httpUrl('ipfs://Qm123/x.png'), 'https://ipfs.io/ipfs/Qm123/x.png');
     assert.equal(httpUrl('javascript:alert(1)'), '');
-    assert.equal(designation(7), 'K-334/0007');
+    assert.equal(designation(7), 'K313/0007');
     assert.equal(normalizeAddress('2538515561c0c431'), '0x2538515561c0c431');
 });
 
