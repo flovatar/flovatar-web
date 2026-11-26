@@ -15,7 +15,7 @@
  * rotation slow down.
  */
 import {
-    AdditiveBlending, BackSide, BufferAttribute, BufferGeometry, CanvasTexture, Color, ConeGeometry, DoubleSide, DynamicDrawUsage, FrontSide, Group,
+    AdditiveBlending, BackSide, BufferAttribute, BufferGeometry, CanvasTexture, Color, ConeGeometry, DynamicDrawUsage, FrontSide, Group,
     InstancedBufferAttribute, InstancedBufferGeometry, LinearFilter, LinearMipmapLinearFilter, LineBasicMaterial, LineLoop, Matrix4,
     Mesh, MeshBasicMaterial, OrthographicCamera, PerspectiveCamera, PlaneGeometry, Points, Scene, ShaderMaterial, SphereGeometry,
     Texture, Vector3, Vector4, WebGLRenderer, WebGLRenderTarget,
@@ -103,6 +103,11 @@ export class BeltScene {
         this._buildControls();
         this._bind();
         this.resize();
+        // Link every program now, while the page still shows its loading state. Bolts, spire tips and the orbit line start
+        // hidden and would otherwise be compiled on first use: a hitch in the middle of the animation.
+        const c0 = performance.now();
+        renderer.compile(this.scene, this.camera);
+        this.compileMs = Math.round(performance.now() - c0);
         this._nextStrike = 0.6;
         this._strong = [];
     }
@@ -218,13 +223,15 @@ export class BeltScene {
             g.setAttribute('aPrev', mk(3));
             g.setAttribute('aNext', mk(3));
             g.setAttribute('aSide', mk(2));
-            g.setIndex(new BufferAttribute(new Uint16Array(MAXP * 6), 1));
+            // Ribbon triangles face either way, depending on the bolt's direction on screen, so every segment is indexed
+            // in both windings: exactly one of the two is front-facing. (A DoubleSide transparent material would make
+            // three draw it in two passes and compile two more programs the first time a bolt shows: a hitch.)
+            g.setIndex(new BufferAttribute(new Uint16Array(MAXP * 12), 1));
             g.index.setUsage(DynamicDrawUsage);
             g.setDrawRange(0, 0);
             const power = {value: 0};
             const m = new Mesh(g, new ShaderMaterial({
-                // (ribbon triangles face either way, depending on the bolt's direction on screen)
-                vertexShader: GL.BOLT_VERT, fragmentShader: GL.BOLT_FRAG, transparent: true, blending: AdditiveBlending, depthWrite: false, side: DoubleSide,
+                vertexShader: GL.BOLT_VERT, fragmentShader: GL.BOLT_FRAG, transparent: true, blending: AdditiveBlending, depthWrite: false,
                 uniforms: {uViewport: this.uViewport, uWidth: {value: 4}, uPower: power},
             }));
             m.frustumCulled = false;
@@ -818,7 +825,7 @@ export class BeltScene {
                     side.set([sd, (s === 0 ? 0 : 0.45) + (k / (pts.length - 1)) * (s === 0 ? 1 : 0.55)], v * 2);
                     v++;
                 }
-                if (k > 0) { const o = v - 4; idx.set([o, o + 1, o + 2, o + 1, o + 3, o + 2], ii); ii += 6; }
+                if (k > 0) { const o = v - 4; idx.set([o, o + 1, o + 2, o + 1, o + 3, o + 2, o + 2, o + 1, o, o + 2, o + 3, o + 1], ii); ii += 12; }
             }
         }
         for (const k of ['position', 'aPrev', 'aNext', 'aSide']) { g.attributes[k].needsUpdate = true; }
