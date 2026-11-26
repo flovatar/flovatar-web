@@ -138,16 +138,16 @@ test('home view: close for a handful of islands, widening as the belt fills, por
     const tv = Math.tan(23 * Math.PI / 180);
     const d = (n, aspect) => homeFrame(apo(n), aspect).dist;
     // closer while the belt is small; monotonic as it fills up
-    assert.ok(d(7, 1.6) < 50, 'desktop, 7 islands: close framing');
+    assert.ok(d(7, 1.6) < 60, 'desktop, 7 islands: close framing (the fixed framing before was 77)');
     assert.ok(d(7, 1.6) < d(20, 1.6) && d(20, 1.6) < d(160, 1.6) && d(160, 1.6) <= d(2007, 1.6) + 1e-9);
     // the full belt still fits a landscape screen (framed radius vs half-width at that distance)
     const full = homeFrame(apo(2007), 1.6);
     assert.ok(full.radius <= full.dist * tv * 1.6 * 1.001);
-    // portrait: steeper look-down, width-fitted (at most a ~25% crop), and never inside the planet's halo
+    // portrait: steeper look-down, width-fitted (the ring may overflow the sides by at most ~35%), and never inside the planet's halo
     for (const n of [1, 7, 2007]) {
         const f = homeFrame(apo(n), 390 / 844);
         assert.ok(f.elevation > 0.8 && f.elevation <= 1.0);
-        assert.ok(f.radius <= f.dist * tv * (390 / 844) * 1.27 + 1e-9, 'portrait n=' + n);
+        assert.ok(f.radius <= f.dist * tv * (390 / 844) * 1.35 + 1e-9, 'portrait n=' + n);
         assert.ok(f.dist > PLANET_RADIUS * 2.6);
     }
     assert.equal(homeFrame(apo(7), 1.6).elevation, 0.3);

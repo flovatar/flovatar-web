@@ -18,7 +18,7 @@ $isb-orange: #FF6E03;
 $isb-common: #F5F5F5;
 $isb-epic: #FFEE50;
 $isb-legendary: #EB3CF2;
-$isb-h: clamp(540px, calc(100vh - 176px), 860px);
+$isb-h: clamp(540px, calc(100vh - 190px), 860px);
 $isb-tools: 72px;
 
 html.isb-modal-open { overflow: hidden; }
@@ -26,11 +26,11 @@ html.isb-modal-open { overflow: hidden; }
 .isb {
   max-width: 1500px;
   margin: 0 auto;
-  padding: 100px 24px 48px;
+  padding: 6px 24px 48px;
   color: #fff;
   font-size: 16px;
   line-height: 1.45;
-  @include media('<desktop') { padding: 78px 8px 28px; }
+  @include media('<desktop') { padding: 2px 8px 28px; }
 
   [x-cloak] { display: none !important; }
   .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
@@ -135,7 +135,7 @@ html.isb-modal-open { overflow: hidden; }
   height: 78px;
   img { max-width: 100%; max-height: 78px; object-fit: contain; }
   svg { width: 46px; height: 46px; color: $isb-ink; }
-  @include media('<desktop') { height: 44px; img { max-height: 44px; } svg { width: 30px; height: 30px; } }
+  @include media('<desktop') { width: 100%; height: 44px; img { width: auto; height: 44px; max-height: 44px; } svg { width: 30px; height: 30px; } }
 }
 .isb-cat-badge { position: absolute; top: 6px; right: 6px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: $isb-pink; color: #fff; font-size: 13px; font-weight: 700; line-height: 22px; text-align: center; }
 
@@ -269,7 +269,9 @@ html.isb-modal-open { overflow: hidden; }
 .isb-tints .isb-card { align-items: center; padding: 14px 6px 10px; }
 .isb-tint-dot { display: block; width: 64%; aspect-ratio: 1; border-radius: 50%; box-shadow: inset 0 0 0 4px rgba(255, 255, 255, .7), 0 0 0 2px rgba(26, 30, 45, .2);
   &.none { background: repeating-linear-gradient(45deg, #fff 0 6px, #e4e1ef 6px 12px); } }
-.isb-tint-custom { input { width: 64%; aspect-ratio: 1; height: auto; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; } }
+.isb-tints { @include media('>=desktop') { grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); } }
+.isb-tint-custom { input { width: 64%; aspect-ratio: 1; height: auto; padding: 0; border: 0; border-radius: 50%; background: conic-gradient(#ef2ac1, #ffee50, #52f618, #91e3f9, #8a4bff, #ef2ac1); cursor: pointer; -webkit-appearance: none; appearance: none; box-shadow: inset 0 0 0 4px rgba(255, 255, 255, .7), 0 0 0 2px rgba(26, 30, 45, .2);
+  &::-webkit-color-swatch-wrapper { padding: 0; } &::-webkit-color-swatch { border: 0; border-radius: 50%; opacity: 0; } &::-moz-color-swatch { border: 0; border-radius: 50%; opacity: 0; } } }
 .isb-swatch { display: inline-block; width: 20px; height: 20px; border-radius: 4px; vertical-align: middle; box-shadow: 0 0 0 2px #fff, 0 0 0 3px rgba(26, 30, 45, .3);
   &.none { background: repeating-linear-gradient(45deg, #fff 0 4px, #e4e1ef 4px 8px); } }
 
@@ -289,8 +291,10 @@ html.isb-modal-open { overflow: hidden; }
   overflow: hidden;
   border-radius: 3px;
   background: radial-gradient(circle at 50% 42%, #3b2a7c, #180830 72%);
-  img { display: block; width: 100%; height: 100%; object-fit: contain; transition: opacity .2s; }
-  &.busy img { opacity: .85; }
+  > img { position: relative; display: block; width: 100%; height: 100%; object-fit: contain; transition: opacity .2s; }
+  // letterbox filler: the same scene, blurred, behind the 3:4 art (no bands when the stage isn't exactly 3:4)
+  > .isb-stage-bg { position: absolute; inset: -24px; width: calc(100% + 48px); height: calc(100% + 48px); object-fit: cover; filter: blur(22px) brightness(.55) saturate(1.2); transform: scale(1.1); }
+  &.busy > img:not(.isb-stage-bg) { opacity: .85; }
   @include media('<desktop') { flex: none; height: min(46vh, 112vw); }
 }
 .isb-rarity-badge {
@@ -406,7 +410,8 @@ html.isb-modal-open { overflow: hidden; }
 .isb-meter { padding: 4px 8px; font-size: 12px; opacity: .8;
   .isb-meter-bar { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .12); overflow: hidden; span { display: block; height: 100%; background: $isb-sel; } }
   &.near .isb-meter-bar span { background: $isb-yellow; } &.over .isb-meter-bar span { background: $isb-orange; } }
-.isb-wrap > .isb-machine > .isb-notice { margin: 0; }
+.isb-toast { position: absolute; left: 8px; right: 128px; bottom: 10px; z-index: 2; margin: 0; padding: 8px 12px; border-radius: 4px; background: rgba(15, 7, 36, .88); color: #fff; font-size: 14px; line-height: 1.3; box-shadow: 0 4px 16px rgba(0, 0, 0, .4);
+  @include media('<desktop') { right: 104px; font-size: 13px; } }
 
 // ------------------------------------------------------------------ review dialog
 .isb-modal {

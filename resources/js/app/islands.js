@@ -590,6 +590,7 @@ if (CFG) {
                 this.prefetch(r);
             });
             this.$watch('tab', () => this.renderThumbs());
+            this.$watch('notice', (n) => { clearTimeout(this._noticeTimer); if (n) { this._noticeTimer = setTimeout(() => { this.notice = ''; }, 7000); } });
             this.watchUser((u) => { if (u) { this.loadInventory(); } else { this.inv = null; this.selected = []; this.status = 'idle'; } });
         },
 
