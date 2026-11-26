@@ -288,7 +288,7 @@
                             <div class="wrap">
                                 <span class="time">Sep 2022</span>
                                 <h4>TerraKit pre-sale</h4>
-                                <p>Flobots, Asteroid land deeds, and pre-ownership rights to the Flovatar Universe Buidler - FUB.</p>
+                                <p>Flobots, Asteroid TerraKits, and pre-ownership rights to the Flovatar Universe Buidler - FUB.</p>
                             </div>
                         </li>
 

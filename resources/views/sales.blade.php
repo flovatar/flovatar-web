@@ -55,7 +55,7 @@
                             <p>Flova Labs has identified an asteroid belt in a nearby barren sector of the Flovaverse as the optimal location for the deployment of their new terraforming product, the TerraKit.</p>
                         </div>
                         <div class="col">
-                            <p>Each TerraKit will contain the land deeds to an asteroid, a custom Flobot used to terraform the rock and a FUB (Flovatar Universe Builder) that has the power to generate new life.</p>
+                            <p>Each TerraKit pack will contain an Asteroid TerraKit, a custom Flobot used to terraform the rock and a FUB (Flovatar Universe Builder) that has the power to generate new life.</p>
                         </div>
                     </div>
                 </div>
@@ -187,7 +187,7 @@
                             <div class="highlight-txt">
                                 <p>Before activation multiple NFTs can be merged together to to expand their potential.</p>
                             </div>
-                            <p>Merge land deeds to take charge of larger asteroids, merge Flobot Constructor Kits to unlock rarer traits, or even merge FUBs to increase the number of traits available for the designs in your builder.</p>
+                            <p>Merge Asteroid TerraKits to take charge of larger asteroids, merge Flobot Constructor Kits to unlock rarer traits, or even merge FUBs to increase the number of traits available for the designs in your builder.</p>
                         </div>
                     </div>
                     <div class="row">
