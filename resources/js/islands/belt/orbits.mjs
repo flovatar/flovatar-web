@@ -51,7 +51,8 @@ export function homeFrame(apo, aspect = 16 / 9, fov = 46) {
     const radius = close + (full - close) * w;
     const a = Math.max(0.3, Math.min(4, aspect || 1));
     const portrait = Math.max(0, Math.min(0.6, 1 - a));
-    const elevation = Math.min(1.0, 0.30 + portrait * 1.2);
+    // a small belt is seen from a bit higher, so islands on the far side show above the planet instead of behind it
+    const elevation = Math.min(1.0, 0.30 + 0.15 * (1 - w) + portrait * 1.2);
     const tv = Math.tan(fov * Math.PI / 360);
     const th = tv * a;
     const crop = 1 + portrait * 0.5;                           // portrait: the ring may overflow the sides a little

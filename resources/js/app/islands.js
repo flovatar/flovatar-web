@@ -263,8 +263,11 @@ if (CFG) {
                 window.__belt = beltScene; // QA / fps measurements
                 beltScene.setIslands(beltItems, beltTex);
                 this.applyFilter();
+                this.syncInsets();
                 beltScene.start();
                 this.sceneState = 'ready';
+                window.addEventListener('resize', () => this.syncInsets());
+                this.$watch('panelOpen', () => this.$nextTick(() => this.syncInsets()));
                 document.documentElement.classList.add('belt-3d');
             } catch (e) {
                 console.error(e);
@@ -272,6 +275,17 @@ if (CFG) {
                 this.view = 'list';
                 document.documentElement.classList.remove('belt-3d');
             }
+        },
+
+        /** Tell the scene which part of the canvas the panel covers (left on desktop, top on phones). */
+        syncInsets() {
+            if (!beltScene || !this.$refs.stage) { return; }
+            const panel = this.$root.querySelector('.belt-panel');
+            const st = this.$refs.stage.getBoundingClientRect();
+            if (!panel) { beltScene.setInsets(0, 0); return; }
+            const r = panel.getBoundingClientRect();
+            const phone = window.matchMedia && window.matchMedia('(max-width: 767px)').matches;
+            if (phone) { beltScene.setInsets(0, Math.min(st.height * 0.35, Math.max(0, r.bottom - st.top))); } else { beltScene.setInsets(Math.min(st.width * 0.4, Math.max(0, r.right - st.left)), 0); }
         },
 
         setView(v) {
