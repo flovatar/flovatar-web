@@ -15,7 +15,7 @@
  * rotation slow down.
  */
 import {
-    AdditiveBlending, BackSide, BufferAttribute, BufferGeometry, CanvasTexture, Color, ConeGeometry, DynamicDrawUsage, FrontSide, Group,
+    AdditiveBlending, BackSide, BufferAttribute, BufferGeometry, CanvasTexture, Color, ConeGeometry, DoubleSide, DynamicDrawUsage, FrontSide, Group,
     InstancedBufferAttribute, InstancedBufferGeometry, LinearFilter, LinearMipmapLinearFilter, LineBasicMaterial, LineLoop, Matrix4,
     Mesh, MeshBasicMaterial, OrthographicCamera, PerspectiveCamera, PlaneGeometry, Points, Scene, ShaderMaterial, SphereGeometry,
     Texture, Vector3, Vector4, WebGLRenderer, WebGLRenderTarget,
@@ -223,7 +223,8 @@ export class BeltScene {
             g.setDrawRange(0, 0);
             const power = {value: 0};
             const m = new Mesh(g, new ShaderMaterial({
-                vertexShader: GL.BOLT_VERT, fragmentShader: GL.BOLT_FRAG, transparent: true, blending: AdditiveBlending, depthWrite: false,
+                // (ribbon triangles face either way, depending on the bolt's direction on screen)
+                vertexShader: GL.BOLT_VERT, fragmentShader: GL.BOLT_FRAG, transparent: true, blending: AdditiveBlending, depthWrite: false, side: DoubleSide,
                 uniforms: {uViewport: this.uViewport, uWidth: {value: 4}, uPower: power},
             }));
             m.frustumCulled = false;
@@ -922,7 +923,7 @@ export class BeltScene {
         this.uPxWorld.value = 2 * Math.tan(FOV * Math.PI / 360) / h;
         this.uDpr.value = this.dpr;
         this.uViewport.value.set(w * this.dpr / 2, h * this.dpr / 2, 0, 0);
-        for (const b of this.bolts) { b.mesh.material.uniforms.uWidth.value = 3.4 * this.dpr; }
+        for (const b of this.bolts) { b.mesh.material.uniforms.uWidth.value = 4.6 * this.dpr; }
         if (first || (!this._userZoomed && this.followId === null)) { this.home(); }
         if (!this.running) { this._render(0); }
     }
@@ -1023,7 +1024,9 @@ export class BeltScene {
         if (f.length > 120) { f.shift(); }
         if (!this._statAt || now - this._statAt > 500) {
             this._statAt = now;
-            const recent = f.slice(-45);
+            // (stalls such as a tab switch or a texture upload are not a slow GPU: leave frames over 250 ms out)
+            const recent = f.slice(-45).filter((x) => x < 250);
+            if (!recent.length) { return; }
             const avg = recent.reduce((a, b) => a + b, 0) / recent.length;
             const info = this.renderer.info.render;
             Object.assign(this.stats, {fps: Math.round(1000 / avg), ms: Math.round(avg * 10) / 10, dpr: Math.round(this.dpr * 100) / 100, calls: info.calls, triangles: info.triangles});
