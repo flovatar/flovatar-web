@@ -72,3 +72,12 @@ test('misc helpers', () => {
     assert.equal(designation(7), 'K-334/0007');
     assert.equal(normalizeAddress('2538515561c0c431'), '0x2538515561c0c431');
 });
+
+test('displayFix declares xmlns:xlink only when needed', async () => {
+    const {displayFix} = await import('../../resources/js/islands/compose.mjs');
+    const a = '<svg xmlns="http://www.w3.org/2000/svg"><use xlink:href="#a"/></svg>';
+    assert.ok(displayFix(a).startsWith('<svg xmlns:xlink="http://www.w3.org/1999/xlink" xmlns='));
+    assert.equal(displayFix(displayFix(a)), displayFix(a));
+    const b = '<svg xmlns="http://www.w3.org/2000/svg"><g/></svg>';
+    assert.equal(displayFix(b), b);
+});

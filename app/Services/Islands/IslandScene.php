@@ -219,6 +219,19 @@ class IslandScene
     }
 
     /** Scene + premium residents. $flatten = pre-resolve resident CSS for resvg (static renderer). */
+    /**
+     * Browsers reject the whole SVG when a template uses xlink:href but the root lacks xmlns:xlink
+     * (svgOpen on chain doesn't declare it). Display-only fix; the chain bytes stay as they are.
+     */
+    public static function displayFix(string $svg): string
+    {
+        if (str_contains($svg, 'xlink:') && ! preg_match('/^<svg\b[^>]*\sxmlns:xlink=/', $svg)) {
+            $svg = preg_replace('/^<svg\b/', '<svg xmlns:xlink="http://www.w3.org/1999/xlink"', $svg, 1);
+        }
+
+        return $svg;
+    }
+
     public function full(Island $island, bool $flatten = false): string
     {
         $layers = (array) $island->layers;

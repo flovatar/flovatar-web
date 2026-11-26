@@ -53,6 +53,14 @@ export function composeScene(cfg, layers, tint, islandId, templates) {
 }
 
 /** Bytes of the chosen templates counted against the rarity budget (contract validateScene: svgLength + svgFrontLength). */
+/** Display-only: declare xmlns:xlink when templates use xlink:href (chain svgOpen doesn't). Same as IslandScene::displayFix. */
+export function displayFix(svg) {
+    if (svg.includes('xlink:') && !/^<svg\b[^>]*\sxmlns:xlink=/.test(svg)) {
+        return svg.replace(/^<svg\b/, '<svg xmlns:xlink="http://www.w3.org/1999/xlink"');
+    }
+    return svg;
+}
+
 export function sceneBytes(layers, infos) {
     let total = 0;
     for (const id of Object.values(layers || {})) {
