@@ -66,6 +66,8 @@ class PublicCache
         'showroom/search', 'showroom/flobot/search', 'showroom/dust-collectible/search',
         'transactions/search',
         'builder/search', 'flobot/builder/search',
+        // islands: re-read one island from the chain into the index (changes no user state; throttled per IP)
+        'api/islands/*/refresh',
     ];
 
     /** Status codes a shared cache may keep for 60 s. */

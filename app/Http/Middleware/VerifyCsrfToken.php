@@ -23,6 +23,8 @@ class VerifyCsrfToken extends Middleware
         'transactions/search',
         'builder/search',
         'flobot/builder/search',
+        // islands: re-read an island from the chain (no user state; the front end treats /api/* as CSRF-exempt)
+        'api/islands/*/refresh',
     ];
 
     /**
