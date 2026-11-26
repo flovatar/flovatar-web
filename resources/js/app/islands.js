@@ -1639,16 +1639,32 @@ if (CFG) {
             const s = Math.min(fw * 0.94 / bw, fh * 0.72 / bh, 14);
             const tx = fw / 2 - (bx + bw / 2) * s;
             const ty = fh * 0.46 - (by + bh / 2) * s;
-            this.camStyle = 'transform:translate(' + tx.toFixed(1) + 'px,' + ty.toFixed(1) + 'px) scale(' + s.toFixed(4) + ');' + (animate ? '' : 'transition:none;');
+            const t = 'translate(' + tx.toFixed(1) + 'px,' + ty.toFixed(1) + 'px)';
+            this._zoomT = {t, s};
+            clearTimeout(this._crispTimer);
+            this.camStyle = 'transform:' + t + ' scale(' + s.toFixed(4) + ');' + (animate && !this.reducedMotion() ? '' : 'transition:none;');
+            // a scaled <img> of an SVG stays rasterized at its layout size (blurry): once the camera has arrived, lay the
+            // scene out at the zoomed size instead (same picture, crisp), unless that would be a huge bitmap
+            if (fw * s <= 4200 && fh * s <= 5600) {
+                this._crispTimer = setTimeout(() => {
+                    if (this.zoom) { this.camStyle = 'transition:none;transform:' + t + ';width:' + (fw * s).toFixed(1) + 'px;height:' + (fh * s).toFixed(1) + 'px;right:auto;bottom:auto;'; }
+                }, animate && !this.reducedMotion() ? 680 : 0);
+            }
             const w = bw * s, h = bh * s;
             this.zoomBox = 'left:' + (fw / 2 - w / 2).toFixed(1) + 'px;top:' + (fh * 0.46 - h / 2).toFixed(1) + 'px;width:' + w.toFixed(1) + 'px;height:' + h.toFixed(1) + 'px';
             this.zoomOn = true;
         },
         closeZoom() {
             if (!this.zoom) { return; }
+            clearTimeout(this._crispTimer);
             this.zoom = false;
             this.zoomOn = false;
-            this.camStyle = '';
+            // back to the transform form (no visual jump), then animate out
+            const z = this._zoomT;
+            if (z && !this.reducedMotion()) {
+                this.camStyle = 'transition:none;transform:' + z.t + ' scale(' + z.s.toFixed(4) + ');';
+                requestAnimationFrame(() => requestAnimationFrame(() => { this.camStyle = ''; }));
+            } else { this.camStyle = ''; }
             const el = this._zoomReturn;
             if (el && el.focus && document.contains(el)) { el.focus({preventScroll: true}); }
         },
