@@ -1063,6 +1063,7 @@ if (CFG) {
     const MAX_SETS_PER_TX = 25;
     const artCache = new Map();     // url -> Promise<data URI | ''>  (outside Alpine: big strings)
     const liveSvgs = {};            // template id -> template JSON
+    let touchDragging = false;      // a long-press drag is running (blocks page scrolling)
 
     function sceneSize(cfg) {
         const m = /viewBox="\s*[-\d.]+\s+[-\d.]+\s+([\d.]+)\s+([\d.]+)"/.exec((cfg && cfg.svgOpen) || '');
@@ -1138,6 +1139,9 @@ if (CFG) {
             this.watchUser(() => { if (this.isOwner) { this.loadWalletNfts(); } });
             this._onResize = () => { if (this.zoom) { this.applyZoom(false); } };
             window.addEventListener('resize', this._onResize);
+            // touch drag: a non-passive touchmove listener must exist BEFORE the gesture starts, else Chrome makes the
+            // touchmoves non-cancelable, scrolls and fires pointercancel; it only blocks scrolling during a drag
+            document.addEventListener('touchmove', (e) => { if (touchDragging && e.cancelable) { e.preventDefault(); } }, {passive: false});
         },
         async load(owner) {
             try {
@@ -1428,13 +1432,14 @@ if (CFG) {
             let timer = null;
             const begin = (x, y) => {
                 moved = true;
+                if (touch) { touchDragging = true; }
                 this.drag = {key, label, img: img ? img.currentSrc || img.src : '', x, y};
                 if (this.sheetOpen && touch) { this.sheetOpen = false; }
                 document.documentElement.classList.add('isp-dragging');
                 if (touch && navigator.vibrate) { try { navigator.vibrate(12); } catch (err) { /* optional */ } }
             };
             if (touch) { timer = setTimeout(() => { armed = true; begin(start.x, start.y); }, 280); }
-            const blockScroll = (ev) => { if (moved) { ev.preventDefault(); } };
+            const blockScroll = (ev) => { if (moved && ev.cancelable) { ev.preventDefault(); } };
             const move = (ev) => {
                 const far = Math.hypot(ev.clientX - start.x, ev.clientY - start.y) >= 7;
                 if (!armed) { if (far) { clearTimeout(timer); cleanup(); } return; }
@@ -1450,6 +1455,7 @@ if (CFG) {
             };
             const cleanup = () => {
                 clearTimeout(timer);
+                touchDragging = false;
                 window.removeEventListener('pointermove', move);
                 window.removeEventListener('pointerup', up);
                 window.removeEventListener('pointercancel', cancel);
