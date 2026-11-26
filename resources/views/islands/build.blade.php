@@ -200,7 +200,9 @@
         {{-- ============ machine: preview + tools ============ --}}
         <div class="isb-machine">
             <div class="isb-stage" :class="{busy: previewBusy, 'no-sky': !layers.sky}">
+                <img class="isb-stage-bg" :src="preview" alt="" aria-hidden="true" x-show="preview">
                 <img :src="preview" alt="Island preview" x-show="preview" data-islands="preview">
+                <p class="isb-toast" x-show="notice" x-transition.opacity x-text="notice" aria-live="polite"></p>
                 <div class="isb-rarity-badge" :class="'isb-rar-' + rarity" data-islands="rarity-badge">
                     <span class="t" x-text="fromDeeds ? 'Island rarity' : 'Preview'"></span>
                     <span class="r" x-text="rarity"></span>
@@ -224,7 +226,6 @@
                     <button type="button" class="isb-btn isb-btn-cta" :class="{disabled: cta.disabled}" :aria-disabled="!!cta.disabled" @click="ctaClick()" data-islands="cta"><span x-text="cta.label"></span></button>
                 </div>
             </div>
-            <p class="isb-notice" x-show="notice" x-text="notice" aria-live="polite"></p>
             @if(config('islands.show_size_meter'))
                 {{-- internal art-production aid only (ISLANDS_SHOW_SIZE_METER); never rendered for users --}}
                 <div class="isb-meter" :class="budgetPct >= 100 ? 'over' : (budgetPct > 85 ? 'near' : '')" data-islands="budget">
