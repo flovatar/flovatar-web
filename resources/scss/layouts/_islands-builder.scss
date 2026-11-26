@@ -136,10 +136,9 @@ html.isb-modal-open { overflow: hidden; }
   // category icons: two stacked images, the coloured one shows on the active tab (both load up front: no flash on switch)
   img { grid-area: 1 / 1; width: auto; height: 72px; max-width: 100%; object-fit: contain; transition: opacity .15s, transform .15s; }
   .isb-cat-icon-on { opacity: 0; }
-  .isb-cat.active & .isb-cat-icon { opacity: 0; }
+  &.is-empty .isb-cat-icon:not(.isb-cat-icon-on) { opacity: .38; }      // optional layer set to None
+  .isb-cat.active & .isb-cat-icon:not(.isb-cat-icon-on) { opacity: 0; }
   .isb-cat.active & .isb-cat-icon-on { opacity: 1; }
-  &.is-empty img { opacity: .38; }                              // optional layer set to None
-  .isb-cat.active &.is-empty .isb-cat-icon { opacity: 0; }
   .isb-cat.active &.is-empty .isb-cat-icon-on { opacity: .55; }
   .isb-cat:hover & img { transform: scale(1.06); }
   @include media('<desktop') { width: 100%; height: 44px; img { height: 42px; } }
