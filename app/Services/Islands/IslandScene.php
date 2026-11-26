@@ -109,7 +109,7 @@ class IslandScene
         $n = (int) ($cfg['premium'][$rarity] ?? config('islands.premium_default.'.$rarity, 3));
         $templates ??= $this->templates(array_values($layers));
         $found = [];
-        foreach (['base', 'structure'] as $layer) { // later wins
+        foreach (['base', 'structure'] as $layer) { // later wins (contract anchorLayers = structure,base)
             $t = isset($layers[$layer]) ? ($templates[(int) $layers[$layer]] ?? null) : null;
             foreach (self::parseAnchors((array) (data_get($t, 'metadata') ?? [])) as $slot => $a) {
                 $found[$slot] = $a;
@@ -238,6 +238,15 @@ class IslandScene
         $layers = array_diff_key((array) $island->layers, array_flip($withoutLayers));
         $templates = $this->templates(array_values($layers));
         $svg = $this->scene($layers, $island->tint, (int) $island->flow_id, $templates);
+        // round 4: the first standard resident on the display screen (like the contract's getSvg screenParts)
+        $display = $this->display($layers, $templates);
+        if ($display && $display['screen'] && ($r = $this->screenResident($island))) {
+            $href = $this->art->screenImage($r->nft_type, (int) $r->nft_id, $r->thumbnail ?? null);
+            if ($href) {
+                $svg = self::insertScreen($svg, self::screenSvg((int) $island->flow_id, $display['screen'], $href, $r->slot),
+                    (int) data_get($templates[$display['templateId']] ?? null, 'svg_length'));
+            }
+        }
         $anchors = $this->anchors($island->rarity, $layers, $templates);
         $groups = ['back' => [], 'front' => [], 'caretaker' => []];
         foreach ($this->premiumResidents($island) as $r) {
@@ -260,6 +269,137 @@ class IslandScene
         };
 
         return self::inject($svg, $join($groups['back']), $join($groups['front']), $join($groups['caretaker']));
+    }
+
+    // ------------------------------------------------------------------------------------------------ display (round 4)
+
+    /**
+     * Display template metadata `screen` (contract parseScreen): "x,y,w,h" or "x,y,w,h,x1,y1,x2,y2,x3,y3,x4,y4" (quad
+     * corners TL,TR,BR,BL); JSON {x,y,w,h,quad:[[x,y]x4]} is accepted too. Returns [x,y,w,h,quad(8 numbers)|[]] or null.
+     */
+    public static function parseScreen($value): ?array
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        $v = null;
+        if (is_string($value) && in_array(ltrim($value)[0] ?? '', ['{', '['], true)) {
+            $j = json_decode($value, true);
+            if (is_array($j) && isset($j['x'])) {
+                $v = [$j['x'], $j['y'] ?? null, $j['w'] ?? ($j['width'] ?? null), $j['h'] ?? ($j['height'] ?? null)];
+                foreach ((array) ($j['quad'] ?? []) as $q) {
+                    $v[] = $q[0] ?? null;
+                    $v[] = $q[1] ?? null;
+                }
+            } elseif (is_array($j)) {
+                $v = $j;
+            }
+        } elseif (is_string($value)) {
+            $v = array_map('trim', explode(',', $value));
+        }
+        if (! is_array($v) || (count($v) !== 4 && count($v) !== 12)) {
+            return null;
+        }
+        foreach ($v as $n) {
+            if (! is_numeric($n) || (float) $n < 0 || (float) $n > 100000) {
+                return null;
+            }
+        }
+        $v = array_map('floatval', array_values($v));
+        if ($v[2] <= 0 || $v[3] <= 0) {
+            return null;
+        }
+
+        return ['x' => $v[0], 'y' => $v[1], 'w' => $v[2], 'h' => $v[3], 'quad' => count($v) === 12 ? array_slice($v, 4, 8) : []];
+    }
+
+    /** The scene's display: ['templateId', 'name', 'screen' => parseScreen|null] or null without a display layer. */
+    public function display(array $layers, ?array $templates = null): ?array
+    {
+        $layer = (string) ($this->config()['displayLayer'] ?? 'display');
+        if (! isset($layers[$layer])) {
+            return null;
+        }
+        $tid = (int) $layers[$layer];
+        $templates ??= $this->templates([$tid]);
+        $t = $templates[$tid] ?? null;
+
+        return ['templateId' => $tid, 'name' => (string) data_get($t, 'name', '#'.$tid),
+            'screen' => self::parseScreen(((array) (data_get($t, 'metadata') ?? []))['screen'] ?? null)];
+    }
+
+    /** Resident drawn on the screen: the lowest standard slot (S1, S2, …) with a valid resident (contract screenResident). */
+    public function screenResident(Island $island): ?\App\Models\IslandResident
+    {
+        $cfg = $this->config();
+        $n = (int) ($cfg['premium'][$island->rarity] ?? 0);
+        $model = (string) ($cfg['slotModel'] ?? 'ps');
+        $best = null;
+        $bestN = PHP_INT_MAX;
+        foreach ($island->residents()->where('valid', true)->get() as $r) {
+            if ($r->set_by !== $island->flow_address) {
+                continue;
+            }
+            $logical = Islands::logicalSlot($island->rarity, $r->slot, $n, $model);
+            if (preg_match('/^S(\d+)$/', $logical, $m) && (int) $m[1] < $bestN) {
+                $bestN = (int) $m[1];
+                $best = $r;
+            }
+        }
+
+        return $best;
+    }
+
+    private static function num(float $n): string
+    {
+        $s = rtrim(rtrim(number_format($n, 4, '.', ''), '0'), '.');
+
+        return $s === '-0' ? '0' : $s;
+    }
+
+    /** Screen fragment (contract screenSvg): clip path rect|polygon + the image filling the screen (slice). */
+    public static function screenSvg(int $islandId, array $screen, string $href, string $slot): string
+    {
+        $cid = 'screen-clip-'.$islandId;
+        $q = $screen['quad'] ?? [];
+        $f = fn ($n) => self::num((float) $n);
+        $clip = count($q) === 8
+            ? '<polygon points="'.$f($q[0]).','.$f($q[1]).' '.$f($q[2]).','.$f($q[3]).' '.$f($q[4]).','.$f($q[5]).' '.$f($q[6]).','.$f($q[7]).'"/>'
+            : '<rect x="'.$f($screen['x']).'" y="'.$f($screen['y']).'" width="'.$f($screen['w']).'" height="'.$f($screen['h']).'"/>';
+        $h = htmlspecialchars($href, ENT_QUOTES | ENT_XML1);
+        if (count($q) === 8) {
+            $m = implode(' ', array_map($f, [($q[2] - $q[0]) / $screen['w'], ($q[3] - $q[1]) / $screen['w'], ($q[6] - $q[0]) / $screen['h'], ($q[7] - $q[1]) / $screen['h'], $q[0], $q[1]]));
+            $img = '<image href="'.$h.'" x="0" y="0" width="'.$f($screen['w']).'" height="'.$f($screen['h']).'" preserveAspectRatio="xMidYMid slice" transform="matrix('.$m.')"/>';
+        } else {
+            $img = '<image href="'.$h.'" x="'.$f($screen['x']).'" y="'.$f($screen['y']).'" width="'.$f($screen['w']).'" height="'.$f($screen['h']).'" preserveAspectRatio="xMidYMid slice"/>';
+        }
+
+        return '<defs><clipPath id="'.$cid.'">'.$clip.'</clipPath></defs><g id="screen-'.$slot.'" class="resident standard screen" data-slot="'.$slot.'" clip-path="url(#'.$cid.')">'.$img.'</g>';
+    }
+
+    /**
+     * Screen fragment into the scene: the `@display-screen` placeholder when the scene order has one, else right after
+     * the display layer body (contract composeSvgWithResidents), else before </svg>. compose.mjs insertScreen.
+     */
+    public static function insertScreen(string $svg, string $fragment, int $displaySvgLength): string
+    {
+        if ($fragment === '') {
+            return $svg;
+        }
+        $ph = '<g id="display-screen"/>';
+        if (($pos = strpos($svg, $ph)) !== false) {
+            return substr_replace($svg, '<g id="display-screen">'.$fragment.'</g>', $pos, strlen($ph));
+        }
+        $open = '<g id="layer-display">';
+        if (($pos = strpos($svg, $open)) !== false) {
+            $end = $pos + strlen($open) + $displaySvgLength + 4;
+            if (substr($svg, $end - 4, 4) === '</g>') {
+                return substr($svg, 0, $end).$fragment.substr($svg, $end);
+            }
+        }
+        $end = strrpos($svg, '</svg>');
+
+        return substr($svg, 0, $end).$fragment.substr($svg, $end);
     }
 
     /** Fill the residents-back / residents-front placeholders (appended before </svg> when the order has none). */
@@ -288,7 +428,8 @@ class IslandScene
         $layers = (array) $island->layers;
         $tpl = IslandTemplate::whereIn('flow_id', array_values($layers))->pluck('svg_hash', 'flow_id')->all();
         ksort($tpl);
-        $res = $island->residents()->orderBy('slot')->get(['slot', 'nft_type', 'nft_id', 'valid'])->toArray();
+        $cols = \App\Models\IslandResident::hasDisplayColumns() ? ['slot', 'nft_type', 'nft_id', 'valid', 'set_by', 'thumbnail'] : ['slot', 'nft_type', 'nft_id', 'valid'];
+        $res = $island->residents()->orderBy('slot')->get($cols)->toArray();
 
         return substr(sha1(json_encode([$layers, $island->tint, $tpl, $res, $this->config()['sceneOrder'] ?? [],
             $this->config()['premium'] ?? [], $this->config()['slotModel'] ?? ''])), 0, 16);

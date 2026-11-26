@@ -20,15 +20,16 @@
 import Alpine from 'alpinejs';
 import * as fcl from '@onflow/fcl';
 import {WALLET_CADENCE, PREVIEW_CADENCE, RESIDENTS_CADENCE, WALLET_NFTS_CADENCE, DISPLAYS_CADENCE, OWNERSHIP_CADENCE} from '../islands/cadence.mjs';
-import {composeScene, displayFix, sceneBytes, islandRarity, validateScene, friendlyChainError, isHexColor, slotList, httpUrl, designation, setDesignationPrefix, normalizeAddress, RARITIES} from '../islands/compose.mjs';
+import {composeScene, displayFix, sceneBytes, islandRarity, validateScene, friendlyChainError, isHexColor, slotList, httpUrl, designation, setDesignationPrefix, normalizeAddress, RARITIES,
+    DISPLAY_LAYER, isSharedLayer, isMutableLayer, templateFits, layerOptions, orderedLayers, templateScreen, screenFragment, insertScreen, screenBox, SCREEN_PLACEHOLDER, planOps,
+    residentGroupSvg, injectResidents, slotBox, residentTransform} from '../islands/compose.mjs';
 import {withWatermark} from '../islands/watermark.mjs';
 import {islandsFromManifest, demoIslands, parseIslandQuery} from '../islands/belt/orbits.mjs';
 import {islandTerraformTx} from '../flow/island-terraform.tx';
-import {islandSetResidentsTx} from '../flow/island-set-residents.tx';
-import {islandClearResidentsTx} from '../flow/island-clear-residents.tx';
-import {islandMoveResidentTx} from '../flow/island-move-resident.tx';
 import {islandSetNameDescriptionTx} from '../flow/island-set-name-description.tx';
 import {islandOpenPackTx} from '../flow/island-open-pack.tx';
+import {islandUpdateResidentsTx} from '../flow/island-update-residents.tx';
+import {islandSetLayerTx} from '../flow/island-set-layer.tx';
 
 const CFG = window.ISLANDS || null;
 const SLICE = 4000;
@@ -537,20 +538,37 @@ if (CFG) {
     // Size budgets are never shown to users (sizeMeter = internal flag ISLANDS_SHOW_SIZE_METER).
     const svgs = {};               // template id -> {svg, svgFront, svgLength, svgFrontLength} (outside Alpine: big strings)
     const thumbUrls = new Map();   // scene key -> object URL
-    const LAYER_LABELS = {sky: 'Sky', base: 'Base', structure: 'Structure', fub: 'FUB', foreground: 'Foreground', fx: 'Effects'};
-    const TAB_ICONS = ['deeds', 'sky', 'base', 'structure', 'fub', 'foreground', 'fx', 'tint'];
+    const LAYER_LABELS = {sky: 'Sky', base: 'Base', structure: 'Structure', fub: 'FUB', display: 'Display', foreground: 'Foreground', fx: 'Effects'};
+    const TAB_ICONS = ['deeds', 'sky', 'base', 'structure', 'fub', 'display', 'foreground', 'fx', 'tint'];
+    // what each tab tells the player (round 4: skies change any time, effects are permanent, the display shows NFTs)
+    const LAYER_NOTES = {
+        sky: 'You can change the sky any time.',
+        fx: 'Effects are permanent.',
+        display: 'Your island\u2019s display shows your other NFTs: every NFT you place on its display slots plays on this screen. Visitors tap it to browse them.',
+    };
     const TINTS = ['#EF2AC1', '#91E3F9', '#FFEE50', '#52F618', '#FF6E03', '#AED7F7', '#8A4BFF', '#E8384F', '#2FD4B1'];
     // chance that Randomize fills an optional layer
-    const RANDOM_FILL = {sky: 1, structure: 0.85, fub: 0.5, foreground: 0.65, fx: 0.6};
+    const RANDOM_FILL = {sky: 1, structure: 0.85, fub: 0.5, display: 1, foreground: 0.65, fx: 0.6};
 
     async function loadSvg(id) {
         if (!svgs[id]) { svgs[id] = await loadTemplate(id); }
         return svgs[id];
     }
 
+    /** Builder scene: the chosen parts; a display shows the placeholder of the first standard NFT on its screen. */
+    function builderSvg(cfg, layers, tint) {
+        let svg = composeScene(cfg, layers, tint, null, svgs);
+        const did = layers[DISPLAY_LAYER];
+        if (did) {
+            const info = (cfg.templates || []).find((t) => t.id === did);
+            const screen = templateScreen(info);
+            if (screen) { svg = insertScreen(svg, screenFragment(screen, SCREEN_PLACEHOLDER, null, 'S1'), svgs[did]); }
+        }
+        return svg;
+    }
+
     function sceneUrl(cfg, layers, tint) {
-        const svg = composeScene(cfg, layers, tint, null, svgs);
-        return URL.createObjectURL(new Blob([displayFix(svg)], {type: 'image/svg+xml'}));
+        return URL.createObjectURL(new Blob([displayFix(builderSvg(cfg, layers, tint))], {type: 'image/svg+xml'}));
     }
 
     Alpine.data('islandsBuilder', () => ({
@@ -595,7 +613,7 @@ if (CFG) {
             this.prefetch(this.rarity);
             this.$watch('rarity', (r, old) => {
                 if (!r || r === old) { return; }
-                const kept = Object.values(this.layers).every((id) => this.infos[id] && this.infos[id].rarity === r);
+                const kept = Object.entries(this.layers).every(([name, id]) => templateFits(this.cfg, this.infos[id], name, r));
                 if (!kept) {
                     this.notice = this.fromDeeds ? 'Your island will be ' + r + ', so the parts switched to ' + r + ' art: every part matches the island\u2019s rarity.' : '';
                     this.defaultScene();
@@ -695,8 +713,7 @@ if (CFG) {
         // ---------------- tabs
         get sceneLayers() {
             if (!this.cfg) { return []; }
-            const order = (this.cfg.sceneOrder || []).filter((e) => e[0] !== '@' && !e.endsWith(':front'));
-            return order.filter((name) => ((this.cfg.layers[name] || {}).allowed || []).includes(this.rarity));
+            return orderedLayers(this.cfg).filter((name) => ((this.cfg.layers[name] || {}).allowed || []).includes(this.rarity));
         },
         get tabs() {
             const t = [{key: 'deeds', label: 'Deeds'}];
@@ -705,6 +722,14 @@ if (CFG) {
             return t;
         },
         layerLabel(name) { return LAYER_LABELS[name] || name; },
+        /** Short note under a layer's info card (sky: changeable later, effects: permanent, display: what it shows). */
+        layerNote(name) {
+            if (name === 'sky' && !this.isMutable('sky')) { return ''; }   // only once the contract really allows it
+            return LAYER_NOTES[name] || '';
+        },
+        /** The owner can change this layer after terraforming (contract mutableLayers, e.g. the sky). */
+        isMutable(name) { return isMutableLayer(this.cfg, name); },
+        isShared(name) { return isSharedLayer(this.cfg, name); },
         setTab(k) { this.tab = k; this.$nextTick(() => { const g = this.$refs.grid; if (g) { g.scrollTop = 0; g.scrollLeft = 0; } }); },
         isLayerTab() { return this.tab !== 'deeds' && this.tab !== 'tint'; },
         tabBadge(k) {
@@ -723,7 +748,9 @@ if (CFG) {
 
         // ---------------- scene
         isRequired(name) { return ((this.cfg.layers[name] || {}).required || []).includes(this.rarity); },
-        optionsFor(name) { return (this.cfg.templates || []).filter((t) => t.layer === name && t.rarity === this.rarity && t.enabled); },
+        /** Shared layers (sky, effects, display) list every enabled template, whatever the rarity; others are rarity-locked. */
+        optionsFor(name) { return layerOptions(this.cfg, name, this.rarity); },
+        rarityTag(t) { return t && t.rarity !== this.rarity && t.rarity !== 'any' ? t.rarity : ''; },
         get infos() { const m = {}; for (const t of ((this.cfg && this.cfg.templates) || [])) { m[t.id] = t; } return m; },
         get tintAllowed() { return !!this.cfg && (this.cfg.tintRarities || []).includes(this.rarity); },
         get tintValue() { return this.tintAllowed && this.tintOn && isHexColor(this.tint) ? this.tint.toLowerCase() : null; },
@@ -778,7 +805,7 @@ if (CFG) {
         },
         prefetch(r) {
             if (!this.cfg) { return; }
-            for (const t of (this.cfg.templates || []).filter((x) => x.rarity === r && x.enabled)) { loadSvg(t.id).catch(() => {}); }
+            for (const t of (this.cfg.templates || []).filter((x) => x.enabled && (x.rarity === r || templateFits(this.cfg, x, x.layer, r)))) { loadSvg(t.id).catch(() => {}); }
         },
         async renderPreview() {
             if (!this.cfg) { return; }
@@ -850,7 +877,7 @@ if (CFG) {
             for (const name of this.sceneLayers) {
                 const id = Number(p.get(name));
                 const t = this.infos[id];
-                if (t && t.layer === name && t.rarity === this.rarity && t.enabled) { layers[name] = id; }
+                if (templateFits(this.cfg, t, name, this.rarity)) { layers[name] = id; }
             }
             if (this.sceneLayers.every((n) => !this.isRequired(n) || layers[n])) { this.layers = layers; }
             const tint = '#' + (p.get('tint') || '');
@@ -865,7 +892,7 @@ if (CFG) {
             let url = '';
             try {
                 await Promise.all(Object.values(this.layers).map((id) => loadSvg(id)));
-                const svg = withWatermark(displayFix(composeScene(this.cfg, this.layers, this.tintValue, null, svgs)));
+                const svg = withWatermark(displayFix(builderSvg(this.cfg, this.layers, this.tintValue)));
                 if (!svg.includes('id="isb-unminted"')) { return; }
                 url = URL.createObjectURL(new Blob([svg], {type: 'image/svg+xml'}));
                 const img = new Image();
@@ -933,7 +960,9 @@ if (CFG) {
             const deeds = this.selectedDeeds.map((d) => ({id: d.id, rarity: d.rarity, templateId: d.templateId}));
             this.snap = {
                 rarity: this.rarity, deeds, fused: deeds.length === 5, deedRarity: this.selectedRarity, tint: this.tintValue,
-                parts: this.sceneLayers.map((n) => ({layer: this.layerLabel(n), name: this.layerName(n)})),
+                parts: this.sceneLayers.map((n) => ({key: n, layer: this.layerLabel(n), name: this.layerName(n),
+                    note: n === 'fx' ? 'permanent' : (this.isMutable(n) ? 'change any time' : '')})),
+                mutable: this.sceneLayers.filter((n) => this.isMutable(n)),
                 url: sceneUrl(this.cfg, this.layers, this.tintValue),
             };
             this.review = true;
@@ -1010,6 +1039,42 @@ if (CFG) {
     }));
 
     // --------------------------------------------------------------------------- /islands/{id}
+    // Island page (round 4, KB islands-build.md "Round 4 spec"): the scene with in-scene hotspots (premium slots at the
+    // art's anchors, the display screen), details, and for the owner a collection box (tabs Flovatar family / All NFTs,
+    // search) with pick-and-place: drag an NFT (or click it, then a slot) onto a premium slot or onto the display; every
+    // change is a pending edit until Save = ONE transaction (clears + sets). Clicking the display zooms the scene into
+    // the screen and shows the standard residents as a carousel. Owner layer tools: Change sky (any time) and the
+    // one-time Choose display. While edits or a layer preview are pending, the scene is composed in the browser
+    // (same composition as the server / contract) so the owner sees the result before signing.
+    const SCENE_W = 3025.27;
+    const SCENE_H = 4033.12;
+    const MAX_SETS_PER_TX = 25;
+    const artCache = new Map();     // url -> Promise<data URI | ''>  (outside Alpine: big strings)
+    const liveSvgs = {};            // template id -> template JSON
+
+    function sceneSize(cfg) {
+        const m = /viewBox="\s*[-\d.]+\s+[-\d.]+\s+([\d.]+)\s+([\d.]+)"/.exec((cfg && cfg.svgOpen) || '');
+        return m ? [Number(m[1]), Number(m[2])] : [SCENE_W, SCENE_H];
+    }
+
+    /** Same-origin (or CORS-enabled) image -> data: URI, cached; '' when it can't be read (then an HTML overlay is used). */
+    function dataUri(url) {
+        if (!url) { return Promise.resolve(''); }
+        if (url.startsWith('data:image/')) { return Promise.resolve(url); }
+        if (!artCache.has(url)) {
+            artCache.set(url, fetch(url, {credentials: 'omit'}).then((r) => {
+                if (!r.ok) { throw new Error('HTTP ' + r.status); }
+                return r.blob();
+            }).then((b) => (/^image\//.test(b.type) && b.size < 4e6 ? new Promise((res) => {
+                const fr = new FileReader();
+                fr.onload = () => res(String(fr.result || ''));
+                fr.onerror = () => res('');
+                fr.readAsDataURL(b);
+            }) : '')).catch(() => ''));
+        }
+        return artCache.get(url);
+    }
+
     Alpine.data('islandPage', (islandId) => ({
         ...walletMixin(),
         id: Number(islandId),
@@ -1019,26 +1084,48 @@ if (CFG) {
         live: {},            // chainSlot -> {valid, reason}
         displays: {},        // type|id -> {name, thumbnail}
         isNew: false,
-        // owner tools
+        // owner: name / description
         editing: false,
         nameInput: '',
         descInput: '',
         busy: false,
         notice: '',
         noticeKind: '',
-        picker: null,        // {slots: [chainSlot...], premium: bool, multi: bool}
+        // scene
+        liveUrl: '',         // browser-composed scene while edits / a layer preview are pending
+        liveBusy: false,
+        overlays: [],        // premium residents the browser couldn't inline (cross-origin art): drawn as <img>
+        screenOverlay: '',   // screen image the browser couldn't inline
+        sceneVer: 0,
+        // display zoom
+        zoom: false,
+        zoomOn: false,       // transform applied (animation running / done)
+        zoomIdx: 0,
+        camStyle: '',
+        zoomBox: '',
+        // collection + pick & place
         walletNfts: null,
         walletStatus: 'idle',
-        pickerSel: [],
-        pickerFilter: '',
-        moveFrom: null,
+        colTab: 'family',
+        colQuery: '',
+        sheetOpen: false,
+        plan: {},            // chainSlot -> {type, id} | null   (desired state)
+        planVer: 0,
+        selected: null,      // collection key 'type|id' or 'slot:<chainSlot>' (a placed resident being moved)
+        drag: null,          // {key, label, img, x, y, family}
+        dropHover: '',
+        // layer tools
+        layerPick: null,     // {layer, choice, original, oneTime}
+        pickThumbs: {},
 
         async init() {
             const qs = new URLSearchParams(window.location.search);
             this.isNew = qs.has('new');
             try { this.cfg = await loadConfig(); } catch (e) { /* page still renders from the island JSON */ }
             await this.load(qs.get('owner'));
-            this.watchUser(() => {});
+            this.watchUser(() => { if (this.isOwner) { this.loadWalletNfts(); } });
+            this._onResize = () => { if (this.zoom) { this.applyZoom(false); } };
+            window.addEventListener('resize', this._onResize);
         },
         async load(owner) {
             try {
@@ -1050,6 +1137,7 @@ if (CFG) {
             if (!this.island) { this.status = 'missing'; return; }
             this.nameInput = this.island.rawName || '';
             this.descInput = this.island.description || '';
+            this.resetPlan();
             this.status = 'ready';
             this.liveCheck();
             this.loadDisplays();
@@ -1057,6 +1145,7 @@ if (CFG) {
         async reload() {
             const d = await refreshIsland(this.id, this.island ? this.island.owner : null);
             if (d) { this.island = d; } else { this.island = await getJson('/api/islands/' + this.id); }
+            this.resetPlan();
             this.liveCheck();
             this.loadDisplays();
         },
@@ -1072,26 +1161,38 @@ if (CFG) {
         isValid(r) { return this.validity(r).valid; },
         reasonText(r) {
             const why = this.validity(r).reason;
-            return {'not-owned': 'Moved out: the owner no longer holds this NFT', 'island-owner-changed': 'Set by a previous owner', 'island-not-stored': 'Island not in a wallet'}[why] || '';
-        },
-        get premiumResidents() { return this.residents.filter((r) => r.premium); },
-        get standardResidents() {
-            return this.residents.filter((r) => !r.premium && r.chainSlot !== 'caretaker')
-                .sort((a, b) => Number(a.slot.slice(1)) - Number(b.slot.slice(1)));
+            return {'not-owned': 'Moved out: the owner no longer holds this NFT', 'island-owner-changed': 'Set by a previous owner', 'island-not-stored': 'Island not in a wallet', 'slot-invalid': 'This slot no longer exists', 'type-not-allowed': 'This NFT type isn\u2019t allowed here'}[why] || '';
         },
         get premiumSlots() { return this.slots.filter((s) => s.premium); },
         get standardSlots() { return this.slots.filter((s) => !s.premium); },
-        get freeStandard() { return this.standardSlots.filter((s) => !this.residentAt(s.chain)); },
         get invalidCount() { return this.residents.filter((r) => !this.isValid(r)).length; },
         familyLabel(r) { return r.family && this.cfg && this.cfg.families && this.cfg.families[r.family] ? this.cfg.families[r.family].label : ''; },
         display(r) { return this.displays[r.type + '|' + r.id] || {}; },
+        familyOf(type) { return ((this.cfg && this.cfg.premiumTypes) || CFG.premiumTypes || {})[type] || null; },
         thumb(r) {
-            if (r.family === 'Flovatar') { return '/api/image/r/flovatar/' + r.id + '/thumb.jpg'; }
-            if (r.family === 'Flobot') { return '/api/image/r/flobot/' + r.id + '/thumb.jpg'; }
-            if (r.family === 'FlovatarDustCollectible') { return '/api/image/r/collectible/' + r.id + '/thumb.jpg'; }
-            return httpUrl(this.display(r).thumbnail);
+            const f = r.family || this.familyOf(r.type);
+            if (f === 'Flovatar') { return '/api/image/r/flovatar/' + r.id + '/thumb.jpg'; }
+            if (f === 'Flobot') { return '/api/image/r/flobot/' + r.id + '/thumb.jpg'; }
+            if (f === 'FlovatarDustCollectible') { return '/api/image/r/collectible/' + r.id + '/thumb.jpg'; }
+            return httpUrl(this.display(r).thumbnail || r.thumbnail);
         },
-        nftName(r) { return this.display(r).name || (r.type.split('.')[2] || 'NFT') + ' #' + r.id; },
+        nftName(r) { return this.display(r).name || r.name || (this.typeLabel(r.type) + ' #' + r.id); },
+        typeLabel(type) {
+            const f = this.familyOf(type);
+            if (f && this.cfg && this.cfg.families && this.cfg.families[f]) { return this.cfg.families[f].label; }
+            const p = String(type).split('.'); return p[2] || type;
+        },
+        /** Page of an NFT: the Flovatar-site pages for its own collections, else the owner's collection page. */
+        nftLink(r) {
+            const hex = String(CFG.flovatar || '').replace(/^0x/, '');
+            const f = r.family || this.familyOf(r.type);
+            if (f === 'Flovatar') { return '/flovatars/' + r.id; }
+            if (f === 'Flobot') { return '/flobots/' + r.id; }
+            if (f === 'FlovatarDustCollectible') { return '/collectibles/' + r.id; }
+            if (hex && r.type === 'A.' + hex + '.FlovatarComponent.NFT') { return '/components/' + r.id; }
+            if (r.type === 'A.' + String(CFG.contract || '').replace(/^0x/, '') + '.FlovatarAsteroidIsland.NFT') { return '/islands/' + r.id; }
+            return this.island ? '/collection/' + this.island.owner : '#';
+        },
         async liveCheck() {
             if (!this.island || !this.island.owner) { return; }
             try {
@@ -1102,7 +1203,7 @@ if (CFG) {
             } catch (e) { console.log(e); }
         },
         async loadDisplays() {
-            const rs = this.residents.filter((r) => !this.displays[r.type + '|' + r.id]);
+            const rs = this.residents.filter((r) => !this.displays[r.type + '|' + r.id] && !r.name);
             if (!rs.length || !this.island.owner) { return; }
             try {
                 const out = await fcl.query({cadence: DISPLAYS_CADENCE, args: (arg, t) => [
@@ -1113,7 +1214,463 @@ if (CFG) {
                 this.displays = m;
             } catch (e) { console.log(e); }
         },
-        scrollCarousel(dir) { const el = this.$refs.carousel; if (el) { el.scrollBy({left: dir * el.clientWidth * 0.8, behavior: 'smooth'}); } },
+
+        // ---------------- scene geometry (percent boxes over the scene image)
+        get size() { return sceneSize(this.cfg); },
+        pct(box) {
+            if (!box) { return 'display:none'; }
+            const [W, H] = this.size;
+            return 'left:' + (box.x / W * 100) + '%;top:' + (box.y / H * 100) + '%;width:' + (box.w / W * 100) + '%;height:' + (box.h / H * 100) + '%';
+        },
+        tierScale() { return Number(((this.cfg && this.cfg.tierScale) || {})[this.island.rarity] || 0.16); },
+        familyScale(type) {
+            const rs = ((this.cfg && this.cfg.residentScale) || {})[type];
+            if (Number.isFinite(Number(rs))) { return Number(rs); }
+            const f = this.familyOf(type);
+            return f && this.cfg && this.cfg.families && this.cfg.families[f] ? Number(this.cfg.families[f].scale || 1) : 1;
+        },
+        anchorOf(slot) { const a = this.island && this.island.anchors && this.island.anchors[slot]; return Array.isArray(a) ? a : null; },
+        hotspots() {
+            if (!this.island) { return []; }
+            return this.premiumSlots.map((s) => {
+                const a = this.anchorOf(s.slot);
+                if (!a) { return null; }
+                const r = this.planned(s.chain);
+                return {slot: s.slot, chain: s.chain, box: slotBox(a, this.tierScale(), r ? this.familyScale(r.type) : 1), r};
+            }).filter(Boolean);
+        },
+        get screen() { return this.island && this.island.display && this.island.display.screen ? this.island.display.screen : null; },
+        previewScreen() {
+            const lp = this.layerPick;
+            if (lp && lp.layer === DISPLAY_LAYER && lp.choice) { return templateScreen((this.cfg.templates || []).find((t) => t.id === lp.choice)); }
+            return this.screen;
+        },
+        screenRect() { return screenBox(this.previewScreen()); },
+        get hasDisplay() { return !!this.screen; },
+
+        // ---------------- pick & place: plan = desired residents per chain slot
+        currentMap() {
+            const m = {};
+            for (const s of this.slots) { const r = this.residentAt(s.chain); m[s.chain] = r ? {type: r.type, id: r.id} : null; }
+            return m;
+        },
+        resetPlan() { this.plan = this.currentMap(); this.planVer++; this.selected = null; this.refreshLive(); },
+        planned(chain) {
+            const p = this.plan[chain];
+            if (!p) { return null; }
+            const cur = this.residentAt(chain);
+            if (cur && cur.type === p.type && cur.id === p.id) { return cur; }
+            const n = (this.walletNfts || []).find((x) => x.type === p.type && x.id === p.id);
+            return {type: p.type, id: p.id, family: this.familyOf(p.type), name: n ? n.name : '', thumbnail: n ? n.thumbnail : '', pending: true, valid: true, chainSlot: chain};
+        },
+        get ops() { return this.planVer >= 0 && this.island ? planOps(this.currentMap(), this.plan) : {clears: [], sets: []}; },
+        get changeCount() {
+            if (this.planVer < 0 || !this.island) { return 0; }
+            const cur = this.currentMap();
+            return Object.keys(this.plan).filter((s) => {
+                const a = cur[s], b = this.plan[s];
+                return (a ? a.type + '|' + a.id : '') !== (b ? b.type + '|' + b.id : '');
+            }).length;
+        },
+        get dirty() { return this.changeCount > 0; },
+        slotChanged(chain) {
+            const a = this.currentMap()[chain], b = this.plan[chain];
+            return this.planVer >= 0 && (a ? a.type + '|' + a.id : '') !== (b ? b.type + '|' + b.id : '');
+        },
+        planSlotOf(type, id) { return Object.keys(this.plan).find((s) => this.plan[s] && this.plan[s].type === type && this.plan[s].id === id) || null; },
+        /** Standard residents in slot order (the display's carousel; S1 = on the screen). `pending` = the plan. */
+        displayList(pending) {
+            if (!this.island) { return []; }
+            const out = [];
+            for (const s of this.standardSlots) {
+                const r = pending ? this.planned(s.chain) : this.residentAt(s.chain);
+                if (r) { out.push({...r, slot: s.slot, chainSlot: s.chain}); }
+            }
+            return out;
+        },
+        get carousel() { return this.displayList(false).filter((r) => this.isValid(r)); },
+        get premiumList() { return this.premiumSlots.map((s) => this.residentAt(s.chain)).filter(Boolean); },
+        freeStandardSlot() { const s = this.standardSlots.find((x) => !this.plan[x.chain]); return s ? s.chain : null; },
+        setPlan(chain, val) { this.plan = {...this.plan, [chain]: val}; this.planVer++; this.refreshLive(); },
+
+        nftKey(n) { return n.type + '|' + n.id; },
+        nftFromKey(k) {
+            if (!k) { return null; }
+            if (k.startsWith('slot:')) { const chain = k.slice(5); const p = this.plan[chain]; return p ? {...p, fromSlot: chain} : null; }
+            const [type, id] = k.split('|');
+            const n = (this.walletNfts || []).find((x) => x.type === type && x.id === Number(id));
+            return n ? {type: n.type, id: n.id} : {type, id: Number(id)};
+        },
+        isPremiumType(type) { return !!this.familyOf(type); },
+        /** Can the selected / dragged item go to this target? target = chain slot or 'display'. */
+        canDrop(key, target) {
+            const it = this.nftFromKey(key);
+            if (!it || !this.isOwner || this.busy) { return false; }
+            if (target === 'display') {
+                if (!this.hasDisplay && !this.standardSlots.length) { return false; }
+                const from = it.fromSlot || this.planSlotOf(it.type, it.id);
+                if (from && this.standardSlots.some((s) => s.chain === from)) { return true; } // already on the display
+                return !!this.freeStandardSlot();
+            }
+            const s = this.slots.find((x) => x.chain === target);
+            if (!s) { return false; }
+            if (s.premium && !this.isPremiumType(it.type)) { return false; }
+            if (it.fromSlot) {
+                // swapping: the resident coming back must fit the source slot too
+                const other = this.plan[target];
+                const src = this.slots.find((x) => x.chain === it.fromSlot);
+                return !(other && src && src.premium && !this.isPremiumType(other.type));
+            }
+            return true;
+        },
+        /** Place / move an item onto a target. Same NFT already elsewhere on the island = a move. */
+        place(key, target) {
+            if (!this.canDrop(key, target)) {
+                const it = this.nftFromKey(key);
+                if (it && target !== 'display' && !this.isPremiumType(it.type)) { this.say('Scene slots are for Flovatars, Flobots, Sportvatars and Psyche Likees. Drop other NFTs on the display.', 'error'); }
+                return false;
+            }
+            const it = this.nftFromKey(key);
+            const val = {type: it.type, id: it.id};
+            const plan = {...this.plan};
+            const from = it.fromSlot || this.planSlotOf(it.type, it.id);
+            if (target === 'display') {
+                if (from && this.standardSlots.some((s) => s.chain === from)) { this.selected = null; return true; } // already on the display
+                const free = this.standardSlots.find((s) => !plan[s.chain] || s.chain === from);
+                if (!free) { this.say('The display is full: remove an NFT from it first.', 'error'); return false; }
+                if (from) { plan[from] = null; }
+                plan[free.chain] = val;
+            } else {
+                if (from === target) { this.selected = null; return true; }
+                const prev = plan[target];
+                if (from) { plan[from] = prev && it.fromSlot ? prev : null; } // dragging a placed resident onto another = swap
+                plan[target] = val;
+            }
+            this.plan = plan;
+            this.planVer++;
+            this.selected = null;
+            this.refreshLive();
+            return true;
+        },
+        removeFrom(chain) { if (this.plan[chain]) { this.setPlan(chain, null); } if (this.selected === 'slot:' + chain) { this.selected = null; } },
+        /** Move a display resident to the front (S1 = the one on the screen) by swapping. */
+        showFirst(chain) {
+            const first = this.standardSlots[0];
+            if (!first || first.chain === chain) { return; }
+            const plan = {...this.plan};
+            [plan[first.chain], plan[chain]] = [plan[chain] || null, plan[first.chain] || null];
+            this.plan = plan; this.planVer++; this.refreshLive();
+        },
+        clearInvalidPlan() {
+            const plan = {...this.plan};
+            for (const r of this.residents) { if (!this.isValid(r) && plan[r.chainSlot] && plan[r.chainSlot].type === r.type && plan[r.chainSlot].id === r.id) { plan[r.chainSlot] = null; } }
+            this.plan = plan; this.planVer++; this.refreshLive();
+        },
+        discard() { this.resetPlan(); this.say('', ''); },
+        // click-to-place
+        selectNft(n) {
+            const k = this.nftKey(n);
+            this.selected = this.selected === k ? null : k;
+            if (this.selected && this.sheetOpen && window.matchMedia && window.matchMedia('(max-width: 991px)').matches) { this.sheetOpen = false; }
+        },
+        hotspotClick(h) {
+            if (this.isOwner && this.selected) {
+                if (this.selected === 'slot:' + h.chain) { this.selected = null; return; }
+                this.place(this.selected, h.chain);
+                return;
+            }
+            if (this.isOwner && this.plan[h.chain]) { this.selected = 'slot:' + h.chain; return; }
+            if (!this.isOwner && h.r) { window.location.href = this.nftLink(h.r); }
+        },
+        displayClick() {
+            if (this.isOwner && this.selected) { this.place(this.selected, 'display'); return; }
+            this.openZoom();
+        },
+        targetActive(target) { const k = (this.drag && this.drag.key) || this.selected; return !!k && this.canDrop(k, target); },
+
+        // pointer drag (mouse + touch + pen): ghost follows the pointer, drop = element under the pointer with data-drop
+        dragStart(e, key) {
+            if (!this.isOwner || this.busy || (e.button !== undefined && e.button !== 0)) { return; }
+            const it = this.nftFromKey(key);
+            if (!it) { return; }
+            const start = {x: e.clientX, y: e.clientY};
+            const el = e.currentTarget;
+            const img = el.querySelector('img');
+            const label = (el.getAttribute('data-label') || '');
+            let moved = false;
+            const move = (ev) => {
+                if (!moved && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 7) { return; }
+                if (!moved) {
+                    moved = true;
+                    this.drag = {key, label, img: img ? img.currentSrc || img.src : '', x: ev.clientX, y: ev.clientY};
+                    if (this.sheetOpen && ev.pointerType !== 'mouse') { this.sheetOpen = false; }
+                    document.documentElement.classList.add('isp-dragging');
+                }
+                ev.preventDefault();
+                this.drag = {...this.drag, x: ev.clientX, y: ev.clientY};
+                const t = document.elementFromPoint(ev.clientX, ev.clientY);
+                const d = t && t.closest('[data-drop]');
+                this.dropHover = d ? d.getAttribute('data-drop') : '';
+            };
+            const up = (ev) => {
+                window.removeEventListener('pointermove', move);
+                window.removeEventListener('pointerup', up);
+                window.removeEventListener('pointercancel', up);
+                document.documentElement.classList.remove('isp-dragging');
+                if (!moved) { return; }
+                const t = document.elementFromPoint(ev.clientX, ev.clientY);
+                const d = t && t.closest('[data-drop]');
+                const target = d ? d.getAttribute('data-drop') : '';
+                this.drag = null;
+                this.dropHover = '';
+                this._suppressClick = Date.now();
+                if (target === 'remove' && it.fromSlot) { this.removeFrom(it.fromSlot); return; }
+                if (target && target !== 'remove') { this.place(key, target); }
+            };
+            window.addEventListener('pointermove', move, {passive: false});
+            window.addEventListener('pointerup', up);
+            window.addEventListener('pointercancel', up);
+        },
+        clicked(fn) { if (this._suppressClick && Date.now() - this._suppressClick < 350) { return; } fn(); },
+
+        // ---------------- save = one transaction (clears + sets; > 25 sets are split)
+        async save() {
+            if (!this.dirty || this.busy) { return; }
+            const {clears, sets} = this.ops;
+            if (sets.length) {
+                try {
+                    const ok = await fcl.query({cadence: OWNERSHIP_CADENCE, args: (arg, t) => [
+                        arg(this.user.addr, t.Address), arg(sets.map((x) => x.type), t.Array(t.String)), arg(sets.map((x) => String(x.id)), t.Array(t.UInt64)),
+                    ]});
+                    const bad = sets.filter((_, i) => !ok[i]);
+                    if (bad.length) {
+                        this.say('The island contract can\u2019t verify these NFTs as yours (their collection isn\u2019t published the standard way): '
+                            + bad.map((b) => this.typeLabel(b.type) + ' #' + b.id).join(', '), 'error');
+                        return;
+                    }
+                } catch (e) { /* the transaction re-checks anyway */ }
+            }
+            const batches = [];
+            for (let i = 0; i < Math.max(1, sets.length); i += MAX_SETS_PER_TX) { batches.push(sets.slice(i, i + MAX_SETS_PER_TX)); }
+            const label = batches.length > 1 ? 'Save (' + batches.length + ' approvals)' : 'Save';
+            await this.run(label, async () => {
+                let last = '';
+                for (let b = 0; b < batches.length; b++) {
+                    const part = batches[b];
+                    last = await islandUpdateResidentsTx(this.id, b === 0 ? clears : [], part.map((x) => x.slot), part.map((x) => x.type), part.map((x) => x.id));
+                    if (b < batches.length - 1) { await sealed(last); }
+                }
+                return last;
+            });
+        },
+
+        // ---------------- collection (owner's NFTs, read in the browser)
+        async loadWalletNfts() {
+            if (!this.user || this.walletStatus === 'loading') { return; }
+            this.walletStatus = 'loading';
+            try {
+                const out = await fcl.query({cadence: WALLET_NFTS_CADENCE, args: (arg, t) => [arg(this.user.addr, t.Address), arg('0', t.Int), arg('300', t.Int), arg([], t.Array(t.String))]});
+                const self = 'A.' + CFG.contract.slice(2) + '.FlovatarAsteroidIsland.NFT';
+                this.walletNfts = (out || []).map((n) => ({type: n.type, id: Number(n.id), name: n.name, thumbnail: n.thumbnail}))
+                    .filter((n) => !(n.type === self && n.id === this.id))
+                    .sort((a, b) => (this.isPremiumType(b.type) - this.isPremiumType(a.type)) || a.type.localeCompare(b.type) || a.id - b.id);
+                this.walletStatus = 'done';
+            } catch (e) { console.log(e); this.walletStatus = 'error'; }
+        },
+        get familyNfts() { return (this.walletNfts || []).filter((n) => this.isPremiumType(n.type)); },
+        get colItems() {
+            if (!this.walletNfts) { return []; }
+            const f = this.colQuery.trim().toLowerCase();
+            const list = this.colTab === 'family' ? this.familyNfts : this.walletNfts;
+            return list.filter((n) => !f || (n.name || '').toLowerCase().includes(f) || this.typeLabel(n.type).toLowerCase().includes(f) || String(n.id) === f.replace(/^#/, ''));
+        },
+        nftThumb(n) {
+            const f = this.familyOf(n.type);
+            if (f === 'Flovatar') { return '/api/image/r/flovatar/' + n.id + '/thumb.jpg'; }
+            if (f === 'Flobot') { return '/api/image/r/flobot/' + n.id + '/thumb.jpg'; }
+            if (f === 'FlovatarDustCollectible') { return '/api/image/r/collectible/' + n.id + '/thumb.jpg'; }
+            return httpUrl(n.thumbnail);
+        },
+        placedAt(n) { const s = this.planVer >= 0 ? this.planSlotOf(n.type, n.id) : null; return s ? this.slotLabel(s) : ''; },
+        slotLabel(chain) { const s = this.slots.find((x) => x.chain === chain); return s ? s.slot : chain; },
+        freeCounts() {
+            const p = this.premiumSlots.filter((s) => !this.plan[s.chain]).length;
+            const st = this.standardSlots.filter((s) => !this.plan[s.chain]).length;
+            return {premium: p, standard: st};
+        },
+
+        // ---------------- browser-composed scene (pending edits / layer preview)
+        artUrl(type, id) {
+            const f = this.familyOf(type);
+            if (f === 'Flovatar') { return '/api/image/nobg/' + id; }
+            if (f === 'Flobot') { return '/api/image/flobot/nobg/' + id; }
+            if (f === 'FlovatarDustCollectible') { return '/api/image/collectible/' + id; }
+            return '';
+        },
+        liveLayers() {
+            const l = {...((this.island && this.island.layers) || {})};
+            const lp = this.layerPick;
+            if (lp) { if (lp.choice) { l[lp.layer] = lp.choice; } else { delete l[lp.layer]; } }
+            return l;
+        },
+        get needsLive() { return this.dirty || !!(this.layerPick && this.layerPick.choice !== this.layerPick.original); },
+        get sceneSrc() { return this.needsLive && this.liveUrl ? this.liveUrl : (this.island ? this.island.full : ''); },
+        async refreshLive() {
+            if (!this.island || !this.cfg) { return; }
+            const token = this._liveToken = (this._liveToken || 0) + 1;
+            if (!this.needsLive) { this.overlays = []; this.screenOverlay = ''; return; }
+            this.liveBusy = true;
+            try {
+                const layers = this.liveLayers();
+                await Promise.all(Object.values(layers).map(async (id) => { if (!liveSvgs[id]) { liveSvgs[id] = await loadTemplate(id); } }));
+                let svg = composeScene(this.cfg, layers, this.island.tint, this.id, liveSvgs);
+                const back = [], front = [], dock = [], overlays = [];
+                for (const s of this.premiumSlots) {
+                    const r = this.planned(s.chain);
+                    const a = this.anchorOf(s.slot);
+                    if (!r || !a || (!r.pending && !this.isValid(r))) { continue; }
+                    const fam = this.familyScale(r.type);
+                    const href = await dataUri(this.artUrl(r.type, r.id));
+                    if (href) { (a[3] === 'back' ? back : front).push([a[1], residentGroupSvg(s.slot, a, href, this.tierScale(), fam)]); } else {
+                        const {k} = residentTransform(a, this.tierScale(), fam);
+                        overlays.push({slot: s.slot, src: this.thumb(r), box: {x: a[0] - 1500 * k, y: a[1] - 2725 * k, w: 3000 * k, h: 3000 * k}});
+                    }
+                }
+                const ct = this.residentAt('caretaker');
+                const ca = this.anchorOf('caretaker');
+                if (ct && ca && this.isValid(ct) && ct.family === 'Flobot') {
+                    const href = await dataUri(this.artUrl(ct.type, ct.id));
+                    if (href) { dock.push([ca[1], residentGroupSvg('caretaker', ca, href, this.tierScale(), this.familyScale(ct.type))]); }
+                }
+                const join = (l) => l.sort((x, y) => x[0] - y[0]).map((x) => x[1]).join('');
+                svg = injectResidents(svg, join(back), join(front), join(dock));
+                let screenOverlay = '';
+                const screen = this.previewScreen();
+                if (screen) {
+                    const first = this.displayList(true).find((r) => r.pending || this.isValid(r));
+                    let href = SCREEN_PLACEHOLDER;
+                    if (first) {
+                        const src = this.artUrl(first.type, first.id) || this.thumb(first);
+                        href = await dataUri(src);
+                        if (!href) { screenOverlay = this.thumb(first); }
+                    }
+                    if (href) { svg = insertScreen(svg, screenFragment(screen, href, this.id, first ? first.slot : 'S1'), liveSvgs[layers[DISPLAY_LAYER]]); }
+                }
+                if (token !== this._liveToken) { return; }
+                const url = URL.createObjectURL(new Blob([displayFix(svg)], {type: 'image/svg+xml'}));
+                const old = this.liveUrl;
+                this.liveUrl = url;
+                this.overlays = overlays;
+                this.screenOverlay = screenOverlay;
+                if (old) { setTimeout(() => URL.revokeObjectURL(old), 3000); }
+            } catch (e) { console.log(e); }
+            if (token === this._liveToken) { this.liveBusy = false; }
+        },
+
+        // ---------------- display zoom: the camera flies into the screen, the carousel opens over it
+        openZoom() {
+            if (!this.hasDisplay || this.zoom) { return; }
+            this._zoomReturn = document.activeElement;
+            this.zoom = true;
+            this.zoomIdx = 0;
+            this.$nextTick(() => {
+                this.applyZoom(true);
+                const btn = this.$refs.zoomClose;
+                setTimeout(() => { if (btn) { btn.focus({preventScroll: true}); } }, this.reducedMotion() ? 0 : 450);
+            });
+        },
+        reducedMotion() { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); },
+        applyZoom(animate) {
+            const frame = this.$refs.frame;
+            const b = screenBox(this.screen);
+            if (!frame || !b) { return; }
+            const fw = frame.clientWidth, fh = frame.clientHeight;
+            const [W, H] = this.size;
+            const bx = b.x / W * fw, by = b.y / H * fh, bw = b.w / W * fw, bh = b.h / H * fh;
+            // the screen fills ~94 % of the frame width (or 72 % of its height), centred
+            const s = Math.min(fw * 0.94 / bw, fh * 0.72 / bh, 14);
+            const tx = fw / 2 - (bx + bw / 2) * s;
+            const ty = fh * 0.46 - (by + bh / 2) * s;
+            this.camStyle = 'transform:translate(' + tx.toFixed(1) + 'px,' + ty.toFixed(1) + 'px) scale(' + s.toFixed(4) + ');' + (animate ? '' : 'transition:none;');
+            const w = bw * s, h = bh * s;
+            this.zoomBox = 'left:' + (fw / 2 - w / 2).toFixed(1) + 'px;top:' + (fh * 0.46 - h / 2).toFixed(1) + 'px;width:' + w.toFixed(1) + 'px;height:' + h.toFixed(1) + 'px';
+            this.zoomOn = true;
+        },
+        closeZoom() {
+            if (!this.zoom) { return; }
+            this.zoom = false;
+            this.zoomOn = false;
+            this.camStyle = '';
+            const el = this._zoomReturn;
+            if (el && el.focus && document.contains(el)) { el.focus({preventScroll: true}); }
+        },
+        zoomGo(i) {
+            const n = this.carousel.length;
+            if (!n) { return; }
+            this.zoomIdx = (i + n) % n;
+            const track = this.$refs.track;
+            const item = track && track.children[this.zoomIdx];
+            if (item) { track.scrollTo({left: item.offsetLeft - track.offsetLeft, behavior: this.reducedMotion() ? 'auto' : 'smooth'}); }
+        },
+        zoomScrolled() {
+            const track = this.$refs.track;
+            if (!track || !track.clientWidth) { return; }
+            this.zoomIdx = Math.max(0, Math.min(this.carousel.length - 1, Math.round(track.scrollLeft / track.clientWidth)));
+        },
+        zoomKey(e) {
+            if (e.key === 'ArrowRight') { e.preventDefault(); this.zoomGo(this.zoomIdx + 1); } else if (e.key === 'ArrowLeft') { e.preventDefault(); this.zoomGo(this.zoomIdx - 1); } else if (e.key === 'Escape') { e.preventDefault(); this.closeZoom(); } else if (e.key === 'Tab') {
+                const els = [...this.$refs.zoomPanel.querySelectorAll('a[href], button:not([disabled])')].filter((x) => x.offsetParent !== null);
+                if (!els.length) { return; }
+                const first = els[0], last = els[els.length - 1];
+                if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); } else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+            }
+        },
+        onEscape() {
+            if (this.zoom) { this.closeZoom(); } else if (this.drag) { this.drag = null; } else if (this.selected) { this.selected = null; } else if (this.layerPick) { this.cancelLayer(); } else if (this.sheetOpen) { this.sheetOpen = false; }
+        },
+
+        // ---------------- owner layer tools: Change sky (any time), Choose display (once)
+        canSetLayer(layer) { return this.isOwner && !!this.island && (this.island.settableLayers || []).includes(layer); },
+        get canChangeSky() { return this.canSetLayer('sky'); },
+        get canChooseDisplay() { return this.isOwner && !!this.island && !!this.island.canChooseDisplay; },
+        layerOptionsOf(layer) { return this.cfg ? layerOptions(this.cfg, layer, this.island.rarity) : []; },
+        layerRequired(layer) { return !!(this.cfg && ((this.cfg.layers[layer] || {}).required || []).includes(this.island.rarity)); },
+        openLayer(layer) {
+            if (!this.cfg || this.busy) { return; }
+            const cur = (this.island.layers || {})[layer] || null;
+            this.layerPick = {layer, choice: cur, original: cur, oneTime: layer === DISPLAY_LAYER && !cur};
+            if (layer === DISPLAY_LAYER && !cur) { const o = this.layerOptionsOf(layer)[0]; if (o) { this.layerPick.choice = o.id; } }
+            this.renderPickThumbs();
+            this.refreshLive();
+            this.$nextTick(() => { const el = this.$refs.layerPanel; if (el && el.scrollIntoView) { el.scrollIntoView({block: 'nearest', behavior: 'smooth'}); } });
+        },
+        chooseLayer(id) { if (!this.layerPick) { return; } this.layerPick = {...this.layerPick, choice: id}; this.refreshLive(); },
+        cancelLayer() { this.layerPick = null; this.refreshLive(); },
+        async renderPickThumbs() {
+            const lp = this.layerPick;
+            if (!lp) { return; }
+            const out = {};
+            for (const t of this.layerOptionsOf(lp.layer)) {
+                try {
+                    if (!liveSvgs[t.id]) { liveSvgs[t.id] = await loadTemplate(t.id); }
+                    let svg = composeScene(this.cfg, {[lp.layer]: t.id}, this.island.tint, null, liveSvgs);
+                    const sc = templateScreen(t);
+                    if (sc) { svg = insertScreen(svg, screenFragment(sc, SCREEN_PLACEHOLDER, 't' + t.id, 'S1'), liveSvgs[t.id]); }
+                    out[t.id] = URL.createObjectURL(new Blob([displayFix(svg)], {type: 'image/svg+xml'}));
+                } catch (e) { /* thumbnail missing, the name still shows */ }
+            }
+            if (this.layerPick === lp || (this.layerPick && this.layerPick.layer === lp.layer)) { Object.values(this.pickThumbs).forEach((u) => URL.revokeObjectURL(u)); this.pickThumbs = out; }
+        },
+        layerName(id) { const t = this.cfg && (this.cfg.templates || []).find((x) => x.id === id); return t ? t.name : (id ? '#' + id : 'None'); },
+        async applyLayer() {
+            const lp = this.layerPick;
+            if (!lp || lp.choice === lp.original || this.busy) { return; }
+            if (this.dirty) { this.say('Save or discard your resident changes first.', 'error'); return; }
+            if (lp.oneTime && !lp.choice) { return; }
+            const label = lp.layer === 'sky' ? 'Change sky' : 'Choose display';
+            const ok = await this.run(label, () => islandSetLayerTx(this.id, lp.layer, lp.choice));
+            if (ok) { this.layerPick = null; this.refreshLive(); }
+        },
 
         // ---------------- owner actions
         say(text, kind) { this.notice = text; this.noticeKind = kind || 'info'; },
@@ -1130,7 +1687,7 @@ if (CFG) {
                 this.say(label + ': done.', 'ok');
                 return true;
             } catch (e) {
-                this.say(label + ' failed: ' + txErrorText(e), 'error');
+                this.say(label + ' failed: ' + friendlyChainError(txErrorText(e)), 'error');
                 return false;
             } finally { this.busy = false; }
         },
@@ -1148,86 +1705,5 @@ if (CFG) {
             if (name === null && desc === null) { this.editing = false; return; }
             if (await this.run('Save name', () => islandSetNameDescriptionTx(this.id, name, desc))) { this.editing = false; }
         },
-
-        // picker
-        async openPicker(slots, premium, multi) {
-            this.picker = {slots, premium, multi};
-            this.pickerSel = [];
-            this.pickerFilter = '';
-            if (!this.walletNfts) { await this.loadWalletNfts(); }
-        },
-        closePicker() { this.picker = null; },
-        async loadWalletNfts() {
-            this.walletStatus = 'loading';
-            try {
-                const skip = [];
-                const out = await fcl.query({cadence: WALLET_NFTS_CADENCE, args: (arg, t) => [arg(this.user.addr, t.Address), arg('0', t.Int), arg('300', t.Int), arg(skip, t.Array(t.String))]});
-                this.walletNfts = (out || []).map((n) => ({type: n.type, id: Number(n.id), name: n.name, thumbnail: n.thumbnail, total: Number(n.total)}))
-                    .filter((n) => !(n.type === 'A.' + CFG.contract.slice(2) + '.FlovatarAsteroidIsland.NFT' && n.id === this.id));
-                this.walletStatus = 'done';
-            } catch (e) { console.log(e); this.walletStatus = 'error'; }
-        },
-        isPremiumType(type) { return !!((this.cfg && this.cfg.premiumTypes) || CFG.premiumTypes || {})[type]; },
-        onIsland(n) { return this.residents.some((r) => r.type === n.type && r.id === n.id); },
-        get pickerItems() {
-            if (!this.walletNfts || !this.picker) { return []; }
-            const f = this.pickerFilter.trim().toLowerCase();
-            return this.walletNfts.filter((n) => (!this.picker.premium || this.isPremiumType(n.type)) && !this.onIsland(n)
-                && (!f || (n.name || '').toLowerCase().includes(f) || n.type.toLowerCase().includes(f) || String(n.id) === f));
-        },
-        pickerKey(n) { return n.type + '|' + n.id; },
-        pickerToggle(n) {
-            const k = this.pickerKey(n);
-            if (this.pickerSel.includes(k)) { this.pickerSel = this.pickerSel.filter((x) => x !== k); return; }
-            const max = this.picker.multi ? this.picker.slots.length : 1;
-            this.pickerSel = max === 1 ? [k] : (this.pickerSel.length < max ? [...this.pickerSel, k] : this.pickerSel);
-        },
-        typeLabel(type) { const p = String(type).split('.'); return p[2] || type; },
-        nftThumb(n) {
-            if (n.type.endsWith('.Flovatar.NFT') && this.isPremiumType(n.type)) { return '/api/image/r/flovatar/' + n.id + '/thumb.jpg'; }
-            return httpUrl(n.thumbnail);
-        },
-        async confirmPicker() {
-            if (!this.picker || !this.pickerSel.length) { return; }
-            const items = this.pickerSel.map((k) => { const [type, id] = k.split('|'); return {type, id: Number(id)}; });
-            const slots = this.picker.slots.slice(0, items.length);
-            // pre-flight: the contract must be able to verify each NFT in this wallet
-            try {
-                const ok = await fcl.query({cadence: OWNERSHIP_CADENCE, args: (arg, t) => [
-                    arg(this.user.addr, t.Address), arg(items.map((i) => i.type), t.Array(t.String)), arg(items.map((i) => String(i.id)), t.Array(t.UInt64)),
-                ]});
-                const bad = items.filter((_, i) => !ok[i]);
-                if (bad.length) {
-                    this.say('These NFTs can\u2019t be verified as yours by the island contract (their collection isn\u2019t published the standard way): '
-                        + bad.map((b) => this.typeLabel(b.type) + ' #' + b.id).join(', '), 'error');
-                    return;
-                }
-            } catch (e) { /* the transaction re-checks anyway */ }
-            this.picker = null;
-            await this.run('Set resident' + (items.length > 1 ? 's' : ''), () => islandSetResidentsTx(this.id, slots, items.map((i) => i.type), items.map((i) => i.id)));
-        },
-        addStandard() {
-            const free = this.freeStandard.map((s) => s.chain);
-            if (!free.length) { this.say('All standard slots are taken. Clear one first.', 'error'); return; }
-            this.openPicker(free, false, true);
-        },
-        setSlot(s) { this.openPicker([s.chain], s.premium, false); },
-        clearSlot(chainSlot) { return this.run('Clear slot', () => islandClearResidentsTx(this.id, [chainSlot])); },
-        clearInvalid() {
-            const slots = this.residents.filter((r) => !this.isValid(r)).map((r) => r.chainSlot);
-            if (slots.length) { return this.run('Clear moved-out residents', () => islandClearResidentsTx(this.id, slots)); }
-        },
-        startMove(r) { this.moveFrom = this.moveFrom === r.chainSlot ? null : r.chainSlot; },
-        moveTargets() {
-            const from = this.residents.find((r) => r.chainSlot === this.moveFrom);
-            if (!from) { return []; }
-            return this.slots.filter((s) => s.chain !== this.moveFrom && (!s.premium || from.family));
-        },
-        moveTo(chainSlot) {
-            const from = this.moveFrom;
-            this.moveFrom = null;
-            if (from && chainSlot) { return this.run('Move resident', () => islandMoveResidentTx(this.id, from, chainSlot)); }
-        },
-        slotLabel(chain) { const s = this.slots.find((x) => x.chain === chain); return s ? s.slot : chain; },
     }));
 }

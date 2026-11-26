@@ -47,10 +47,10 @@ class FlowEventTypes
 
     /** Asteroid Islands (FlovatarAsteroidIsland, own contract; indexed only while App\Support\Islands::active()). */
     const ISLAND_EVENTS = [
-        'Terraformed', 'IslandLayersChanged', 'IslandNameChanged', 'IslandDescriptionChanged', 'IslandMetadataChanged',
+        'Terraformed', 'IslandLayersChanged', 'IslandLayerChanged', 'IslandNameChanged', 'IslandDescriptionChanged', 'IslandMetadataChanged',
         'ResidentSet', 'ResidentCleared', 'ResidentMoved',
         'TemplateCreated', 'TemplateSvgAppended', 'TemplateSvgReplaced', 'TemplateEnabled', 'TemplateMetadataChanged',
-        'SettingChanged', 'TypeRuleChanged',
+        'SettingChanged', 'TypeRuleChanged', 'LayerConfigured', 'SceneOrderChanged', 'PauseChanged',
     ];
 
     const NFT_CONTRACTS = ['Flovatar.NFT', 'FlovatarComponent.NFT', 'FlovatarDustCollectible.NFT',

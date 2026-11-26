@@ -78,8 +78,11 @@
                             <div class="isb-info-tags">
                                 <span class="isb-tag" x-show="isRequired(tab)">Required</span>
                                 <span class="isb-tag isb-tag-anim" x-show="isAnimated(selectedInfo)">Animated</span>
+                                <span class="isb-tag isb-tag-any" x-show="isShared(tab)">Any rarity</span>
                             </div>
                         </dl>
+                        {{-- round 4: sky = changeable later, effects = permanent, display = shows the owner's other NFTs --}}
+                        <p class="isb-info-note" :class="'isb-note-' + tab" x-show="layerNote(tab)" x-text="layerNote(tab)" data-islands="layer-note"></p>
                     </div>
                 </template>
 
@@ -172,6 +175,7 @@
                                 <li><button type="button" class="isb-card" :class="{selected: layers[tab] === t.id}" @click="pick(tab, t.id)" :data-template="t.id" :aria-pressed="layers[tab] === t.id" :title="t.description || t.name">
                                     <span class="isb-card-art"><img :src="thumb(tab, t.id)" alt="" x-show="thumb(tab, t.id)"></span>
                                     <span class="isb-card-name" x-text="t.name"></span>
+                                    <span class="isb-card-rar" :class="'isb-rar-' + rarityTag(t)" x-show="rarityTag(t)" x-text="rarityTag(t)"></span>
                                     <span class="isb-anim" x-show="isAnimated(t)" title="Animated" aria-label="Animated">●</span>
                                     <span class="isb-check" x-show="layers[tab] === t.id">✓</span>
                                     @if(config('islands.show_size_meter'))<span class="isb-size" x-text="kb(t.svgLength + t.svgFrontLength)"></span>@endif
@@ -252,7 +256,8 @@
                         <dl class="isb-summary">
                             <div><dt>Island</dt><dd><span class="isb-rar" :class="'isb-rar-' + snap.rarity" x-text="snap.rarity"></span>
                                 <span x-text="snap.fused ? 'fused from 5 ' + snap.deedRarity + ' deeds' : 'from 1 ' + snap.deedRarity + ' deed'"></span></dd></div>
-                            <template x-for="p in snap.parts" :key="p.layer"><div><dt x-text="p.layer"></dt><dd x-text="p.name"></dd></div></template>
+                            <template x-for="p in snap.parts" :key="p.layer"><div :data-part="p.key"><dt x-text="p.layer"></dt><dd><span x-text="p.name"></span>
+                                <span class="isb-part-note" :class="p.note === 'permanent' ? 'perm' : 'free'" x-show="p.note" x-text="p.note"></span></dd></div></template>
                             <div x-show="snap.tint"><dt>Tint</dt><dd><span class="isb-swatch" :style="'background:' + snap.tint"></span> <span x-text="snap.tint && snap.tint.toUpperCase()"></span></dd></div>
                             <div><dt>Cost</dt><dd>Free (network fee only)</dd></div>
                         </dl>
@@ -262,7 +267,7 @@
                             <ul class="isb-burn-deeds">
                                 <template x-for="d in snap.deeds" :key="d.id"><li><img :src="'/api/image/template/' + d.templateId" alt=""><span x-text="'#' + d.id"></span></li></template>
                             </ul>
-                            <p><span x-text="snap.deeds.length === 1 ? 'It is' : 'They are'"></span> destroyed for good when the island is created. This can't be undone, and the island's scene can't be changed later.</p>
+                            <p><span x-text="snap.deeds.length === 1 ? 'It is' : 'They are'"></span> destroyed for good when the island is created. This can't be undone. <span x-show="snap.mutable && snap.mutable.length">You can change the sky later; the other parts, the display and the effects are permanent.</span><span x-show="!snap.mutable || !snap.mutable.length">The island's scene can't be changed later.</span></p>
                             <label><input type="checkbox" x-model="understood" data-islands="understood" :disabled="step === 'signing'">
                                 <span>I understand: burn <span x-text="snap.deeds.length"></span> land deed<span x-show="snap.deeds.length > 1">s</span> and create this island.</span></label>
                         </div>

@@ -99,6 +99,165 @@ export function friendlyChainError(text) {
     return s.replace(/\b\d[\d,.]*\s*(?:k?B|KB|kB|bytes?)\b/g, '').trim();
 }
 
+// ------------------------------------------------------------------------------------------------ round 4 layers
+// Contract settings (KB islands-build.md "Round 4 spec"): `sharedLayers` = layers without a rarity lock (sky, fx,
+// display; templates carry rarity "any"), `mutableLayers` = layers the owner may change any time with set_layer (sky).
+// The display layer may also be chosen ONCE by islands minted before it existed.
+
+export const DISPLAY_LAYER = 'display';
+
+export function isSharedLayer(cfg, layer) {
+    return ((cfg && cfg.sharedLayers) || []).includes(layer);
+}
+
+export function isMutableLayer(cfg, layer) {
+    return ((cfg && cfg.mutableLayers) || []).includes(layer);
+}
+
+/** Can this template be used for `layer` on an island of `rarity`? (rarity lock unless the layer is shared / "any") */
+export function templateFits(cfg, t, layer, rarity) {
+    if (!t || t.layer !== layer || !t.enabled) { return false; }
+    return t.rarity === rarity || t.rarity === 'any' || isSharedLayer(cfg, layer);
+}
+
+const RARITY_SORT = {any: 0, common: 1, epic: 2, legendary: 3};
+
+/** Options of a layer for a rarity: shared layers list every enabled template (rarity "any" first, then by rarity, id). */
+export function layerOptions(cfg, layer, rarity) {
+    return ((cfg && cfg.templates) || []).filter((t) => templateFits(cfg, t, layer, rarity))
+        .slice().sort((a, b) => (RARITY_SORT[a.rarity] ?? 9) - (RARITY_SORT[b.rarity] ?? 9) || a.id - b.id);
+}
+
+/** Scene layers in scene order; `display` sits just before `foreground` even when the chain order doesn't list it yet. */
+export function orderedLayers(cfg) {
+    const order = ((cfg && cfg.sceneOrder) || []).filter((e) => e[0] !== '@' && !e.endsWith(':front'));
+    const out = order.slice();
+    if ((cfg && cfg.layers && cfg.layers[DISPLAY_LAYER]) && !out.includes(DISPLAY_LAYER)) {
+        const at = out.indexOf('foreground');
+        out.splice(at >= 0 ? at : out.length, 0, DISPLAY_LAYER);
+    }
+    return out;
+}
+
+/**
+ * Display template metadata `screen` (contract parseScreen): "x,y,w,h" or "x,y,w,h,x1,y1,x2,y2,x3,y3,x4,y4" (quad corners
+ * TL,TR,BR,BL in scene coordinates); JSON {x,y,w,h,quad:[[x,y]x4]} too. The API pre-parses it ({x,y,w,h,quad:[8]}).
+ * Returns {x, y, w, h, quad: [8 numbers] | []} or null.
+ */
+export function parseScreen(raw) {
+    if (raw === undefined || raw === null || raw === '') { return null; }
+    let v = null;
+    if (typeof raw === 'object' && !Array.isArray(raw)) {
+        v = [raw.x, raw.y, raw.w ?? raw.width, raw.h ?? raw.height];
+        const q = raw.quad || [];
+        if (q.length === 8) { v.push(...q); } else if (q.length === 4) { for (const p of q) { v.push((p || [])[0], (p || [])[1]); } }
+    } else if (Array.isArray(raw)) { v = raw; } else {
+        const s = String(raw).trim();
+        if (s[0] === '{' || s[0] === '[') { try { return parseScreen(JSON.parse(s)); } catch (e) { return null; } }
+        v = s.split(',');
+    }
+    if (v.length !== 4 && v.length !== 12) { return null; }
+    const n = v.map((x) => (typeof x === 'string' ? (x.trim() === '' ? NaN : Number(x)) : Number(x)));
+    if (!n.every((x) => Number.isFinite(x) && x >= 0 && x <= 100000) || n[2] <= 0 || n[3] <= 0) { return null; }
+    return {x: n[0], y: n[1], w: n[2], h: n[3], quad: n.length === 12 ? n.slice(4) : []};
+}
+
+/** Screen of a template info from /api/islands/config (pre-parsed `screen`, else metadata.screen). */
+export function templateScreen(t) {
+    if (!t) { return null; }
+    return parseScreen(t.screen) || parseScreen(t.metadata && t.metadata.screen);
+}
+
+function fmt(n) { return String(Math.round(n * 10000) / 10000); }
+
+/**
+ * Screen fragment = contract screenSvg (App\Services\Islands\IslandScene::screenSvg): clip path (rect or the quad
+ * polygon) + the image filling the screen (preserveAspectRatio slice); a quad maps the w x h image box onto TL/TR/BL.
+ */
+export function screenFragment(screen, href, islandId, slot) {
+    if (!screen || !href) { return ''; }
+    const cid = 'screen-clip-' + (islandId ?? 'preview');
+    const q = screen.quad || [];
+    const h = String(href).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    const clip = q.length === 8
+        ? '<polygon points="' + fmt(q[0]) + ',' + fmt(q[1]) + ' ' + fmt(q[2]) + ',' + fmt(q[3]) + ' ' + fmt(q[4]) + ',' + fmt(q[5]) + ' ' + fmt(q[6]) + ',' + fmt(q[7]) + '"/>'
+        : '<rect x="' + fmt(screen.x) + '" y="' + fmt(screen.y) + '" width="' + fmt(screen.w) + '" height="' + fmt(screen.h) + '"/>';
+    let img;
+    if (q.length === 8) {
+        const m = [(q[2] - q[0]) / screen.w, (q[3] - q[1]) / screen.w, (q[6] - q[0]) / screen.h, (q[7] - q[1]) / screen.h, q[0], q[1]].map(fmt).join(' ');
+        img = '<image href="' + h + '" x="0" y="0" width="' + fmt(screen.w) + '" height="' + fmt(screen.h) + '" preserveAspectRatio="xMidYMid slice" transform="matrix(' + m + ')"/>';
+    } else {
+        img = '<image href="' + h + '" x="' + fmt(screen.x) + '" y="' + fmt(screen.y) + '" width="' + fmt(screen.w) + '" height="' + fmt(screen.h) + '" preserveAspectRatio="xMidYMid slice"/>';
+    }
+    const s = slot || 'S1';
+    return '<defs><clipPath id="' + cid + '">' + clip + '</clipPath></defs><g id="screen-' + s + '" class="resident standard screen" data-slot="' + s + '" clip-path="url(#' + cid + ')">' + img + '</g>';
+}
+
+/**
+ * Put a screen fragment into a composed scene: the `@display-screen` placeholder when the scene order has one, else
+ * right after the display layer body (its length is known from the template), else before </svg>.
+ * Same as IslandScene::insertScreen / the contract's composeSvgWithResidents.
+ */
+export function insertScreen(svg, fragment, displayTemplate) {
+    if (!fragment) { return svg; }
+    const ph = '<g id="display-screen"/>';
+    let i = svg.indexOf(ph);
+    if (i >= 0) { return svg.slice(0, i) + '<g id="display-screen">' + fragment + '</g>' + svg.slice(i + ph.length); }
+    const open = '<g id="layer-display">';
+    i = svg.indexOf(open);
+    if (i >= 0 && displayTemplate) {
+        const end = i + open.length + String(displayTemplate.svg || '').length + 4;
+        if (svg.slice(end - 4, end) === '</g>') { return svg.slice(0, end) + fragment + svg.slice(end); }
+    }
+    const e = svg.lastIndexOf('</svg>');
+    return e >= 0 ? svg.slice(0, e) + fragment + svg.slice(e) : svg;
+}
+
+/** Bounding box of a screen in scene coordinates (the zoom target). */
+export function screenBox(screen) {
+    if (!screen) { return null; }
+    const q = screen.quad || [];
+    if (q.length === 8) {
+        const xs = [q[0], q[2], q[4], q[6]], ys = [q[1], q[3], q[5], q[7]];
+        const x = Math.min(...xs), y = Math.min(...ys);
+        return {x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y};
+    }
+    return {x: screen.x, y: screen.y, w: screen.w, h: screen.h};
+}
+
+/** Placeholder art for the screen in the builder ("your first NFT shows here"). */
+export const SCREEN_PLACEHOLDER = 'data:image/svg+xml;base64,' + (typeof btoa === 'function' ? btoa : (s) => Buffer.from(s, 'binary').toString('base64'))(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">'
+    + '<stop offset="0" stop-color="#5F37CB"/><stop offset="1" stop-color="#EF2AC1"/></linearGradient></defs>'
+    + '<rect width="400" height="300" fill="url(#g)"/><circle cx="200" cy="118" r="52" fill="#AED7F7" stroke="#1A1E2D" stroke-width="8"/>'
+    + '<path d="M104 262c10-58 50-86 96-86s86 28 96 86z" fill="#AED7F7" stroke="#1A1E2D" stroke-width="8"/>'
+    + '<circle cx="182" cy="112" r="7" fill="#1A1E2D"/><circle cx="218" cy="112" r="7" fill="#1A1E2D"/>'
+    + '<rect x="12" y="12" width="376" height="276" rx="14" fill="none" stroke="#FFEE50" stroke-width="6" stroke-dasharray="18 12"/></svg>');
+
+/**
+ * Slot changes -> one transaction's operations. `current` / `plan`: {chainSlot: {type, id} | null}.
+ * Returns {clears: [slot], sets: [{slot, type, id}]}: clears first (frees capacity and the "already lives here" index),
+ * then sets. A resident moved between slots = clear + set.
+ */
+export function planOps(current, plan) {
+    const key = (r) => (r ? r.type + '|' + Number(r.id) : '');
+    const clears = [];
+    const sets = [];
+    const slots = new Set([...Object.keys(current || {}), ...Object.keys(plan || {})]);
+    for (const s of slots) {
+        const a = key((current || {})[s]);
+        const b = key((plan || {})[s]);
+        if (a === b) { continue; }
+        if (a) { clears.push(s); }
+        if (b) { sets.push({slot: s, type: plan[s].type, id: Number(plan[s].id)}); }
+    }
+    const order = (s) => { const m = /^([A-Za-z]+)(\d+)$/.exec(s); return m ? [m[1], Number(m[2])] : [s, 0]; };
+    const cmp = (x, y) => { const a = order(x), b = order(y); return a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : a[1] - b[1]; };
+    clears.sort(cmp);
+    sets.sort((x, y) => cmp(x.slot, y.slot));
+    return {clears, sets};
+}
+
 /** Contract validateScene, client side (for UX; the chain re-checks everything). Returns a list of problems. */
 export function validateScene(cfg, rarity, layers, tint, infos) {
     const errors = [];
@@ -113,7 +272,7 @@ export function validateScene(cfg, rarity, layers, tint, infos) {
         if (!(c.allowed || []).includes(rarity)) { errors.push(name + ' is not available for ' + rarity + ' islands'); }
         if (!t) { errors.push('Unknown template for ' + name); continue; }
         if (t.layer !== name) { errors.push('Template belongs to another layer'); }
-        if (t.rarity !== rarity) { errors.push(name + ': template rarity doesn\u2019t match'); }
+        if (t.rarity !== rarity && t.rarity !== 'any' && !isSharedLayer(cfg, name)) { errors.push(name + ': template rarity doesn\u2019t match'); }
         if (!t.enabled) { errors.push(name + ': template is disabled'); }
     }
     if (!withinBudget(cfg, rarity, layers, infos)) { errors.push(OVER_BUDGET_MESSAGE); }
@@ -170,6 +329,43 @@ export function residentTransform(anchor, tierScale, familyScale) {
     const tx = Math.round((ax - FOOT[0] * k) * 100) / 100;
     const ty = Math.round((ay - FOOT[1] * k) * 100) / 100;
     return {k, tx, ty, transform: 'translate(' + tx + ' ' + ty + ') scale(' + k + ')' + (flip ? ' translate(' + RESIDENT_CANVAS + ',0) scale(-1,1)' : '')};
+}
+
+/**
+ * One premium resident group (shadow + nested image), same markup as IslandScene::residentGroup. `href` = data: URI
+ * (works inside an <img>-embedded SVG) or URL.
+ */
+export function residentGroupSvg(slot, anchor, href, tierScale, familyScale) {
+    const {k, transform} = residentTransform(anchor, tierScale, familyScale);
+    const [ax, ay] = anchor;
+    const r2 = (n) => Math.round(n * 100) / 100;
+    const safe = String(href).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+    return '<g class="island-resident" data-slot="' + slot + '"><ellipse cx="' + ax + '" cy="' + ay + '" rx="' + r2(560 * k) + '" ry="' + r2(58 * k) + '" fill="#000" opacity=".27"/>'
+        + '<g transform="' + transform + '"><image width="' + RESIDENT_CANVAS + '" height="' + RESIDENT_CANVAS + '" href="' + safe + '"/></g></g>';
+}
+
+/** Fill residents-back / residents-front / caretaker placeholders (IslandScene::inject). */
+export function injectResidents(svg, back, front, caretaker) {
+    for (const [id, content] of [['residents-back', back], ['residents-front', front], ['caretaker', caretaker || '']]) {
+        if (!content) { continue; }
+        const ph = '<g id="' + id + '"/>';
+        const i = svg.indexOf(ph);
+        if (i >= 0) { svg = svg.slice(0, i) + '<g id="' + id + '">' + content + '</g>' + svg.slice(i + ph.length); } else {
+            const e = svg.lastIndexOf('</svg>');
+            svg = svg.slice(0, e) + '<g id="' + id + '">' + content + '</g></svg>';
+        }
+    }
+    return svg;
+}
+
+/**
+ * Hotspot box of a premium slot in scene coordinates (where a resident stands): roughly the Flovatar body on the
+ * 3000×3000 resident canvas (x 750..2250, y 300..2725), scaled like the resident.
+ */
+export function slotBox(anchor, tierScale, familyScale) {
+    const {k} = residentTransform(anchor, tierScale, familyScale || 1);
+    const [ax, ay] = anchor;
+    return {x: ax - 750 * k, y: ay - 2425 * k, w: 1500 * k, h: 2425 * k};
 }
 
 /** ipfs:// → gateway, everything else unchanged. */

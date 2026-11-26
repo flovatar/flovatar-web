@@ -124,6 +124,7 @@ class IslandsController extends Controller
                 'svgFrontLength' => (int) $t->svg_front_length, 'hash' => substr((string) $t->svg_hash, 0, 12),
                 'usage' => (int) $t->usage,
                 'anchors' => (object) IslandScene::parseAnchors((array) $t->metadata), 'metadata' => (object) (array) $t->metadata,
+                'screen' => IslandScene::parseScreen(((array) $t->metadata)['screen'] ?? null),
             ])->values()->all());
         $cfg['templates'] = $templates;
         $cfg['tierScale'] = config('islands.tier_scale');
@@ -233,6 +234,7 @@ class IslandsController extends Controller
         // the chain answer is the truth: the island IS in $owner's collection
         $island ??= new Island(['flow_id' => $id]);
         $island->flow_address = $owner;
+        $data['displays'] = RefreshIsland::displays($this->chain, $owner, $id);
         RefreshIsland::apply($island, $data);
         RenderItemImages::debounced('island', $id, 5);
 
@@ -266,9 +268,23 @@ class IslandsController extends Controller
                 'type' => $r->nft_type, 'id' => (int) $r->nft_id, 'family' => $family,
                 'setBy' => $r->set_by, 'valid' => (bool) $r->valid && $r->set_by === $island->flow_address,
                 'reason' => $r->set_by !== $island->flow_address ? 'island-owner-changed' : $r->reason,
+                'name' => (string) ($r->name ?? ''), 'thumbnail' => (string) ($r->thumbnail ?? ''),
             ];
         }
-        $templates = $this->scene->templates(array_values((array) $island->layers));
+        $layers = (array) $island->layers;
+        $templates = $this->scene->templates(array_values($layers));
+        // round 4: display + screen, and the layers the owner may change now with set_layer (contract settableLayers)
+        $displayLayer = (string) ($cfg['displayLayer'] ?? 'display');
+        $display = $this->scene->display($layers, $templates);
+        $layerAllowed = fn ($l) => in_array($island->rarity, (array) (($cfg['layers'][$l] ?? [])['allowed'] ?? []), true);
+        $canSet = (int) ($cfg['contractVersion'] ?? 2) >= 3 && empty($cfg['setLayerPaused']);
+        $canChooseDisplay = $canSet && ! empty($cfg['displayMigration']) && ! isset($layers[$displayLayer]) && $layerAllowed($displayLayer);
+        $settable = $canSet ? array_values(array_filter((array) ($cfg['mutableLayers'] ?? []), $layerAllowed)) : [];
+        if ($canChooseDisplay && ! in_array($displayLayer, $settable, true)) {
+            $settable[] = $displayLayer;
+        }
+        $screenResident = $display && $display['screen'] ? $this->scene->screenResident($island) : null;
+        $order = ['sky', 'base', 'structure', 'fub', $displayLayer, 'foreground', 'fx'];
 
         return $this->card($island) + [
             'description' => (string) $island->description, 'rawName' => (string) $island->name,
@@ -276,11 +292,13 @@ class IslandsController extends Controller
             'deedRarity' => $island->deed_rarity, 'terraformedAt' => optional($island->terraformed_at)->toIso8601String(),
             'tx' => $island->terraform_tx, 'premiumSlots' => $n, 'slotModel' => $model,
             'slots' => Islands::slots($island->rarity, $n, $model), 'residentsList' => $residents,
-            'anchors' => $this->scene->anchors($island->rarity, (array) $island->layers, $templates),
+            'anchors' => $this->scene->anchors($island->rarity, $layers, $templates),
             // layer => template name, in scene order (templates() is keyed by template id)
-            'layerNames' => (object) collect((array) $island->layers)
-                ->sortBy(fn ($tid, $layer) => array_search($layer, ['sky', 'base', 'structure', 'fub', 'foreground', 'fx'], true))
+            'layerNames' => (object) collect($layers)
+                ->sortBy(fn ($tid, $layer) => array_search($layer, $order, true))
                 ->map(fn ($tid) => isset($templates[$tid]) ? $templates[$tid]->name : '#'.$tid)->all(),
+            'display' => $display, 'canChooseDisplay' => $canChooseDisplay, 'settableLayers' => $settable,
+            'screenSlot' => $screenResident ? Islands::logicalSlot($island->rarity, $screenResident->slot, $n, $model) : null,
             'full' => '/islands/'.$island->flow_id.'/full.svg?h='.$this->scene->fullHash($island),
             'png' => ItemImages::url('island', $island->flow_id, 'full.png', false),
         ];
