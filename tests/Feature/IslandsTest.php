@@ -488,6 +488,15 @@ class IslandsTest extends TestCase
         $this->assertSame(['sky', 'fx'], $this->getJson('/api/islands/9')->assertOk()->json('settableLayers'));
         $this->assertSame(['sky', 'fx', 'display'], $this->getJson('/api/islands/10')->assertOk()->json('settableLayers'));
         $chain->cfg['mutableLayers'] = ['sky'];
+        // displayMigration off (setting, Luca 2026-11-26): old islands keep no display, no one-time action
+        $chain->cfg['displayMigration'] = false;
+        $j = $this->getJson('/api/islands/10')->assertOk()->json();
+        $this->assertFalse($j['canChooseDisplay']);
+        $this->assertSame(['sky'], $j['settableLayers']);
+        $this->assertNull($j['display']);
+        $this->assertNull($j['screenSlot']);
+        $this->get('/islands/10')->assertOk()->assertSee('data-islands="no-display"', false);
+        $chain->cfg['displayMigration'] = true;
         // contract v2 (no set_layer): no layer tools
         $chain->cfg['contractVersion'] = 2;
         $j = $this->getJson('/api/islands/10')->assertOk()->json();

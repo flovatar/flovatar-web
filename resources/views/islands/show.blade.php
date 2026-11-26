@@ -170,7 +170,7 @@
                         <button type="button" role="tab" :aria-selected="colTab === 'family'" :class="{active: colTab === 'family'}" @click="colTab = 'family'" data-islands="tab-family">Flovatar family <small x-text="walletNfts ? familyNfts.length : ''"></small></button>
                         <button type="button" role="tab" :aria-selected="colTab === 'all'" :class="{active: colTab === 'all'}" @click="colTab = 'all'" data-islands="tab-all">All NFTs <small x-text="walletNfts ? walletNfts.length : ''"></small></button>
                     </div>
-                    <p class="isp-col-help" x-text="colTab === 'family' ? 'Flovatars, Sportvatars, Psyche Likees and Flobots live in the scene (or on the display).' : 'Any NFT can go on the display.'"></p>
+                    <p class="isp-col-help" x-text="colTab === 'family' ? (hasDisplay ? 'Flovatars, Sportvatars, Psyche Likees and Flobots live in the scene (or on the display).' : 'Flovatars, Sportvatars, Psyche Likees and Flobots live in the scene.') : (hasDisplay ? 'Any NFT can go on the display.' : 'Any NFT can go in the Other NFTs list.')"></p>
                     <input type="search" class="isp-search" placeholder="Search name, collection or #id" x-model.debounce.150ms="colQuery" aria-label="Search your NFTs" data-islands="col-search">
                     <p x-show="walletStatus === 'loading'">Reading the NFTs in your wallet…</p>
                     <p x-show="walletStatus === 'error'" class="isl-error">We couldn't read your wallet's NFTs. <button type="button" class="isl-link" @click="loadWalletNfts()">Try again</button></p>
@@ -207,9 +207,10 @@
                         </template>
                     </ul>
                     <div class="isp-dzone" :data-drop="isOwner ? 'display' : null" :class="{target: isOwner && !!(drag || selected) && targetActive('display'), hover: dropHover === 'display'}">
-                        <h3>On the display <small x-text="displayList(isOwner).length + ' / ' + standardSlots.length"></small>
+                        <h3><span x-text="hasDisplay ? 'On the display' : 'Other NFTs'"></span> <small x-text="displayList(isOwner).length + ' / ' + standardSlots.length"></small>
                             <button type="button" class="isl-link" x-show="hasDisplay && carousel.length" @click="openZoom()">open</button></h3>
-                        <p class="muted" x-show="!hasDisplay && !(island && island.canChooseDisplay)">This island has no display.</p>
+                        {{-- islands minted before the display layer (and no display migration): plain list, no screen, no zoom --}}
+                        <p class="muted" x-show="!hasDisplay && !(island && island.canChooseDisplay)" data-islands="no-display">This island has no display: these NFTs are listed here, not shown in the scene.</p>
                         <p class="muted" x-show="!hasDisplay && island && island.canChooseDisplay">No display yet<span x-show="isOwner">: choose one above (one time)</span>. NFTs placed here show once it has one.</p>
                         <ol class="isp-rlist isp-dlist" data-islands="display-list">
                             <template x-for="(r, i) in displayList(isOwner)" :key="r.chainSlot">
@@ -226,7 +227,7 @@
                         </ol>
                         <button type="button" class="isp-btn isp-btn-sm" x-show="isOwner && selected && targetActive('display')" @click="place(selected, 'display')" data-islands="to-display">Put it on the display</button>
                     </div>
-                    <p class="muted" x-show="!displayList(isOwner).length">Nothing on the display yet.</p>
+                    <p class="muted" x-show="!displayList(isOwner).length" x-text="hasDisplay ? 'Nothing on the display yet.' : 'No other NFTs yet.'"></p>
                     <button type="button" class="isl-link" x-show="isOwner && invalidCount" @click="clearInvalidPlan()" x-text="'Remove ' + invalidCount + ' moved-out'"></button>
                 </div>
 

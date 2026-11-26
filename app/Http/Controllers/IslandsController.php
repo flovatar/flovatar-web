@@ -226,7 +226,13 @@ class IslandsController extends Controller
         $height = null;
         $tx = strtolower((string) $request->input('tx', ''));
         if (preg_match('/^(0x)?[0-9a-f]{64}$/', $tx)) {
-            $height = $this->chain->txHeight($tx);
+            // a lagging access node may not know the (already sealed) tx yet: ask again for a few seconds
+            for ($try = 0; $try < 4 && $height === null; $try++) {
+                if ($try) {
+                    usleep(1_200_000);
+                }
+                $height = $this->chain->txHeight($tx);
+            }
         }
         $data = null;
         try {
