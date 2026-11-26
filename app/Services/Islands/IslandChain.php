@@ -52,9 +52,14 @@ class IslandChain
         return Cache::remember($key, (int) config('islands.chain_cache_seconds', 300), fn () => $this->readConfig());
     }
 
+    /**
+     * Contract config. Contract v3 (round 4) adds shared / mutable layers, the display layer and set_layer; on a v2
+     * contract the v3 script fails to type-check, so the v2 script runs and the round-4 knobs are off (rarity lock
+     * everywhere, no set_layer).
+     */
     public function readConfig(): array
     {
-        $r = $this->run(<<<'CDC'
+        $v2 = <<<'CDC'
 access(all) fun main(): {String: AnyStruct} {
     let layers: {String: {String: [String]}} = {}
     let cfgs = FlovatarAsteroidIsland.getLayerConfigs()
@@ -76,10 +81,25 @@ access(all) fun main(): {String: AnyStruct} {
         "layers": layers,
         "typeRules": rules,
         "fees": fees,
-        "psModel": FlovatarAsteroidIsland.isValidSlot(rarity: "common", slot: "P1")
+        "psModel": FlovatarAsteroidIsland.isValidSlot(rarity: "common", slot: "P1")/*V3*/
     }
 }
-CDC);
+CDC;
+        $v3 = str_replace('/*V3*/', ',
+        "sharedLayers": FlovatarAsteroidIsland.getSharedLayers(),
+        "mutableLayers": FlovatarAsteroidIsland.getMutableLayers(),
+        "displayLayer": FlovatarAsteroidIsland.displayLayer(),
+        "setLayerPaused": FlovatarAsteroidIsland.isPaused("setlayer")', $v2);
+        $version = 3;
+        try {
+            $r = $this->run($v3);
+        } catch (RuntimeException $e) {
+            if (! str_contains($e->getMessage(), 'has no member') && ! str_contains($e->getMessage(), 'cannot find')) {
+                throw $e;
+            }
+            $version = 2;
+            $r = $this->run(str_replace('/*V3*/', '', $v2));
+        }
         $settings = (array) ($r['settings'] ?? []);
         // the contract names the islands (setting designationPrefix, e.g. "K313/"): keep it for every page/API
         Islands::rememberDesignationPrefix($settings['designationPrefix'] ?? null);
@@ -128,6 +148,14 @@ CDC);
 
                 return $out;
             })(),
+            // round 4 (contract v3): layers without rarity lock, layers the owner may change any time (set_layer), the
+            // display layer (also choosable ONCE by islands minted before it, setting displayMigration != off)
+            'contractVersion' => $version,
+            'sharedLayers' => array_values(array_map('strval', (array) ($r['sharedLayers'] ?? []))),
+            'mutableLayers' => array_values(array_map('strval', (array) ($r['mutableLayers'] ?? []))),
+            'displayLayer' => (string) ($r['displayLayer'] ?? 'display'),
+            'displayMigration' => $version >= 3 && ($settings['displayMigration'] ?? '') !== 'off',
+            'setLayerPaused' => (bool) ($r['setLayerPaused'] ?? ($version < 3)),
             'maxName' => (int) ($settings['nameMaxLength'] ?? 32),
             'maxDescription' => (int) ($settings['descriptionMaxLength'] ?? 500),
         ];
@@ -209,7 +237,7 @@ CDC, [['type' => 'UInt64', 'value' => (string) $id], ['type' => 'Bool', 'value' 
      */
     public function island(string $owner, int $id): ?array
     {
-        $r = $this->run(<<<'CDC'
+        $script = <<<'CDC'
 access(all) fun main(address: Address, id: UInt64): {String: AnyStruct}? {
     if let island = FlovatarAsteroidIsland.borrowIsland(address: address, id: id) {
         let residents: [{String: AnyStruct}] = []
@@ -219,13 +247,57 @@ access(all) fun main(address: Address, id: UInt64): {String: AnyStruct}? {
         }
         return {"id": island.id, "rarity": island.rarity, "name": island.name, "description": island.description,
             "layers": island.getLayers(), "tint": island.tint, "deedIds": island.getDeedIds(), "deedRarity": island.deedRarity,
-            "terraformedAt": island.terraformedAt, "owner": address, "residents": residents}
+            "terraformedAt": island.terraformedAt, "owner": address, "residents": residents/*V3*/}
     }
     return nil
 }
-CDC, [['type' => 'Address', 'value' => $owner], ['type' => 'UInt64', 'value' => (string) $id]]);
+CDC;
+        $args = [['type' => 'Address', 'value' => $owner], ['type' => 'UInt64', 'value' => (string) $id]];
+        if ((int) ($this->config()['contractVersion'] ?? 2) >= 3) {
+            try {
+                $r = $this->run(str_replace('/*V3*/', ', "settableLayers": island.settableLayers(), "screenResident": island.screenResident()', $script), $args);
+
+                return is_array($r) ? $r : null;
+            } catch (RuntimeException $e) {
+                // contract rolled back / not yet updated: v2 shape below
+            }
+        }
+        $r = $this->run(str_replace('/*V3*/', '', $script), $args);
 
         return is_array($r) ? $r : null;
+    }
+
+    /**
+     * MetadataViews.Display (name + thumbnail URL) of every resident of an island, resolved from the owner's wallet like
+     * the contract's ownership check: [slot => ['name' => …, 'thumbnail' => …]]. Separate from island() so one NFT
+     * whose view resolver fails can't break the island refresh (callers catch).
+     */
+    public function residentDisplays(string $owner, int $id): array
+    {
+        $mv = (string) config('services.flow.nftaddress');
+        $r = $this->rest()->script('import FlovatarAsteroidIsland from '.Islands::contract()."\nimport MetadataViews from ".$mv."\n".<<<'CDC'
+access(all) fun main(address: Address, id: UInt64): {String: {String: String}} {
+    let out: {String: {String: String}} = {}
+    if let island = FlovatarAsteroidIsland.borrowIsland(address: address, id: id) {
+        let residents = island.getResidents()
+        for slot in residents.keys {
+            let r = residents[slot]!
+            if let nft = FlovatarAsteroidIsland.borrowResidentNFT(owner: address, nftType: r.nftType, nftId: r.nftId, collectionPath: r.collectionPath) {
+                if let d = nft.resolveView(Type<MetadataViews.Display>()) as? MetadataViews.Display {
+                    out[slot] = {"name": d.name, "thumbnail": d.thumbnail.uri()}
+                }
+            }
+        }
+    }
+    return out
+}
+CDC, [['type' => 'Address', 'value' => $owner], ['type' => 'UInt64', 'value' => (string) $id]]);
+        $out = [];
+        foreach ((array) $r as $slot => $d) {
+            $out[(string) $slot] = ['name' => mb_substr((string) ($d['name'] ?? ''), 0, 160), 'thumbnail' => mb_substr((string) ($d['thumbnail'] ?? ''), 0, 2000)];
+        }
+
+        return $out;
     }
 
     /** Island ids in an account's collection. */

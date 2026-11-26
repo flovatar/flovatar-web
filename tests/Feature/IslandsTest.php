@@ -63,6 +63,8 @@ class IslandsTest extends TestCase
         config(['islands.belt.dir' => $this->beltDir, 'islands.designation_prefix' => 'K313/']);
         DB::purge();
         (require base_path('database/migrations/2026_11_26_100001_create_islands_tables.php'))->up();
+        (require base_path('database/migrations/2026_11_26_200001_add_display_to_island_residents.php'))->up();
+        IslandResident::forgetDisplayColumns();
         \Illuminate\Support\Facades\Schema::create('rendered_images', function ($t) {
             $t->increments('id');
             $t->string('item_type');
@@ -164,18 +166,28 @@ class IslandsTest extends TestCase
         $r->assertOk();
         $this->assertStringContainsString('property="og:title" content="Rock Garden · K313/0001', $r->getContent());
         $this->assertStringContainsString('x-data="islandPage(1)"', $r->getContent());
+        // round 4 island page: display zoom carousel (replaces the old under-scene carousel), accessible resident lists,
+        // owner collection box with pick-and-place, pending-changes bar, layer tools
+        foreach (['data-islands="zoom"', 'data-islands="display"', 'data-islands="display-list"', 'data-islands="collection"', 'data-islands="tab-family"',
+            'data-islands="tab-all"', 'data-islands="pending-bar"', 'data-islands="change-sky"', 'data-islands="choose-display"', 'Save (one approval)'] as $needle) {
+            $this->assertStringContainsString($needle, $r->getContent());
+        }
+        $this->assertStringNotContainsString('data-islands="carousel"', $r->getContent());
 
         $b = $this->get('/islands/build')->assertOk()->assertHeader('X-Robots-Tag', 'noindex, nofollow');
         $this->assertStringContainsString('x-data="islandsBuilder"', $b->getContent());
         // category tabs use the icon files (idle + selected), never inline placeholder symbols
         $this->assertStringContainsString(':src="tabIcon(t.key, true)"', $b->getContent());
         $this->assertStringNotContainsString('isb-i-sky', $b->getContent());
-        foreach (['deeds', 'sky', 'base', 'structure', 'fub', 'foreground', 'fx', 'tint'] as $tabKey) {
+        foreach (['deeds', 'sky', 'base', 'structure', 'fub', 'display', 'foreground', 'fx', 'tint'] as $tabKey) {
             $this->assertFileExists(public_path('images/islands/tab-' . $tabKey . '.svg'));
             $this->assertFileExists(public_path('images/islands/tab-' . $tabKey . '-on.svg'));
         }
         // the "unminted" stamp belongs to the builder's Save PNG only: island pages never mention it
         $this->assertStringNotContainsStringIgnoringCase('unminted', $r->getContent());
+        // round 4 builder: layer notes (sky changeable, effects permanent, display explained) + review part notes
+        $this->assertStringContainsString('data-islands="layer-note"', $b->getContent());
+        $this->assertStringContainsString('isb-part-note', $b->getContent());
         // the size budget is internal: no size meter, no KB / byte figure anywhere in the builder by default
         $this->assertDoesNotMatchRegularExpression('/\bKB\b|\bkB\b|bytes|isb-meter|data-islands="budget"/i', $b->getContent());
         $this->assertFalse(\App\Support\Islands::bootstrap()['sizeMeter']);
@@ -401,6 +413,105 @@ class IslandsTest extends TestCase
         $this->app->make(\App\Services\Islands\IslandBelt::class)->forget();
         $this->get('/api/islands/belt')->assertNotFound();
         $this->get(((array) $m2['atlases'])['0'])->assertNotFound();
+    }
+
+    public function test_round4_display_screen_set_layer_events_and_api(): void
+    {
+        $this->mode('on');
+        $this->routes();
+        Queue::fake();
+        $chain = app(IslandChain::class);
+        $chain->cfg += ['contractVersion' => 3, 'sharedLayers' => ['sky', 'fx', 'display'], 'mutableLayers' => ['sky'], 'displayLayer' => 'display',
+            'displayMigration' => true, 'setLayerPaused' => false, 'slotModel' => 'ps'];
+        $chain->cfg['slotModel'] = 'ps';
+        $chain->cfg['layers'] = ['base' => ['required' => ['common'], 'allowed' => ['common']], 'sky' => ['required' => [], 'allowed' => ['common']],
+            'display' => ['required' => ['common'], 'allowed' => ['common']]];
+        $chain->cfg['sceneOrder'] = array_merge($this->fixture['cfg']['sceneOrder'], ['display']);
+
+        // contract grammar for the screen
+        $this->assertSame(['x' => 100.0, 'y' => 200.0, 'w' => 300.0, 'h' => 150.0, 'quad' => []], IslandScene::parseScreen('100,200,300,150'));
+        $this->assertSame([10.0, 20.0, 110.0, 20.0, 110.0, 70.0, 10.0, 70.0], IslandScene::parseScreen('0,0,100,50,10,20,110,20,110,70,10,70')['quad']);
+        $this->assertSame(1.0, IslandScene::parseScreen('{"x":1,"y":2,"w":3,"h":4}')['x']);
+        foreach (['', '1,2,3', '1,2,0,4', 'a,b,c,d', '1,2,3,-4', '1,2,3,4,5'] as $bad) {
+            $this->assertNull(IslandScene::parseScreen($bad), $bad);
+        }
+        $this->assertSame('<defs><clipPath id="screen-clip-7"><rect x="100" y="200" width="300" height="150"/></clipPath></defs>'
+            .'<g id="screen-S1" class="resident standard screen" data-slot="S1" clip-path="url(#screen-clip-7)">'
+            .'<image href="data:a&amp;b" x="100" y="200" width="300" height="150" preserveAspectRatio="xMidYMid slice"/></g>',
+            IslandScene::screenSvg(7, IslandScene::parseScreen('100,200,300,150'), 'data:a&b', 'S1'));
+        $this->assertSame('<svg><g id="layer-display"><d/></g><S/><g id="layer-fx"/></svg>', IslandScene::insertScreen('<svg><g id="layer-display"><d/></g><g id="layer-fx"/></svg>', '<S/>', 4));
+        $this->assertSame('<svg><g id="display-screen"><S/></g></svg>', IslandScene::insertScreen('<svg><g id="display-screen"/></svg>', '<S/>', 4));
+
+        // an island with a display: the first valid standard resident is drawn in the screen (data: URI, never external)
+        IslandTemplate::create(['flow_id' => 50, 'layer' => 'display', 'rarity' => 'any', 'name' => 'Billboard', 'enabled' => true, 'svg' => '<rect id="bb"/>', 'svg_front' => '',
+            'svg_length' => 15, 'svg_front_length' => 0, 'svg_hash' => sha1('bb'), 'metadata' => ['screen' => '100,200,300,150']]);
+        IslandTemplate::create(['flow_id' => 51, 'layer' => 'sky', 'rarity' => 'any', 'name' => 'Nebula', 'enabled' => true, 'svg' => '<rect id="sk"/>', 'svg_front' => '',
+            'svg_length' => 15, 'svg_front_length' => 0, 'svg_hash' => sha1('sk'), 'metadata' => []]);
+        $island = Island::create(['flow_id' => 9, 'rarity' => 'common', 'layers' => ['base' => 1, 'display' => 50], 'flow_address' => self::OWNER, 'residents_count' => 2]);
+        IslandResident::create(['island_flow_id' => 9, 'slot' => 'S2', 'nft_type' => 'A.2c6a4c4342aeca55.FlovatarComponent.NFT', 'nft_id' => 4, 'set_by' => self::OWNER, 'valid' => true,
+            'name' => 'Flobit #4', 'thumbnail' => 'data:image/png;base64,QUJD']);
+        IslandResident::create(['island_flow_id' => 9, 'slot' => 'S3', 'nft_type' => 'A.2c6a4c4342aeca55.FlovatarComponent.NFT', 'nft_id' => 5, 'set_by' => self::OWNER, 'valid' => true,
+            'name' => 'Flobit #5', 'thumbnail' => 'data:image/png;base64,REVG']);
+        $svg = app(IslandScene::class)->full($island);
+        $this->assertStringContainsString('<g id="layer-display"><rect id="bb"/></g><defs><clipPath id="screen-clip-9">', $svg);
+        $this->assertStringContainsString('data-slot="S2"', $svg);
+        $this->assertStringContainsString('href="data:image/png;base64,QUJD"', $svg);
+        $this->assertStringNotContainsString('REVG', $svg);
+        IslandResident::where('slot', 'S2')->update(['valid' => false, 'reason' => 'not-owned']);
+        $this->assertStringContainsString('href="data:image/png;base64,REVG"', app(IslandScene::class)->full($island->fresh()), 'the next valid one takes the screen');
+        // remote thumbnails: only public hosts are fetched (SSRF guard)
+        $this->assertFalse(\App\Services\Islands\ResidentArt::publicHost('127.0.0.1'));
+        $this->assertFalse(\App\Services\Islands\ResidentArt::publicHost('localhost'));
+        $this->assertFalse(\App\Services\Islands\ResidentArt::publicHost('10.0.0.8'));
+        $this->assertNull(app(\App\Services\Islands\ResidentArt::class)->dataUri('http://169.254.169.254/latest/meta-data'));
+        $this->assertSame('https://ipfs.io/ipfs/QmX', \App\Services\Islands\ResidentArt::httpUrl('ipfs://QmX'));
+
+        // API: display + screen, carousel data (name / thumbnail), settable layers (sky any time; display already set)
+        $j = $this->getJson('/api/islands/9')->assertOk()->json();
+        $this->assertSame(50, $j['display']['templateId']);
+        $this->assertEquals(['x' => 100, 'y' => 200, 'w' => 300, 'h' => 150, 'quad' => []], $j['display']['screen']);
+        $this->assertSame(['sky'], $j['settableLayers']);
+        $this->assertFalse($j['canChooseDisplay']);
+        $this->assertSame('S3', $j['screenSlot']);
+        $this->assertSame('Flobit #5', collect($j['residentsList'])->firstWhere('slot', 'S3')['name']);
+        $this->assertSame('Billboard', $j['layerNames']['display']);
+        // an island without a display may choose one once
+        Island::create(['flow_id' => 10, 'rarity' => 'common', 'layers' => ['base' => 1], 'flow_address' => self::OWNER, 'residents_count' => 0]);
+        $j = $this->getJson('/api/islands/10')->assertOk()->json();
+        $this->assertTrue($j['canChooseDisplay']);
+        $this->assertSame(['sky', 'display'], $j['settableLayers']);
+        $this->assertNull($j['display']);
+        // contract v2 (no set_layer): no layer tools
+        $chain->cfg['contractVersion'] = 2;
+        $j = $this->getJson('/api/islands/10')->assertOk()->json();
+        $this->assertSame([], $j['settableLayers']);
+        $this->assertFalse($j['canChooseDisplay']);
+        $chain->cfg['contractVersion'] = 3;
+        // config lists the parsed screen of display templates
+        $tpl = collect($this->getJson('/api/islands/config')->assertOk()->json('templates'))->keyBy('id');
+        $this->assertEquals(['x' => 100, 'y' => 200, 'w' => 300, 'h' => 150, 'quad' => []], $tpl[50]['screen']);
+        $this->assertNull($tpl[51]['screen']);
+
+        // events: IslandLayerChanged (set_layer) updates one layer; null removes it; it re-renders
+        $p = new IslandEventProcessor();
+        $a = 'A.2c6a4c4342aeca55.FlovatarAsteroidIsland.';
+        $ev = fn (string $type, array $m) => new Event(['type' => $type, 'flow_metadata' => $m, 'transaction_id' => 'tx', 'block_id' => 1, 'event_date' => now()]);
+        $e = $ev($a.'IslandLayerChanged', ['id' => 10, 'layer' => 'display', 'templateId' => 50, 'previousTemplateId' => null, 'migration' => true, 'owner' => self::OWNER]);
+        $this->assertContains($a.'IslandLayerChanged', FlowEventTypes::islandTypes());
+        $this->assertTrue($p->handles($e));
+        $p->process($e);
+        $this->assertSame(['base' => 1, 'display' => 50], Island::where('flow_id', 10)->first()->layers);
+        $p->process($ev($a.'IslandLayerChanged', ['id' => 10, 'layer' => 'sky', 'templateId' => 51, 'previousTemplateId' => null, 'migration' => false, 'owner' => self::OWNER]));
+        $p->process($ev($a.'IslandLayerChanged', ['id' => 10, 'layer' => 'sky', 'templateId' => null, 'previousTemplateId' => 51, 'migration' => false, 'owner' => self::OWNER]));
+        $this->assertSame(['base' => 1, 'display' => 50], Island::where('flow_id', 10)->first()->layers);
+        Queue::assertPushed(\App\Jobs\RefreshIsland::class, fn ($job) => $job->flowId === 10 && $job->render);
+
+        // RefreshIsland::apply stores the residents' Display views
+        \App\Jobs\RefreshIsland::apply(Island::where('flow_id', 10)->first(), ['rarity' => 'common', 'layers' => ['base' => 1, 'display' => 50], 'deedIds' => [1],
+            'residents' => [['slot' => 'S1', 'nftType' => 'A.x.Y.NFT', 'nftId' => 3, 'setBy' => self::OWNER, 'valid' => true, 'reason' => '']],
+            'displays' => ['S1' => ['name' => 'Thing #3', 'thumbnail' => 'https://example.com/3.png']]]);
+        $row = IslandResident::where('island_flow_id', 10)->where('slot', 'S1')->first();
+        $this->assertSame(['Thing #3', 'https://example.com/3.png'], [$row->name, $row->thumbnail]);
     }
 
     public function test_display_fix_declares_xlink_namespace(): void

@@ -116,6 +116,27 @@ class IslandEventProcessor
 
                 return true;
 
+            case 'IslandLayerChanged':
+                // round 4 set_layer (sky any time, one-time display); IslandLayersChanged with the full map follows
+                $island = Island::where('flow_id', (int) $m['id'])->first();
+                if ($island) {
+                    $layers = (array) $island->layers;
+                    $layer = (string) ($m['layer'] ?? '');
+                    if ($layer !== '') {
+                        if (($m['templateId'] ?? null) === null) {
+                            unset($layers[$layer]);
+                        } else {
+                            $layers[$layer] = (int) $m['templateId'];
+                        }
+                        $island->layers = $layers;
+                        $island->save();
+                    }
+                }
+                Cache::forget('islands:templates:list'); // template usage counts moved
+                RefreshIsland::debounced((int) $m['id']);
+
+                return true;
+
             case 'IslandNameChanged':
                 Island::where('flow_id', (int) $m['id'])->update(['name' => mb_substr((string) ($m['name'] ?? ''), 0, 64)]);
                 RefreshIsland::debounced((int) $m['id'], render: false);
@@ -176,6 +197,9 @@ class IslandEventProcessor
             case 'TemplateEnabled':
             case 'TemplateMetadataChanged':
             case 'SettingChanged':
+            case 'LayerConfigured':
+            case 'SceneOrderChanged':
+            case 'PauseChanged':
                 Cache::forget('islands:chain:config:'.Islands::contractHex());
                 // replaced SVG can keep its length: refetch that template explicitly
                 SyncIslandTemplates::dispatch($suffix === 'TemplateSvgReplaced' ? [(int) ($m['id'] ?? 0)] : [])->delay(now()->addSeconds(20));

@@ -54,13 +54,26 @@ class RefreshIsland implements ShouldQueue
             // not (or no longer) in that collection: a later Deposited event fixes the owner
             return;
         }
+        $data['displays'] = static::displays($chain, $island->flow_address, $this->flowId);
         static::apply($island, $data);
         if ($this->render) {
             RenderItemImages::debounced('island', $this->flowId, 5);
         }
     }
 
-    /** Apply a chain read (IslandChain::island) to the DB rows. */
+    /** Resident Display views (name, thumbnail) or [] when the chain read fails (never blocks the refresh). */
+    public static function displays(IslandChain $chain, string $owner, int $flowId): array
+    {
+        try {
+            return $chain->residentDisplays($owner, $flowId);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return [];
+        }
+    }
+
+    /** Apply a chain read (IslandChain::island [+ 'displays' => IslandChain::residentDisplays]) to the DB rows. */
     public static function apply(Island $island, array $data): void
     {
         DB::transaction(function () use ($island, $data) {
@@ -79,14 +92,21 @@ class RefreshIsland implements ShouldQueue
                 $island->terraformed_at = \Carbon\Carbon::createFromTimestamp((int) $data['terraformedAt']);
             }
             $seen = [];
+            $displays = (array) ($data['displays'] ?? []);
+            $hasDisplayCols = \App\Models\IslandResident::hasDisplayColumns();
             foreach ((array) ($data['residents'] ?? []) as $r) {
                 $slot = (string) $r['slot'];
                 $seen[] = $slot;
-                IslandResident::updateOrCreate(['island_flow_id' => $island->flow_id, 'slot' => $slot], [
+                $row = [
                     'nft_type' => (string) $r['nftType'], 'nft_id' => (int) $r['nftId'], 'set_by' => strtolower((string) $r['setBy']),
                     'set_at' => ! empty($r['setAt']) ? \Carbon\Carbon::createFromTimestamp((int) $r['setAt']) : null,
                     'valid' => (bool) $r['valid'], 'reason' => ($r['reason'] ?? '') !== '' ? (string) $r['reason'] : null,
-                ]);
+                ];
+                if ($hasDisplayCols && isset($displays[$slot])) {
+                    $row['name'] = $displays[$slot]['name'] !== '' ? $displays[$slot]['name'] : null;
+                    $row['thumbnail'] = $displays[$slot]['thumbnail'] !== '' ? $displays[$slot]['thumbnail'] : null;
+                }
+                IslandResident::updateOrCreate(['island_flow_id' => $island->flow_id, 'slot' => $slot], $row);
             }
             IslandResident::where('island_flow_id', $island->flow_id)->whereNotIn('slot', $seen ?: ['__none'])->delete();
             $island->residents_count = count(array_filter($seen, fn ($s) => $s !== 'caretaker'));
