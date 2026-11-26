@@ -18,7 +18,7 @@ $isb-orange: #FF6E03;
 $isb-common: #F5F5F5;
 $isb-epic: #FFEE50;
 $isb-legendary: #EB3CF2;
-$isb-h: clamp(560px, calc(100vh - 200px), 860px);
+$isb-h: clamp(540px, calc(100vh - 176px), 860px);
 $isb-tools: 72px;
 
 html.isb-modal-open { overflow: hidden; }
@@ -26,11 +26,11 @@ html.isb-modal-open { overflow: hidden; }
 .isb {
   max-width: 1500px;
   margin: 0 auto;
-  padding: 116px 24px 48px;
+  padding: 100px 24px 48px;
   color: #fff;
   font-size: 16px;
   line-height: 1.45;
-  @include media('<desktop') { padding: 96px 10px 32px; }
+  @include media('<desktop') { padding: 78px 8px 28px; }
 
   [x-cloak] { display: none !important; }
   .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
@@ -42,18 +42,20 @@ html.isb-modal-open { overflow: hidden; }
 }
 
 // ------------------------------------------------------------------ head + steps
-.isb-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 10px 24px; margin-bottom: 14px;
-  h1 { margin: 0; font-size: 46px; line-height: 1; color: $isb-peri; @include media('<desktop') { font-size: 32px; } }
+.isb-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 24px; margin-bottom: 10px;
+  h1 { margin: 0; font-size: 38px; line-height: 1; color: $isb-peri; @include media('<desktop') { font-size: 26px; } }
+  @include media('<desktop') { margin-bottom: 6px; gap: 6px; }
 }
-.isb-eyebrow { display: block; color: $isb-pink; font-family: $staatliches; letter-spacing: .06em; font-size: 16px; text-transform: uppercase; }
+.isb-eyebrow { display: block; color: $isb-pink; font-family: $staatliches; letter-spacing: .06em; font-size: 15px; text-transform: uppercase;
+  @include media('<desktop') { display: none; } }
 .isb-steps { display: flex; gap: 6px; margin: 0; padding: 0; list-style: none;
   li { margin: 0; }
   button { display: flex; align-items: center; gap: 8px; padding: 6px 14px 6px 6px; border: 0; border-radius: 999px; background: rgba(255, 255, 255, .08);
     color: rgba(255, 255, 255, .75); font-family: $staatliches; font-size: 17px; letter-spacing: .03em; text-transform: uppercase; cursor: pointer; }
-  .n { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: rgba(255, 255, 255, .16); font-size: 15px; }
+  .n { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: rgba(255, 255, 255, .16); font-family: $korolev-condensed; font-weight: 700; font-size: 15px; }
   .active button { background: $isb-yellow; color: $isb-ink; .n { background: $isb-ink; color: $isb-yellow; } }
   .done button { color: #fff; .n { background: $isb-sel; color: $isb-ink; } }
-  @include media('<tablet') { width: 100%; button { padding: 4px 10px 4px 4px; font-size: 15px; } .n { width: 22px; height: 22px; } li { flex: 1; } button { width: 100%; justify-content: center; } }
+  @include media('<tablet') { width: 100%; button { padding: 3px 8px 3px 3px; font-size: 14px; } .n { width: 20px; height: 20px; font-size: 13px; } li { flex: 1; } button { width: 100%; justify-content: center; } }
 }
 .isb-panel { padding: 16px 18px; border-radius: 8px; background: $isb-dark; }
 
@@ -97,7 +99,7 @@ html.isb-modal-open { overflow: hidden; }
   grid-template-columns: 26px 1fr;
   align-items: center;
   width: 100%;
-  height: 92px;
+  height: 96px;
   padding: 0 6px 0 4px;
   border: 0;
   border-radius: 3px;
@@ -111,21 +113,21 @@ html.isb-modal-open { overflow: hidden; }
     grid-template-columns: 1fr;
     grid-template-rows: 1fr auto;
     justify-items: center;
-    width: 84px;
-    height: 84px;
-    padding: 6px 4px 4px;
+    width: 76px;
+    height: 72px;
+    padding: 5px 3px 4px;
     &.active { box-shadow: inset 0 -5px 0 $isb-pink; }
   }
 }
 .isb-cat-label {
   font-family: $staatliches;
-  font-size: 16px;
-  letter-spacing: .03em;
+  font-size: 15px;
+  letter-spacing: .02em;
   text-transform: uppercase;
   writing-mode: vertical-rl;
   transform: rotate(180deg);
   white-space: nowrap;
-  @include media('<desktop') { order: 2; writing-mode: horizontal-tb; transform: none; font-size: 14px; }
+  @include media('<desktop') { order: 2; writing-mode: horizontal-tb; transform: none; font-size: 13px; }
 }
 .isb-cat-art {
   display: grid;
@@ -133,7 +135,7 @@ html.isb-modal-open { overflow: hidden; }
   height: 78px;
   img { max-width: 100%; max-height: 78px; object-fit: contain; }
   svg { width: 46px; height: 46px; color: $isb-ink; }
-  @include media('<desktop') { height: 52px; img { max-height: 52px; } svg { width: 36px; height: 36px; } }
+  @include media('<desktop') { height: 44px; img { max-height: 44px; } svg { width: 30px; height: 30px; } }
 }
 .isb-cat-badge { position: absolute; top: 6px; right: 6px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: $isb-pink; color: #fff; font-size: 13px; font-weight: 700; line-height: 22px; text-align: center; }
 
@@ -154,7 +156,7 @@ html.isb-modal-open { overflow: hidden; }
   border-radius: 3px;
   background: $isb-tile;
   color: $isb-ink;
-  @include media('<desktop') { grid-template-columns: 1fr; min-height: 0; padding: 10px 12px; }
+  @include media('<desktop') { grid-template-columns: 1fr; min-height: 0; padding: 8px 10px; &.is-layer { display: none; } }
 }
 .isb-info-cat {
   align-self: center;
@@ -211,7 +213,7 @@ html.isb-modal-open { overflow: hidden; }
   @include media('<desktop') {
     grid-template-columns: none;
     grid-auto-flow: column;
-    grid-auto-columns: 112px;
+    grid-auto-columns: 96px;
     overflow-x: auto;
     padding-bottom: 2px;
     scroll-snap-type: x proximity;
@@ -242,7 +244,8 @@ html.isb-modal-open { overflow: hidden; }
   svg { width: 40%; color: rgba(26, 30, 45, .45); }
   .isb-options[data-layer="sky"] & { background: $isb-frame; }
 }
-.isb-card-name { display: block; margin-top: 4px; overflow: hidden; font-family: $staatliches; font-size: 15px; line-height: 1.15; letter-spacing: .02em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+.isb-card-name { display: block; margin-top: 4px; overflow: hidden; font-family: $korolev-condensed; font-weight: 700; font-size: 15px; line-height: 1.15; letter-spacing: .02em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap;
+  @include media('<desktop') { font-size: 13px; } }
 .isb-check { position: absolute; top: 8px; right: 8px; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: $isb-sel; color: $isb-ink; font-weight: 800; font-size: 15px; box-shadow: 0 0 0 2px #fff; }
 .isb-anim { position: absolute; top: 8px; left: 8px; color: $isb-pink; font-size: 14px; line-height: 1; animation: isb-pulse 1.6s ease-in-out infinite; }
 @keyframes isb-pulse { 50% { opacity: .35; } }
@@ -254,9 +257,10 @@ html.isb-modal-open { overflow: hidden; }
 .isb-group { margin-bottom: 10px;
   h3 { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 4px 4px 8px; font-size: 18px; color: #fff; small { font-family: $base-font-family; font-size: 13px; text-transform: none; opacity: .7; } }
 }
+.isb-deeds .isb-cards { @include media('>=desktop') { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); } }
 .isb-deed .isb-card-art { background: radial-gradient(circle at 50% 50%, #fff 0 60%, rgba(255, 255, 255, 0) 61%); img { width: 86%; } }
 .isb-pack { cursor: default; align-items: center; gap: 6px; &:hover { transform: none; } }
-.isb-pack-art { display: grid; place-items: center; width: 100%; aspect-ratio: 3 / 4; border-radius: 3px; background: linear-gradient(160deg, $isb-pink, #6a2fc0); svg { width: 50%; color: #fff; } }
+.isb-pack-art { display: grid; place-items: center; width: 100%; aspect-ratio: 1; border-radius: 3px; background: linear-gradient(160deg, $isb-pink, #6a2fc0); svg { width: 50%; color: #fff; } }
 .isb-empty { margin: 6px; padding: 14px 16px; border-radius: 4px; background: rgba(255, 255, 255, .06); color: #fff; p { margin: 0 0 10px; } p:last-child { margin-bottom: 0; } }
 .isb-warn { box-shadow: inset 5px 0 0 $isb-orange; }
 .isb-notice { margin: 8px 4px; padding: 8px 12px; border-radius: 4px; background: rgba(255, 255, 255, .08); font-size: 14px; }
@@ -287,7 +291,7 @@ html.isb-modal-open { overflow: hidden; }
   background: radial-gradient(circle at 50% 42%, #3b2a7c, #180830 72%);
   img { display: block; width: 100%; height: 100%; object-fit: contain; transition: opacity .2s; }
   &.busy img { opacity: .85; }
-  @include media('<desktop') { flex: none; height: min(58vh, 128vw); }
+  @include media('<desktop') { flex: none; height: min(46vh, 112vw); }
 }
 .isb-rarity-badge {
   position: absolute;
@@ -330,7 +334,7 @@ html.isb-modal-open { overflow: hidden; }
   box-shadow: 0 0 0 3px rgba(255, 255, 255, .85), 0 6px 18px rgba(0, 0, 0, .5);
   color: #fff;
   svg { width: 42%; color: #8a8597; }
-  b { font-family: $staatliches; font-weight: 400; font-size: 18px; line-height: 1; }
+  b { font-family: $korolev-condensed; font-weight: 700; font-size: 17px; line-height: 1; }
   .ready & { svg { color: $isb-orange; filter: drop-shadow(0 0 6px rgba(255, 110, 3, .8)); } }
 }
 .isb-burn-text { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible;
@@ -348,7 +352,7 @@ html.isb-modal-open { overflow: hidden; }
   padding: 0 10px;
   border-radius: 3px;
   background: $isb-dark;
-  @include media('<desktop') { height: 64px; gap: 6px; padding: 0 6px; }
+  @include media('<desktop') { height: 58px; gap: 6px; padding: 0 6px; }
 }
 .isb-btn {
   display: inline-flex;
@@ -372,7 +376,7 @@ html.isb-modal-open { overflow: hidden; }
   &:hover { background: $isb-peri; color: $isb-ink; }
   &[disabled], &.disabled { opacity: .45; cursor: not-allowed; &:hover { background: transparent; color: $isb-peri; } }
   svg { width: 26px; height: 26px; }
-  @include media('<desktop') { min-height: 44px; padding: 4px 10px; font-size: 16px; }
+  @include media('<desktop') { min-height: 42px; padding: 4px 10px; font-size: 16px; }
 }
 .isb-btn-sm { min-height: 34px; padding: 2px 12px; font-size: 16px; border-color: $isb-ink; color: $isb-ink; &:hover { background: $isb-ink; color: #fff; } }
 .isb-btn-icon { width: 50px; padding: 0; @include media('<desktop') { width: 46px; } }

@@ -41,7 +41,7 @@
 
         {{-- ============ info card + option grid ============ --}}
         <div class="isb-parts">
-            <div class="isb-info" data-islands="info">
+            <div class="isb-info" :class="{'is-layer': isLayerTab()}" data-islands="info">
                 <strong class="isb-info-cat" x-text="tab === 'deeds' ? 'Land deeds' : (tab === 'tint' ? 'Tint' : layerLabel(tab))"></strong>
 
                 {{-- deeds --}}
