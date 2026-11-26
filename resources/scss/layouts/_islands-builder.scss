@@ -477,11 +477,13 @@ html.isb-modal-open { overflow: hidden; }
 
 // round 4: notes under the info card (sky changeable, effects permanent, display explained), rarity tag on shared-layer
 // options from another rarity, part notes in the review dialog
-.isb-info-note { grid-column: 1 / -1; margin: 8px 0 0; padding: 6px 10px; border-radius: 8px; background: rgba(145, 227, 249, .12); color: #91E3F9; font-size: 14px; line-height: 1.35;
-  &.isb-note-fx { background: rgba(255, 110, 3, .14); color: #FFB37A; }
-  &.isb-note-display { background: rgba(239, 42, 193, .12); color: #F6A8E3; } }
+.isb-info-note { grid-column: 1 / -1; margin: 8px 0 0; padding: 7px 12px; border-radius: 8px; border-left: 5px solid #91E3F9; background: rgba(145, 227, 249, .28); color: #1A1E2D; font-size: 15px; font-weight: 600; line-height: 1.35;
+  &.isb-note-fx { border-left-color: #FF6E03; background: rgba(255, 110, 3, .18); }
+  &.isb-note-display { border-left-color: #EF2AC1; background: rgba(239, 42, 193, .14); } }
 .isb-tag-any { background: #91E3F9; color: #1A1E2D; }
 .isb-card-rar { position: absolute; left: 6px; top: 6px; padding: 0 5px; border-radius: 999px; font: 700 11px/1.5 $korolev-compressed; letter-spacing: .04em; text-transform: uppercase; background: #F5F5F5; color: #1A1E2D;
   &.isb-rar-epic { background: #FFEE50; } &.isb-rar-legendary { background: #EB3CF2; } }
 .isb-part-note { margin-left: 6px; padding: 0 6px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
   &.perm { background: #FF6E03; color: #1A1E2D; } &.free { background: #52F618; color: #1A1E2D; } }
+.isb-mnote { display: none !important; }
+@include media('<desktop') { .isb-mnote:not([style*='display: none']) { display: block !important; margin: 0 0 6px; font-size: 13px; } }
