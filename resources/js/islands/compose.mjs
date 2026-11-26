@@ -101,7 +101,8 @@ export function friendlyChainError(text) {
 
 // ------------------------------------------------------------------------------------------------ round 4 layers
 // Contract settings (KB islands-build.md "Round 4 spec"): `sharedLayers` = layers without a rarity lock (sky, fx,
-// display; templates carry rarity "any"), `mutableLayers` = layers the owner may change any time with set_layer (sky).
+// display; templates carry rarity "any"), `mutableLayers` = layers the owner may change any time with set_layer (contract setting,
+// e.g. sky + fx; always read from the config, never hardcoded).
 // The display layer may also be chosen ONCE by islands minted before it existed.
 
 export const DISPLAY_LAYER = 'display';
@@ -112,6 +113,20 @@ export function isSharedLayer(cfg, layer) {
 
 export function isMutableLayer(cfg, layer) {
     return ((cfg && cfg.mutableLayers) || []).includes(layer);
+}
+
+const LAYER_NOUNS = {sky: 'sky', fx: 'effect', fub: 'FUB', display: 'display', base: 'base', structure: 'structure', foreground: 'foreground'};
+
+/** Singular noun of a layer for UI copy ("Change effect", "You can change the effect any time"). */
+export function mutableNoun(layer) {
+    return LAYER_NOUNS[layer] || String(layer || '');
+}
+
+/** "a", "a and b", "a, b and c" */
+export function listText(items) {
+    const l = (items || []).filter(Boolean);
+    if (l.length < 2) { return l.join(''); }
+    return l.slice(0, -1).join(', ') + ' and ' + l[l.length - 1];
 }
 
 /** Can this template be used for `layer` on an island of `rarity`? (rarity lock unless the layer is shared / "any") */

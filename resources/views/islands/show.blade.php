@@ -1,6 +1,6 @@
 <x-guest-layout>
 {{-- Asteroid Island page (ISLANDS_MODE; KB notes/islands-build.md, round 4). Island-level data only (edge-cacheable); owner
-     tools, the collection box (pick-and-place, one transaction per Save), the layer tools (Change sky, one-time Choose
+     tools, the collection box (pick-and-place, one transaction per Save), the layer tools (Change <mutable layer>, one-time Choose
      display) and live resident checks run in the browser (resources/js/app/islands.js islandPage). --}}
 @if($island)
 @push('og')
@@ -107,23 +107,28 @@
                     <div class="isl-panel isl-new" x-show="isNew" x-cloak><p><b>Welcome to your island!</b> Name it and move your NFTs in: drag them from your collection below onto the scene or the display.</p></div>
 
                     <div class="isp-tools" x-show="isOwner" x-cloak data-islands="owner">
-                        <button type="button" class="isp-btn" x-show="canChangeSky" @click="openLayer('sky')" :disabled="busy" data-islands="change-sky">Change sky</button>
+                        {{-- one "Change …" per layer the contract lists as mutable (API settableLayers ⊂ config mutableLayers) --}}
+                        <template x-for="l in changeLayers" :key="l">
+                            <button type="button" class="isp-btn" @click="openLayer(l)" :disabled="busy" :data-islands="'change-' + l" x-text="'Change ' + layerNoun(l)"></button>
+                        </template>
                         <button type="button" class="isp-btn isp-btn-hl" x-show="canChooseDisplay" @click="openLayer('display')" :disabled="busy" data-islands="choose-display">Choose display <small>(one time)</small></button>
                         <button type="button" class="isp-btn" @click="editing = !editing" data-islands="edit-name">Name &amp; story</button>
                     </div>
                     <div class="isl-panel isl-warn" x-show="isOwner && dapper()" x-cloak><p>Dapper Wallet can't sign island transactions.</p></div>
                     <p class="isl-notice" :class="'isl-n-' + noticeKind" x-show="notice" x-text="notice" aria-live="polite" data-islands="notice"></p>
 
-                    {{-- layer picker: Change sky / Choose display, with a live preview in the scene --}}
+                    {{-- layer picker: Change sky / Change effect / … / one-time Choose display, with a live preview in the scene --}}
                     <div class="isp-layer" x-show="layerPick" x-cloak x-ref="layerPanel" data-islands="layer-picker">
                         <template x-if="layerPick">
                             <div>
-                                <h3 x-text="layerPick.layer === 'sky' ? 'Change sky' : 'Choose your display'"></h3>
-                                <p class="isp-layer-note" x-show="layerPick.layer === 'sky'">You can change the sky any time. One transaction, free (network fee only).</p>
-                                <p class="isp-layer-note isp-layer-warn" x-show="layerPick.layer !== 'sky'">The display shows your other NFTs: every NFT you place on its display slots plays on this screen. You can choose it <b>once</b>; after that it is fixed.</p>
+                                <h3 x-text="pickTitle(layerPick)"></h3>
+                                <p class="isp-layer-note" x-show="!layerPick.oneTime">You can change the <span x-text="layerNoun(layerPick.layer)"></span> any time. One transaction, free (network fee only).</p>
+                                <p class="isp-layer-note isp-layer-warn" x-show="layerPick.oneTime">The display shows your other NFTs: every NFT you place on its display slots plays on this screen. You can choose it <b>once</b>; after that it is fixed.</p>
                                 <ul class="isp-layer-grid">
-                                    <template x-if="layerPick.layer === 'sky' && !layerRequired('sky')">
-                                        <li><button type="button" class="isp-opt" :class="{selected: !layerPick.choice}" @click="chooseLayer(null)" :aria-pressed="!layerPick.choice"><span class="isp-opt-art isp-opt-none"></span><span>No sky</span></button></li>
+                                    <template x-if="layerRemovable(layerPick.layer)">
+                                        <li><button type="button" class="isp-opt" :class="{selected: !layerPick.choice, current: !layerPick.original}" @click="chooseLayer(null)" :aria-pressed="!layerPick.choice" data-template="none">
+                                            <span class="isp-opt-art" :class="{'isp-opt-none': !pickThumbs.none}"><img :src="pickThumbs.none" alt="" x-show="pickThumbs.none"></span>
+                                            <span x-text="'No ' + layerNoun(layerPick.layer)"></span><small x-show="!layerPick.original">current</small></button></li>
                                     </template>
                                     <template x-for="t in layerOptionsOf(layerPick.layer)" :key="t.id">
                                         <li><button type="button" class="isp-opt" :class="{selected: layerPick.choice === t.id, current: layerPick.original === t.id}" @click="chooseLayer(t.id)" :aria-pressed="layerPick.choice === t.id" :data-template="t.id">
@@ -134,7 +139,7 @@
                                 <div class="isp-layer-bar">
                                     <button type="button" class="isp-btn" @click="cancelLayer()" :disabled="busy">Cancel</button>
                                     <button type="button" class="isp-btn isp-btn-cta" @click="applyLayer()" :disabled="busy || layerPick.choice === layerPick.original || dirty" data-islands="apply-layer"
-                                            x-text="layerPick.layer === 'sky' ? 'Apply sky (sign)' : 'Set this display (sign)'"></button>
+                                            x-text="applyLabel(layerPick)"></button>
                                 </div>
                                 <p class="muted" x-show="dirty">Save or discard your resident changes first.</p>
                             </div>
