@@ -39,7 +39,7 @@
                 @foreach($islands as $i)
                 <a href="/islands/{{ $i->flow_id }}" class="isl-card isl-r-{{ $i->rarity }}" style="--d: {{ ($i->flow_id % 7) * 9 }}px">
                     <span class="isl-card-img">
-                        <img loading="lazy" src="{{ \App\Support\ItemImages::url('island', $i->flow_id, 'thumb.jpg', false) ?? '/islands/'.$i->flow_id.'/full.svg' }}" alt="{{ $i->display_name }}">
+                        <img loading="lazy" src="{{ \App\Support\ItemImages::url('island', $i->flow_id, 'full.png', false) ?? '/islands/'.$i->flow_id.'/full.svg' }}" alt="{{ $i->display_name }}">
                     </span>
                     <span class="isl-card-body">
                         <span class="isl-designation">{{ $i->designation }}</span>

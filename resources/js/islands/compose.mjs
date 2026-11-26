@@ -125,11 +125,11 @@ export function slotList(rarity, capacity, premium, model) {
 /** Default premium anchors (IslandScene::defaultAnchors). */
 export function defaultAnchors(n) {
     const out = {};
-    const x0 = 950;
-    const x1 = 2100;
+    const x0 = 1000;
+    const x1 = 2150;
     for (let i = 1; i <= n; i++) {
         const x = n === 1 ? (x0 + x1) / 2 : x0 + (x1 - x0) * (i - 1) / (n - 1);
-        out['P' + i] = [Math.round(x * 10) / 10, 2230, 0, 'front', false];
+        out['P' + i] = [Math.round(x * 10) / 10, 2660, 0, 'front', false];
     }
     return out;
 }

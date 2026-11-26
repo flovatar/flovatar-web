@@ -18,7 +18,7 @@ class SyncIslandTemplates implements ShouldQueue
 
     public $timeout = 300;
 
-    public function __construct()
+    public function __construct(public array $forceIds = [])
     {
         $this->onQueue('default');
     }
@@ -29,6 +29,6 @@ class SyncIslandTemplates implements ShouldQueue
             return;
         }
         $chain->config(true);
-        $chain->syncTemplates();
+        $chain->syncTemplates(false, $this->forceIds);
     }
 }

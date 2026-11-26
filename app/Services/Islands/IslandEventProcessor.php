@@ -171,11 +171,14 @@ class IslandEventProcessor
 
             case 'TemplateCreated':
             case 'TemplateSvgAppended':
+            case 'TemplateSvgReplaced':
+            case 'TypeRuleChanged':
             case 'TemplateEnabled':
             case 'TemplateMetadataChanged':
             case 'SettingChanged':
                 Cache::forget('islands:chain:config:'.Islands::contractHex());
-                SyncIslandTemplates::dispatch()->delay(now()->addSeconds(20));
+                // replaced SVG can keep its length: refetch that template explicitly
+                SyncIslandTemplates::dispatch($suffix === 'TemplateSvgReplaced' ? [(int) ($m['id'] ?? 0)] : [])->delay(now()->addSeconds(20));
 
                 return true;
         }
