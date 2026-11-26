@@ -197,7 +197,7 @@
                                 <b class="isp-rslot" x-text="s.slot"></b>
                                 <template x-for="r in [isOwner ? planned(s.chain) : residentAt(s.chain)].filter(Boolean)" :key="r.type + r.id">
                                     <span class="isp-rnft" :class="{invalid: !r.pending && !isValid(r)}">
-                                        <img :src="thumb(r)" alt="" loading="lazy"><a :href="nftLink(r)" x-text="nftName(r)"></a>
+                                        <img :src="thumb(r) || null" alt="" loading="lazy" @error="$el.style.visibility = 'hidden'"><a :href="nftLink(r)" x-text="nftName(r)"></a>
                                         <small class="isl-slot-why" x-show="!r.pending && !isValid(r)" x-text="reasonText(r)"></small>
                                         <button type="button" class="isp-x" x-show="isOwner" @click="removeFrom(s.chain)" :aria-label="'Remove from ' + s.slot">×</button>
                                     </span>
@@ -216,7 +216,7 @@
                             <template x-for="(r, i) in displayList(isOwner)" :key="r.chainSlot">
                                 <li :class="{pending: isOwner && slotChanged(r.chainSlot)}" :data-slot="r.slot">
                                     <span class="isp-rnft" :class="{invalid: !r.pending && !isValid(r)}">
-                                        <img :src="thumb(r)" alt="" loading="lazy"><a :href="nftLink(r)" x-text="nftName(r)"></a>
+                                        <img :src="thumb(r) || null" alt="" loading="lazy" @error="$el.style.visibility = 'hidden'"><a :href="nftLink(r)" x-text="nftName(r)"></a>
                                         <small class="isp-onscreen" x-show="i === 0 && hasDisplay">on screen</small>
                                         <small class="isl-slot-why" x-show="!r.pending && !isValid(r)" x-text="reasonText(r)"></small>
                                         <button type="button" class="isl-link" x-show="isOwner && i > 0" @click="showFirst(r.chainSlot)">show first</button>
