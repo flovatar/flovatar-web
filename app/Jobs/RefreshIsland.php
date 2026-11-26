@@ -62,10 +62,10 @@ class RefreshIsland implements ShouldQueue
     }
 
     /** Resident Display views (name, thumbnail) or [] when the chain read fails (never blocks the refresh). */
-    public static function displays(IslandChain $chain, string $owner, int $flowId): array
+    public static function displays(IslandChain $chain, string $owner, int $flowId, ?int $height = null): array
     {
         try {
-            return $chain->residentDisplays($owner, $flowId);
+            return $chain->residentDisplays($owner, $flowId, $height);
         } catch (\Throwable $e) {
             report($e);
 
