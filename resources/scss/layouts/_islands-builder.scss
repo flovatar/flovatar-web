@@ -486,4 +486,5 @@ html.isb-modal-open { overflow: hidden; }
 .isb-part-note { margin-left: 6px; padding: 0 6px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
   &.perm { background: #FF6E03; color: #1A1E2D; } &.free { background: #52F618; color: #1A1E2D; } }
 .isb-mnote { display: none !important; }
-@include media('<desktop') { .isb-mnote:not([style*='display: none']) { display: block !important; margin: 0 0 6px; font-size: 13px; } }
+@include media('<desktop') { .isb-mnote:not([style*='display: none']) { display: block !important; margin: 0 0 6px; font-size: 13px; color: #fff; background: rgba(145, 227, 249, .16);
+  &.isb-note-fx { background: rgba(255, 110, 3, .22); } &.isb-note-display { background: rgba(239, 42, 193, .22); } } }
