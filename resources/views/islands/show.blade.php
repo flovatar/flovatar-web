@@ -94,7 +94,7 @@
                     <p class="isl-desc" x-text="island && island.description" x-show="island && island.description"></p>
                     <div class="isp-chips">
                         <span class="isl-chip" :class="island ? 'isl-r-' + island.rarity : ''" x-text="island && island.rarity"></span>
-                        <span x-show="island && island.fused" x-text="island && ('fused from 5 ' + island.deedRarity + ' deeds')"></span>
+                        <span x-show="island && island.fused" x-text="island && ('fused from 5 ' + island.deedRarity + ' TerraKits')"></span>
                         <span x-text="island && (island.residents + ' / ' + island.capacity + ' residents')"></span>
                         <span>Owner <a class="mono" :href="island && '/collection/' + island.owner" x-text="island && short(island.owner)"></a></span>
                     </div>

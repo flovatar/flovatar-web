@@ -31,7 +31,7 @@
                         <ul class="sub-nav">
                             <li><a href="/islands">Asteroid belt</a></li>
                             <li><a href="/islands#mine">My islands</a></li>
-                            <li><a href="/islands/build">Redeem land deeds</a></li>
+                            <li><a href="/islands/build">Redeem TerraKits</a></li>
                         </ul>
                     </div>
                 </li>

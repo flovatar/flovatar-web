@@ -183,6 +183,13 @@ class IslandsTest extends TestCase
             $this->assertFileExists(public_path('images/islands/tab-' . $tabKey . '.svg'));
             $this->assertFileExists(public_path('images/islands/tab-' . $tabKey . '-on.svg'));
         }
+        // copy: the redeemed items are "TerraKits" everywhere users read it (never "land deed(s)" / "Deeds")
+        $this->assertStringContainsString('<span class="n">1</span> TerraKits</button>', $b->getContent());
+        $this->assertStringContainsString('each holds an Asteroid TerraKit, a FUB TerraKit and a Flobot Kit', $b->getContent());
+        foreach ([$r->getContent(), $b->getContent(), $this->get('/islands')->getContent()] as $html) {
+            $this->assertStringNotContainsStringIgnoringCase('land deed', $html);
+            $this->assertDoesNotMatchRegularExpression('/\bdeeds?\b/i', strip_tags(preg_replace('/<(script|style)\b.*?<\/\1>/is', '', $html)));
+        }
         // the "unminted" stamp belongs to the builder's Save PNG only: island pages never mention it
         $this->assertStringNotContainsStringIgnoringCase('unminted', $r->getContent());
         // round 4 builder: layer notes (mutable layers changeable, display explained) + review part notes
