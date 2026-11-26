@@ -169,7 +169,7 @@ class IslandsTest extends TestCase
         // round 4 island page: display zoom carousel (replaces the old under-scene carousel), accessible resident lists,
         // owner collection box with pick-and-place, pending-changes bar, layer tools
         foreach (['data-islands="zoom"', 'data-islands="display"', 'data-islands="display-list"', 'data-islands="collection"', 'data-islands="tab-family"',
-            'data-islands="tab-all"', 'data-islands="pending-bar"', 'data-islands="change-sky"', 'data-islands="choose-display"', 'Save (one approval)'] as $needle) {
+            'data-islands="tab-all"', 'data-islands="pending-bar"', 'x-for="l in changeLayers"', 'data-islands="choose-display"', 'Save (one approval)'] as $needle) {
             $this->assertStringContainsString($needle, $r->getContent());
         }
         $this->assertStringNotContainsString('data-islands="carousel"', $r->getContent());
@@ -185,7 +185,7 @@ class IslandsTest extends TestCase
         }
         // the "unminted" stamp belongs to the builder's Save PNG only: island pages never mention it
         $this->assertStringNotContainsStringIgnoringCase('unminted', $r->getContent());
-        // round 4 builder: layer notes (sky changeable, effects permanent, display explained) + review part notes
+        // round 4 builder: layer notes (mutable layers changeable, display explained) + review part notes
         $this->assertStringContainsString('data-islands="layer-note"', $b->getContent());
         $this->assertStringContainsString('isb-part-note', $b->getContent());
         // the size budget is internal: no size meter, no KB / byte figure anywhere in the builder by default
@@ -425,7 +425,7 @@ class IslandsTest extends TestCase
             'displayMigration' => true, 'setLayerPaused' => false, 'slotModel' => 'ps'];
         $chain->cfg['slotModel'] = 'ps';
         $chain->cfg['layers'] = ['base' => ['required' => ['common'], 'allowed' => ['common']], 'sky' => ['required' => [], 'allowed' => ['common']],
-            'display' => ['required' => ['common'], 'allowed' => ['common']]];
+            'display' => ['required' => ['common'], 'allowed' => ['common']], 'fx' => ['required' => [], 'allowed' => ['common']]];
         $chain->cfg['sceneOrder'] = array_merge($this->fixture['cfg']['sceneOrder'], ['display']);
 
         // contract grammar for the screen
@@ -483,6 +483,11 @@ class IslandsTest extends TestCase
         $this->assertTrue($j['canChooseDisplay']);
         $this->assertSame(['sky', 'display'], $j['settableLayers']);
         $this->assertNull($j['display']);
+        // settable layers follow the contract setting (mutableLayers), nothing hardcoded: sky + fx (Luca 2026-11-26)
+        $chain->cfg['mutableLayers'] = ['sky', 'fx'];
+        $this->assertSame(['sky', 'fx'], $this->getJson('/api/islands/9')->assertOk()->json('settableLayers'));
+        $this->assertSame(['sky', 'fx', 'display'], $this->getJson('/api/islands/10')->assertOk()->json('settableLayers'));
+        $chain->cfg['mutableLayers'] = ['sky'];
         // contract v2 (no set_layer): no layer tools
         $chain->cfg['contractVersion'] = 2;
         $j = $this->getJson('/api/islands/10')->assertOk()->json();

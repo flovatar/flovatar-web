@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import {
     composeScene, validateScene, isSharedLayer, isMutableLayer, templateFits, layerOptions, orderedLayers, parseScreen, templateScreen,
     screenFragment, insertScreen, screenBox, planOps, residentGroupSvg, injectResidents, slotBox, SCREEN_PLACEHOLDER,
+    mutableNoun, listText,
 } from '../../resources/js/islands/compose.mjs';
 
 const cfg = {
@@ -97,4 +98,18 @@ test('browser-composed residents match the server markup; slot hotspot boxes', (
     assert.equal(injectResidents('<svg><g id="residents-back"/><g id="residents-front"/></svg>', '', '<r/>', ''),
         '<svg><g id="residents-back"/><g id="residents-front"><r/></g></svg>');
     assert.deepEqual(slotBox([1500, 2725, 0.2, 'front', false], 0.16, 1), {x: 1350, y: 2240, w: 300, h: 485});
+});
+
+test('mutable layers come from the contract settings (no hardcoded sky / fx) + copy helpers', () => {
+    const later = {...cfg, mutableLayers: ['sky', 'fx']};
+    assert.ok(isMutableLayer(later, 'fx') && isMutableLayer(later, 'sky') && !isMutableLayer(later, 'display'));
+    assert.ok(!isMutableLayer({...cfg, mutableLayers: []}, 'sky'));
+    assert.ok(!isMutableLayer(null, 'sky'));
+    assert.equal(mutableNoun('fx'), 'effect');
+    assert.equal(mutableNoun('sky'), 'sky');
+    assert.equal(mutableNoun('weather'), 'weather');
+    assert.equal(listText(['sky']), 'sky');
+    assert.equal(listText(['sky', 'effect']), 'sky and effect');
+    assert.equal(listText(['sky', 'effect', 'display']), 'sky, effect and display');
+    assert.equal(listText([]), '');
 });

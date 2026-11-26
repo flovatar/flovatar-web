@@ -313,7 +313,13 @@ class IslandsController extends Controller
             $settable[] = $displayLayer;
         }
         $screenResident = $display && $display['screen'] ? $this->scene->screenResident($island) : null;
-        $order = ['sky', 'base', 'structure', 'fub', $displayLayer, 'foreground', 'fx'];
+        // detail rows in the contract's scene order (sceneOrder without @markers / :front parts)
+        $order = array_values(array_filter((array) ($cfg['sceneOrder'] ?? []), fn ($e) => is_string($e) && $e !== '' && $e[0] !== '@' && ! str_ends_with($e, ':front')));
+        if (! $order) {
+            $order = ['sky', 'base', 'structure', 'fub', $displayLayer, 'foreground', 'fx'];
+        } elseif (! in_array($displayLayer, $order, true)) {
+            array_splice($order, ($i = array_search('foreground', $order, true)) === false ? count($order) : $i, 0, [$displayLayer]);
+        }
 
         return $this->card($island) + [
             'description' => (string) $island->description, 'rawName' => (string) $island->name,

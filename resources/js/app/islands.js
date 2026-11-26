@@ -21,7 +21,7 @@ import Alpine from 'alpinejs';
 import * as fcl from '@onflow/fcl';
 import {WALLET_CADENCE, PREVIEW_CADENCE, RESIDENTS_CADENCE, WALLET_NFTS_CADENCE, DISPLAYS_CADENCE, OWNERSHIP_CADENCE} from '../islands/cadence.mjs';
 import {composeScene, displayFix, sceneBytes, islandRarity, validateScene, friendlyChainError, isHexColor, slotList, httpUrl, designation, setDesignationPrefix, normalizeAddress, RARITIES,
-    DISPLAY_LAYER, isSharedLayer, isMutableLayer, templateFits, layerOptions, orderedLayers, templateScreen, screenFragment, insertScreen, screenBox, SCREEN_PLACEHOLDER, planOps,
+    DISPLAY_LAYER, isSharedLayer, isMutableLayer, mutableNoun, listText, templateFits, layerOptions, orderedLayers, templateScreen, screenFragment, insertScreen, screenBox, SCREEN_PLACEHOLDER, planOps,
     residentGroupSvg, injectResidents, slotBox, residentTransform} from '../islands/compose.mjs';
 import {withWatermark} from '../islands/watermark.mjs';
 import {islandsFromManifest, demoIslands, parseIslandQuery} from '../islands/belt/orbits.mjs';
@@ -543,10 +543,9 @@ if (CFG) {
     const thumbUrls = new Map();   // scene key -> object URL
     const LAYER_LABELS = {sky: 'Sky', base: 'Base', structure: 'Structure', fub: 'FUB', display: 'Display', foreground: 'Foreground', fx: 'Effects'};
     const TAB_ICONS = ['deeds', 'sky', 'base', 'structure', 'fub', 'display', 'foreground', 'fx', 'tint'];
-    // what each tab tells the player (round 4: skies change any time, effects are permanent, the display shows NFTs)
+    // what each tab tells the player: layers the contract lists as mutable (get_layer_rules mutableLayers, e.g. sky + fx)
+    // get "You can change the … any time." (built in layerNote, never hardcoded per layer); the display explains itself
     const LAYER_NOTES = {
-        sky: 'You can change the sky any time.',
-        fx: 'Effects are permanent.',
         display: 'Your island\u2019s display shows your other NFTs: every NFT you place on its display slots plays on this screen. Visitors tap it to browse them.',
     };
     const TINTS = ['#EF2AC1', '#91E3F9', '#FFEE50', '#52F618', '#FF6E03', '#AED7F7', '#8A4BFF', '#E8384F', '#2FD4B1'];
@@ -725,12 +724,14 @@ if (CFG) {
             return t;
         },
         layerLabel(name) { return LAYER_LABELS[name] || name; },
-        /** Short note under a layer's info card (sky: changeable later, effects: permanent, display: what it shows). */
+        /** Short note under a layer's info card: mutable layers (from the contract) can change any time; display: what it shows. */
         layerNote(name) {
-            if (name === 'sky' && !this.isMutable('sky')) { return ''; }   // only once the contract really allows it
-            return LAYER_NOTES[name] || '';
+            const parts = [];
+            if (LAYER_NOTES[name]) { parts.push(LAYER_NOTES[name]); }
+            if (this.isMutable(name)) { parts.push('You can change the ' + mutableNoun(name) + ' any time.'); }
+            return parts.join(' ');
         },
-        /** The owner can change this layer after terraforming (contract mutableLayers, e.g. the sky). */
+        /** The owner can change this layer after terraforming (contract mutableLayers, e.g. sky and fx). */
         isMutable(name) { return isMutableLayer(this.cfg, name); },
         isShared(name) { return isSharedLayer(this.cfg, name); },
         setTab(k) { this.tab = k; this.$nextTick(() => { const g = this.$refs.grid; if (g) { g.scrollTop = 0; g.scrollLeft = 0; } }); },
@@ -973,8 +974,9 @@ if (CFG) {
             this.snap = {
                 rarity: this.rarity, deeds, fused: deeds.length === 5, deedRarity: this.selectedRarity, tint: this.tintValue,
                 parts: this.sceneLayers.map((n) => ({key: n, layer: this.layerLabel(n), name: this.layerName(n),
-                    note: n === 'fx' ? 'permanent' : (this.isMutable(n) ? 'change any time' : '')})),
+                    note: this.isMutable(n) ? 'change any time' : ''})),
                 mutable: this.sceneLayers.filter((n) => this.isMutable(n)),
+                mutableText: listText(this.sceneLayers.filter((n) => this.isMutable(n)).map(mutableNoun)),
                 url: sceneUrl(this.cfg, this.layers, this.tintValue),
             };
             this.review = true;
@@ -1713,16 +1715,32 @@ if (CFG) {
             if (this.zoom) { this.closeZoom(); } else if (this.drag) { this.drag = null; } else if (this.selected) { this.selected = null; } else if (this.layerPick) { this.cancelLayer(); } else if (this.sheetOpen) { this.sheetOpen = false; }
         },
 
-        // ---------------- owner layer tools: Change sky (any time), Choose display (once)
+        // ---------------- owner layer tools: "Change <layer>" for every layer the contract lists as mutable (get_layer_rules
+        // mutableLayers via the API, e.g. sky + fx; never hardcoded), and the one-time Choose display for older islands
         canSetLayer(layer) { return this.isOwner && !!this.island && (this.island.settableLayers || []).includes(layer); },
-        get canChangeSky() { return this.canSetLayer('sky'); },
+        isMutable(layer) { return isMutableLayer(this.cfg, layer); },
+        get changeLayers() {
+            if (!this.cfg || !this.island) { return []; }
+            const order = orderedLayers(this.cfg);
+            return (this.cfg.mutableLayers || []).filter((l) => this.canSetLayer(l) && !(l === DISPLAY_LAYER && this.canChooseDisplay))
+                .sort((a, b) => order.indexOf(a) - order.indexOf(b));
+        },
+        get canChangeSky() { return this.changeLayers.includes('sky'); },
         get canChooseDisplay() { return this.isOwner && !!this.island && !!this.island.canChooseDisplay; },
+        layerNoun(layer) { return mutableNoun(layer); },
+        /** A mutable, optional layer can be removed (set_layer with templateId nil): "No sky" / "No effect". */
+        layerRemovable(layer) { return this.isMutable(layer) && !this.layerRequired(layer); },
+        pickTitle(lp) { return lp.oneTime ? 'Choose your display' : 'Change ' + mutableNoun(lp.layer); },
+        applyLabel(lp) {
+            if (lp.oneTime) { return 'Set this display (sign)'; }
+            return (lp.choice ? 'Apply ' + mutableNoun(lp.layer) : 'Remove ' + mutableNoun(lp.layer)) + ' (sign)';
+        },
         layerOptionsOf(layer) { return this.cfg ? layerOptions(this.cfg, layer, this.island.rarity) : []; },
         layerRequired(layer) { return !!(this.cfg && ((this.cfg.layers[layer] || {}).required || []).includes(this.island.rarity)); },
         openLayer(layer) {
             if (!this.cfg || this.busy) { return; }
             const cur = (this.island.layers || {})[layer] || null;
-            this.layerPick = {layer, choice: cur, original: cur, oneTime: layer === DISPLAY_LAYER && !cur};
+            this.layerPick = {layer, choice: cur, original: cur, oneTime: layer === DISPLAY_LAYER && !cur && !this.isMutable(layer)};
             if (layer === DISPLAY_LAYER && !cur) { const o = this.layerOptionsOf(layer)[0]; if (o) { this.layerPick.choice = o.id; } }
             this.renderPickThumbs();
             this.refreshLive();
@@ -1734,9 +1752,16 @@ if (CFG) {
             const lp = this.layerPick;
             if (!lp) { return; }
             const out = {};
-            // each option = this island's scene with that sky / display swapped in (screen: the NFT placeholder)
+            // each option = this island's scene with that sky / effect / display swapped in (screen: the NFT placeholder)
             const base = {...((this.island && this.island.layers) || {})};
             try { await Promise.all(Object.values(base).map(async (id) => { if (!liveSvgs[id]) { liveSvgs[id] = await loadTemplate(id); } })); } catch (e) { /* drawn without */ }
+            if (this.layerRemovable(lp.layer)) {
+                try {
+                    const none = {...base};
+                    delete none[lp.layer];
+                    out.none = URL.createObjectURL(new Blob([displayFix(composeScene(this.cfg, none, this.island.tint, null, liveSvgs))], {type: 'image/svg+xml'}));
+                } catch (e) { /* placeholder */ }
+            }
             for (const t of this.layerOptionsOf(lp.layer)) {
                 try {
                     if (!liveSvgs[t.id]) { liveSvgs[t.id] = await loadTemplate(t.id); }
@@ -1754,7 +1779,8 @@ if (CFG) {
             if (!lp || lp.choice === lp.original || this.busy) { return; }
             if (this.dirty) { this.say('Save or discard your resident changes first.', 'error'); return; }
             if (lp.oneTime && !lp.choice) { return; }
-            const label = lp.layer === 'sky' ? 'Change sky' : 'Choose display';
+            if (!lp.choice && !this.layerRemovable(lp.layer)) { return; }
+            const label = this.pickTitle(lp);
             const ok = await this.run(label, () => islandSetLayerTx(this.id, lp.layer, lp.choice),
                 (d) => Number((d.layers || {})[lp.layer] || 0) === Number(lp.choice || 0));
             if (ok) { this.layerPick = null; this.refreshLive(); }

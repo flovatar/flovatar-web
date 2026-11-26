@@ -81,7 +81,7 @@
                                 <span class="isb-tag isb-tag-any" x-show="isShared(tab)">Any rarity</span>
                             </div>
                         </dl>
-                        {{-- round 4: sky = changeable later, effects = permanent, display = shows the owner's other NFTs --}}
+                        {{-- round 4: layers the contract lists as mutable = changeable any time; display = shows the owner's other NFTs --}}
                         <p class="isb-info-note" :class="'isb-note-' + tab" x-show="layerNote(tab)" x-text="layerNote(tab)" data-islands="layer-note"></p>
                     </div>
                 </template>
@@ -269,7 +269,7 @@
                             <ul class="isb-burn-deeds">
                                 <template x-for="d in snap.deeds" :key="d.id"><li><img :src="'/api/image/template/' + d.templateId" alt=""><span x-text="'#' + d.id"></span></li></template>
                             </ul>
-                            <p><span x-text="snap.deeds.length === 1 ? 'It is' : 'They are'"></span> destroyed for good when the island is created. This can't be undone. <span x-show="snap.mutable && snap.mutable.length">You can change the sky later; the other parts, the display and the effects are permanent.</span><span x-show="!snap.mutable || !snap.mutable.length">The island's scene can't be changed later.</span></p>
+                            <p><span x-text="snap.deeds.length === 1 ? 'It is' : 'They are'"></span> destroyed for good when the island is created. This can't be undone. <span x-show="snap.mutable && snap.mutable.length">You can change the <span x-text="snap.mutableText"></span> later; the other parts are permanent.</span><span x-show="!snap.mutable || !snap.mutable.length">The island's scene can't be changed later.</span></p>
                             <label><input type="checkbox" x-model="understood" data-islands="understood" :disabled="step === 'signing'">
                                 <span>I understand: burn <span x-text="snap.deeds.length"></span> land deed<span x-show="snap.deeds.length > 1">s</span> and create this island.</span></label>
                         </div>
