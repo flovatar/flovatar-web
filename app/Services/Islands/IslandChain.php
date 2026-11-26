@@ -81,6 +81,8 @@ access(all) fun main(): {String: AnyStruct} {
 }
 CDC);
         $settings = (array) ($r['settings'] ?? []);
+        // the contract names the islands (setting designationPrefix, e.g. "K313/"): keep it for every page/API
+        Islands::rememberDesignationPrefix($settings['designationPrefix'] ?? null);
         $premium = [];
         $budget = [];
         foreach (Islands::RARITIES as $rar) {
@@ -102,6 +104,7 @@ CDC);
 
         return [
             'contract' => Islands::contract(),
+            'designationPrefix' => Islands::designationPrefix(),
             'totalSupply' => (int) ($r['totalSupply'] ?? 0),
             'svgOpen' => (string) ($settings['svgOpen'] ?? ''),
             'tintRarities' => array_values(array_filter(explode(',', (string) ($settings['tintRarities'] ?? '')))),

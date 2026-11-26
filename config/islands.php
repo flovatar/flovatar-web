@@ -22,6 +22,10 @@ return [
     // First block height to scan for island events (contract deployment; testnet block 355263568).
     'start_height' => (int) env('ISLANDS_START_HEIGHT', $testnet ? 355263568 : 0),
 
+    // Island designations = prefix + 4-digit serial (K313/0001: Kaax Asteroid Belt, Sector K313). The contract setting
+    // `designationPrefix` wins as soon as the chain config has been read; this is the fallback before that.
+    'designation_prefix' => env('ISLANDS_DESIGNATION_PREFIX', 'K313/'),
+
     // Public site base for island URLs (OG tags, share links).
     'site_url' => rtrim((string) env('ISLANDS_SITE_URL', env('APP_URL', 'https://flovatar.com')), '/'),
 
@@ -57,4 +61,26 @@ return [
 
     // Chain reads (templates, config) are cached this many seconds.
     'chain_cache_seconds' => (int) env('ISLANDS_CHAIN_CACHE', 300),
+
+    // WebGL belt on /islands (App\Services\Islands\IslandBelt, resources/js/islands/belt/*).
+    'belt' => [
+        // The body in the middle of the belt: the huge central rock of the Kaax belt, wrapped in storm clouds, with
+        // Nova City hidden underneath (never shown plainly; the reveal is a later story chapter). One string for the
+        // hint shown when a visitor points at it ("<name> - signal obscured"); empty = no name at all.
+        'center_name' => (string) env('ISLANDS_CENTER_NAME', 'Nova City'),
+        // ?demo=1 (or ?demo=N, max 5000) fills the belt with placeholder islands that reuse the existing renders, to
+        // test and show the scene at full-belt scale. Browser only, nothing is stored. Off on mainnet unless set.
+        'demo' => (bool) env('ISLANDS_BELT_DEMO', $network !== 'mainnet'),
+        'demo_default' => 2000,
+        // Far-LOD atlas: cell size (3:4 like the island art) inside square pages; 2048 / 96x128 = 336 islands per page.
+        'cell' => [96, 128],
+        'atlas_size' => 2048,
+        // Near-LOD sprite width (height = 4/3).
+        'sprite_width' => 512,
+        'webp_quality' => 90,
+        // Manifest cache (seconds) and how many missing cells a manifest request may build inline before queueing.
+        'cache_seconds' => (int) env('ISLANDS_BELT_CACHE', 30),
+        'sync_cells' => 12,
+        'dir' => env('ISLANDS_BELT_DIR', storage_path('app/islands-belt')),
+    ],
 ];

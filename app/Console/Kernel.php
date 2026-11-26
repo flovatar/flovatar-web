@@ -39,6 +39,8 @@ class Kernel extends ConsoleKernel
         if (\App\Support\Islands::active()) {
             // Asteroid Islands: template cache + live resident validity (residents can move away without an island event)
             $schedule->command('islands:sync --islands')->hourlyAt(29)->withoutOverlapping(30)->runInBackground();
+            // WebGL belt textures: safety net for the on-demand warm job (no-op when every cell/atlas is current)
+            $schedule->command('islands:belt-warm')->everyFiveMinutes()->withoutOverlapping(10)->runInBackground();
         }
         if (\App\Support\DustMarket::active()) {
             // ĐUST marketplace: drop offers whose storefront listing died on chain (ghost, expired, sold elsewhere)

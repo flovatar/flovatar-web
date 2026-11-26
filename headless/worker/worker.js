@@ -47,6 +47,7 @@ const PROXY = [
   /^\/\.well-known\/webauthn$/,                                       // WebAuthn related origins (rp_id = this host)
   /^\/__stealth\//,                                                  // stealth gate: secret URL sets the signed fl_s cookie
   /^\/fx\//,                                                         // lazy feature bundles (origin decides who gets them)
+  /^\/islands(\/|$)/,                                                // Asteroid Islands (ISLANDS_MODE at the origin: belt, builder, island pages)
 ];
 
 // Stealth launch (App\Support\Stealth): a request carrying the fl_s cookie gets its pages from the origin (which verifies the
@@ -57,7 +58,7 @@ function hasStealthCookie(request) {
 }
 
 // Anonymous, user-agnostic GETs that may be cached at the edge (honours the origin's Cache-Control).
-const EDGE_CACHEABLE = [/^\/\.well-known\/webauthn$/, /^\/api\/v2\/(?!auth\/)/, /^\/api\/image\//, /^\/templates\//, /^\/(flovatars|flobots|components|collectibles)\/json\//, /^\/components\/\d+\/0x[a-f0-9]{16}\/?$/];
+const EDGE_CACHEABLE = [/^\/\.well-known\/webauthn$/, /^\/api\/islands\/belt(\/|$)/, /^\/api\/v2\/(?!auth\/)/, /^\/api\/image\//, /^\/templates\//, /^\/(flovatars|flobots|components|collectibles)\/json\//, /^\/components\/\d+\/0x[a-f0-9]{16}\/?$/];
 
 const ITEM_OWNER_URL = /^\/(flovatars|flobots|collectibles)\/(\d+)\/(0x[a-f0-9]{16})\/?$/;
 const ITEM_URL = /^\/(flovatars|flobots|collectibles)\/(\d+)\/?$/;

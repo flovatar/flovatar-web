@@ -16,6 +16,12 @@ Route::get('islands/{id}/full.svg', [IslandsController::class, 'fullSvg'])->wher
 Route::get('islands/{id}/scene.svg', [IslandsController::class, 'sceneSvg'])->whereNumber('id')->name('islands.scene');
 
 Route::get('api/islands', [IslandsController::class, 'apiList'])->name('api.islands.list');
+// WebGL belt: compact manifest of every island + same-origin textures (atlas pages, near-LOD sprites)
+Route::get('api/islands/belt', [IslandsController::class, 'apiBelt'])->name('api.islands.belt');
+Route::get('api/islands/belt/atlas/{page}-{hash}.webp', [IslandsController::class, 'beltAtlas'])
+    ->where(['page' => '[0-9]{1,5}', 'hash' => '[a-f0-9]{8,16}'])->name('api.islands.belt.atlas');
+Route::get('api/islands/belt/sprite/{id}-{key}.webp', [IslandsController::class, 'beltSprite'])
+    ->where(['id' => '[0-9]{1,10}', 'key' => '[a-z0-9]{6,20}'])->name('api.islands.belt.sprite');
 Route::get('api/islands/config', [IslandsController::class, 'apiConfig'])->name('api.islands.config');
 Route::get('api/islands/templates/{id}', [IslandsController::class, 'apiTemplate'])->whereNumber('id')->name('api.islands.template');
 Route::get('api/islands/{id}', [IslandsController::class, 'apiShow'])->whereNumber('id')->name('api.islands.show');

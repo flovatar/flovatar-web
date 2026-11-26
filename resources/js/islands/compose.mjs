@@ -161,8 +161,19 @@ export function httpUrl(uri) {
     return '';
 }
 
+// Island designation = prefix + 4-digit serial (K313/0001: Kaax Asteroid Belt, Sector K313). The prefix is the contract
+// setting `designationPrefix`; the page passes it in window.ISLANDS.designationPrefix (setDesignationPrefix).
+let designationPrefix = 'K313/';
+
+export function setDesignationPrefix(prefix) {
+    if (typeof prefix === 'string' && /^[A-Za-z0-9][A-Za-z0-9 ./#_-]{0,15}$/.test(prefix.trim())) { designationPrefix = prefix.trim(); }
+    return designationPrefix;
+}
+
+export function getDesignationPrefix() { return designationPrefix; }
+
 export function designation(id) {
-    return 'K-334/' + String(id).padStart(4, '0');
+    return designationPrefix + String(id).padStart(4, '0');
 }
 
 export function normalizeAddress(a) {

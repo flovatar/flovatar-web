@@ -232,9 +232,10 @@ class IslandScene
         return $svg;
     }
 
-    public function full(Island $island, bool $flatten = false): string
+    public function full(Island $island, bool $flatten = false, array $withoutLayers = []): string
     {
-        $layers = (array) $island->layers;
+        // $withoutLayers: e.g. ['sky'] for the cut-out render the WebGL belt uses (ItemRenderer nobg.png)
+        $layers = array_diff_key((array) $island->layers, array_flip($withoutLayers));
         $templates = $this->templates(array_values($layers));
         $svg = $this->scene($layers, $island->tint, (int) $island->flow_id, $templates);
         $anchors = $this->anchors($island->rarity, $layers, $templates);

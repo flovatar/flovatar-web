@@ -6,6 +6,7 @@ use App\Jobs\RefreshIsland;
 use App\Jobs\RenderItemImages;
 use App\Models\Island;
 use App\Models\IslandTemplate;
+use App\Services\Islands\IslandBelt;
 use App\Services\Islands\IslandChain;
 use App\Services\Islands\IslandScene;
 use App\Support\ItemImages;
@@ -31,16 +32,25 @@ class IslandsController extends Controller
 
     // ------------------------------------------------------------------------------------------------ pages
 
+    /**
+     * /islands: the WebGL belt (data from /api/islands/belt) with the island list as fallback. The list is also
+     * rendered here, paginated, so every island page is linked from plain HTML (no-JS visitors, crawlers).
+     */
     public function index(Request $request)
     {
         $this->guard();
-        $islands = Island::query()->orderBy('flow_id')->get(['flow_id', 'rarity', 'name', 'flow_address', 'residents_count', 'fused', 'tint']);
         $counts = ['common' => 0, 'epic' => 0, 'legendary' => 0];
-        foreach ($islands as $i) {
-            $counts[$i->rarity] = ($counts[$i->rarity] ?? 0) + 1;
+        foreach (Island::query()->selectRaw('rarity, count(*) as n')->groupBy('rarity')->pluck('n', 'rarity') as $r => $n) {
+            $counts[$r] = (int) $n;
         }
+        $islands = Island::query()->orderBy('flow_id')
+            ->paginate(120, ['flow_id', 'rarity', 'name', 'flow_address', 'residents_count', 'fused', 'tint'])->withQueryString();
+        $latest = Island::query()->max('flow_id');
 
-        return view('islands.index', ['islands' => $islands, 'counts' => $counts]);
+        return view('islands.index', [
+            'islands' => $islands, 'counts' => $counts, 'total' => array_sum($counts),
+            'ogImage' => ($latest ? ItemImages::url('island', $latest, 'og.jpg', false) : null) ?? 'https://flovatar.com/images/share.png',
+        ]);
     }
 
     public function build()
@@ -160,6 +170,45 @@ class IslandsController extends Controller
         $island = Island::where('flow_id', $id)->firstOrFail();
 
         return response()->json($this->detail($island))->header('Cache-Control', 'public, max-age=0, s-maxage=15');
+    }
+
+    // ------------------------------------------------------------------------------------------------ WebGL belt
+
+    /** Everything the belt scene needs in one cached response: compact rows for every island + atlas page URLs. */
+    public function apiBelt(IslandBelt $belt)
+    {
+        $this->guard();
+
+        return response()->json($belt->manifest())->header('Cache-Control', 'public, max-age=0, s-maxage=30');
+    }
+
+    /** Far-LOD texture page (content-hashed name -> immutable). */
+    public function beltAtlas(IslandBelt $belt, string $page, string $hash)
+    {
+        $this->guard();
+        $file = $belt->atlasFile((int) $page, $hash);
+        abort_unless($file, 404);
+
+        return $this->beltImage($file);
+    }
+
+    /** Near-LOD sprite of one island for its current render (key = render hash -> immutable). */
+    public function beltSprite(IslandBelt $belt, string $id, string $key)
+    {
+        $this->guard();
+        $file = $belt->spriteFile((int) $id, $key);
+        abort_unless($file, 404);
+
+        return $this->beltImage($file);
+    }
+
+    protected function beltImage(string $file)
+    {
+        return response()->file($file, [
+            'Content-Type' => 'image/webp',
+            'Cache-Control' => 'public, max-age=31536000, immutable',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 
     /** Re-read one island from chain now (after a signed tx), so the page doesn't wait for the indexer. */

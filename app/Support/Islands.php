@@ -54,9 +54,72 @@ class Islands
         return 'A.'.self::contractHex().'.FlovatarAsteroidIsland.'.$suffix;
     }
 
+    public const PREFIX_CACHE_KEY = 'islands:designation-prefix';
+
+    private static ?string $prefixMemo = null;
+
+    private static float $prefixMemoAt = 0.0;
+
+    /**
+     * Designation prefix ("K313/" -> K313/0001). Source of truth = the contract setting `designationPrefix`:
+     * App\Services\Islands\IslandChain::readConfig() stores it in the cache every time the chain config is read, so
+     * pages never wait for the chain. Before the first read (or without a contract): config islands.designation_prefix.
+     */
+    public static function designationPrefix(): string
+    {
+        // memo for a minute: one cache read per request, and long-running workers still follow a changed setting
+        if (self::$prefixMemo !== null && microtime(true) - self::$prefixMemoAt < 60) {
+            return self::$prefixMemo;
+        }
+        self::$prefixMemoAt = microtime(true);
+        $p = null;
+        try {
+            $p = \Illuminate\Support\Facades\Cache::get(self::PREFIX_CACHE_KEY.':'.self::contractHex());
+        } catch (\Throwable $e) {
+            // cache store down: fall back to the configured prefix
+        }
+
+        return self::$prefixMemo = self::cleanPrefix($p) ?? self::cleanPrefix(config('islands.designation_prefix')) ?? 'K313/';
+    }
+
+    /** Called by IslandChain when the contract settings were read. */
+    public static function rememberDesignationPrefix($prefix): void
+    {
+        $clean = self::cleanPrefix($prefix);
+        if ($clean === null) {
+            return;
+        }
+        self::$prefixMemo = $clean;
+        self::$prefixMemoAt = microtime(true);
+        try {
+            \Illuminate\Support\Facades\Cache::forever(self::PREFIX_CACHE_KEY.':'.self::contractHex(), $clean);
+        } catch (\Throwable $e) {
+            report($e);
+        }
+    }
+
+    public static function forgetDesignationPrefix(): void
+    {
+        self::$prefixMemo = null;
+    }
+
+    /** Short printable prefixes only (it is printed into HTML, JSON and OG tags). */
+    public static function cleanPrefix($prefix): ?string
+    {
+        $p = is_string($prefix) ? trim($prefix) : '';
+
+        return $p !== '' && preg_match('~^[A-Za-z0-9][A-Za-z0-9 ./#_-]{0,15}$~', $p) ? $p : null;
+    }
+
+    /** Sector label for UI copy: the prefix without its separator ("K313/" -> "K313"). */
+    public static function sector(): string
+    {
+        return rtrim(self::designationPrefix(), " /#._-");
+    }
+
     public static function designation(int $id): string
     {
-        return 'K-334/'.str_pad((string) $id, 4, '0', STR_PAD_LEFT);
+        return self::designationPrefix().str_pad((string) $id, 4, '0', STR_PAD_LEFT);
     }
 
     public static function url(int $id): string
@@ -179,6 +242,13 @@ class Islands
             'premiumTypes' => self::premiumTypes(),
             'families' => config('islands.families'),
             'packRanges' => self::packRanges(),
+            'designationPrefix' => self::designationPrefix(),
+            'sector' => self::sector(),
+            'belt' => [
+                'center' => (string) config('islands.belt.center_name', ''),
+                'demo' => (bool) config('islands.belt.demo', false),
+                'demoDefault' => (int) config('islands.belt.demo_default', 2000),
+            ],
         ];
     }
 }

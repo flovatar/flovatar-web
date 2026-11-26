@@ -31,6 +31,17 @@ class IslandsTest extends TestCase
 
     private array $fixture;
 
+    private string $beltDir = '';
+
+    protected function tearDown(): void
+    {
+        if ($this->beltDir !== '' && is_dir($this->beltDir)) {
+            \Illuminate\Support\Facades\File::deleteDirectory($this->beltDir);
+        }
+        Islands::forgetDesignationPrefix();
+        parent::tearDown();
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -47,6 +58,9 @@ class IslandsTest extends TestCase
             'islands.contract' => self::ADDR,
             'islands.premium_contracts' => ['Flovatar' => self::ADDR, 'Flobot' => self::ADDR, 'FlovatarDustCollectible' => self::ADDR, 'Sportvatar' => '0xc80df59e5354ca8a'],
         ]);
+        Islands::forgetDesignationPrefix();
+        $this->beltDir = sys_get_temp_dir().'/islands-belt-test-'.getmypid().'-'.uniqid();
+        config(['islands.belt.dir' => $this->beltDir, 'islands.designation_prefix' => 'K313/']);
         DB::purge();
         (require base_path('database/migrations/2026_11_26_100001_create_islands_tables.php'))->up();
         \Illuminate\Support\Facades\Schema::create('rendered_images', function ($t) {
@@ -142,13 +156,13 @@ class IslandsTest extends TestCase
         $this->seedIsland();
         $r = $this->get('/islands');
         $r->assertOk();
-        $this->assertStringContainsString('K-334/0001', $r->getContent());
+        $this->assertStringContainsString('K313/0001', $r->getContent());
         $this->assertStringContainsString('window.ISLANDS', $r->getContent());
         $this->assertStringContainsString('data-islands="nav"', $r->getContent());
 
         $r = $this->get('/islands/1');
         $r->assertOk();
-        $this->assertStringContainsString('property="og:title" content="Rock Garden · K-334/0001', $r->getContent());
+        $this->assertStringContainsString('property="og:title" content="Rock Garden · K313/0001', $r->getContent());
         $this->assertStringContainsString('x-data="islandPage(1)"', $r->getContent());
 
         $this->get('/islands/build')->assertOk()->assertHeader('X-Robots-Tag', 'noindex, nofollow');
@@ -157,7 +171,7 @@ class IslandsTest extends TestCase
         $this->assertSame($this->fixture['expected'], $this->get('/islands/1/scene.svg')->assertOk()->getContent());
 
         $j = $this->getJson('/api/islands/1')->assertOk()->json();
-        $this->assertSame('K-334/0001', $j['designation']);
+        $this->assertSame('K313/0001', $j['designation']);
         $this->assertSame(3, $j['premiumSlots']);
         $this->assertSame('pad', $j['slotModel']);
         $bySlot = collect($j['residentsList'])->keyBy('slot');
@@ -197,7 +211,7 @@ class IslandsTest extends TestCase
         $a = 'A.2c6a4c4342aeca55.FlovatarAsteroidIsland.';
         $ev = fn (string $type, array $m, int $i = 0) => new Event(['type' => $type, 'flow_metadata' => $m, 'transaction_id' => 'tx'.$i, 'block_id' => 100 + $i, 'event_date' => now()]);
 
-        $t = $ev($a.'Terraformed', ['id' => 5, 'designation' => 'K-334/0005', 'rarity' => 'epic', 'deedIds' => [1, 2, 3, 4, 5], 'deedTemplateIds' => [69, 69, 69, 69, 69],
+        $t = $ev($a.'Terraformed', ['id' => 5, 'designation' => 'K313/0005', 'rarity' => 'epic', 'deedIds' => [1, 2, 3, 4, 5], 'deedTemplateIds' => [69, 69, 69, 69, 69],
             'deedRarity' => 'common', 'fused' => true, 'layers' => ['base' => 2, 'structure' => 4], 'tint' => '#5fb04a', 'owner' => self::OWNER]);
         $this->assertTrue($p->handles($t));
         $this->assertTrue($p->process($t));
@@ -252,6 +266,124 @@ class IslandsTest extends TestCase
         IslandResident::create(['island_flow_id' => 1, 'slot' => 'A4', 'nft_type' => 'A.2c6a4c4342aeca55.FlovatarComponent.NFT', 'nft_id' => 3, 'set_by' => self::OWNER, 'valid' => true]);
 
         return $island;
+    }
+
+    public function test_designation_prefix_comes_from_the_contract_setting(): void
+    {
+        $this->mode('on');
+        $this->assertSame('K313/', Islands::designationPrefix());
+        $this->assertSame('K313/0007', Islands::designation(7));
+        $this->assertSame('K313', Islands::sector());
+        $this->assertSame('K313/', Islands::bootstrap()['designationPrefix']);
+        // unsafe / empty settings never reach the pages
+        foreach ([null, '', '<b>', str_repeat('K', 30), "K\n1/"] as $bad) {
+            Islands::rememberDesignationPrefix($bad);
+            $this->assertSame('K313/', Islands::designationPrefix());
+        }
+        // what IslandChain::readConfig() does with the contract setting designationPrefix
+        Islands::rememberDesignationPrefix('NC-9/');
+        $this->assertSame('NC-9/0042', Islands::designation(42));
+        Islands::forgetDesignationPrefix(); // next request: read from the cache, not from the memo
+        $this->assertSame('NC-9/0042', Islands::designation(42));
+        $this->assertSame('NC-9', Islands::sector());
+        $this->assertSame('Asteroid NC-9/0003', (new Island(['flow_id' => 3]))->display_name);
+    }
+
+    public function test_belt_page_manifest_atlas_and_sprite(): void
+    {
+        $this->mode('on');
+        $this->routes();
+        \Illuminate\Support\Facades\Storage::fake('belt-renders');
+        config(['render.disk' => 'belt-renders']);
+        $this->seedIsland();
+        Island::create(['flow_id' => 2, 'rarity' => 'legendary', 'name' => null, 'layers' => ['base' => 1], 'flow_address' => '0x73f3e0573458fd3c', 'residents_count' => 0]);
+        Island::create(['flow_id' => 400, 'rarity' => 'epic', 'name' => 'Far Out', 'layers' => ['base' => 1], 'flow_address' => self::OWNER, 'residents_count' => 7]);
+        // renders of islands 1 and 400 (transparent PNG with a red block), none for island 2
+        $png = function (): string {
+            $im = imagecreatetruecolor(300, 400);
+            imagealphablending($im, false);
+            imagesavealpha($im, true);
+            imagefill($im, 0, 0, imagecolorallocatealpha($im, 0, 0, 0, 127));
+            imagefilledrectangle($im, 60, 120, 240, 360, imagecolorallocatealpha($im, 255, 0, 0, 0));
+            ob_start();
+            imagepng($im);
+
+            return (string) ob_get_clean();
+        };
+        foreach ([1 => 'aaaaaaaaaaaa', 400 => 'bbbbbbbbbbbb'] as $id => $hash) {
+            \Illuminate\Support\Facades\Storage::disk('belt-renders')->put('testnet/island/r/'.$id.'/'.$hash.'/full.png', $png());
+            DB::table('rendered_images')->insert(['item_type' => 'island', 'flow_id' => $id, 'hash' => $hash, 'path' => 'testnet/island/r/'.$id.'/'.$hash,
+                'source' => 'server', 'variants' => json_encode(['full.png', 'og.jpg']), 'rendered_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
+        }
+
+        // page: 3D stage + server-rendered list (links for no-JS / crawlers), new copy, OG tags
+        $html = $this->get('/islands')->assertOk()->getContent();
+        foreach (['class="belt-canvas"', 'x-data="islandsBelt"', 'Kaax Asteroid Belt · Sector K313', 'href="/islands/1"', 'href="/islands/400"', 'K313/0400',
+            'Terraform an island', 'href="/islands/build"', 'property="og:title" content="Asteroid Islands · Kaax Asteroid Belt, Sector K313', 'role="dialog"'] as $needle) {
+            $this->assertStringContainsString($needle, $html);
+        }
+        $this->assertStringNotContainsString('K-334', $html);
+        $this->assertStringNotContainsString('Nova City', strip_tags(preg_replace('~<script.*?</script>~s', '', $html)), 'the city is never named in plain page copy');
+        $this->assertSame('Nova City', Islands::bootstrap()['belt']['center']);
+        $this->assertContains('b', array_keys(Stealth::LAZY_CHUNKS));
+        $this->assertSame('islands', Stealth::featureForBundle('b'));
+
+        // manifest: compact rows, atlas pages by id (336 per page), built inline for a small backlog
+        $r = $this->getJson('/api/islands/belt')->assertOk();
+        $this->assertStringContainsString('public', (string) $r->headers->get('Cache-Control'));
+        $m = $r->json();
+        $this->assertSame(3, $m['count']);
+        $this->assertSame('K313/', $m['prefix']);
+        $this->assertSame(['common' => 1, 'epic' => 1, 'legendary' => 1], $m['counts']);
+        $this->assertSame(336, $m['cell']['per']);
+        $this->assertSame(['common' => 5, 'epic' => 25, 'legendary' => 125], $m['capacity']);
+        $this->assertSame([self::OWNER, '0x73f3e0573458fd3c'], $m['owners']);
+        $this->assertSame([1, 0, 'Rock Garden', 2, 0], array_slice($m['islands'][0], 0, 5));
+        $this->assertSame([1, 'aaaaaaaaaaaa'], array_slice($m['islands'][0], 6));
+        $this->assertSame([2, 2, '', 0, 1], array_slice($m['islands'][1], 0, 5));
+        $this->assertSame([0, ''], array_slice($m['islands'][1], 6), 'no render yet: no cell, no sprite');
+        $this->assertSame([400, 1, 'Far Out', 7, 0], array_slice($m['islands'][2], 0, 5));
+        $this->assertSame(['0', '1'], array_map('strval', array_keys($m['atlases'])));
+        $this->assertMatchesRegularExpression('~^/api/islands/belt/atlas/0-[a-f0-9]{12}\.webp$~', $m['atlases']['0']);
+
+        // atlas page 0: island 1 in cell 0 (red body in the middle of the cell, transparent corner)
+        $a = $this->get($m['atlases']['0'])->assertOk();
+        $this->assertSame('image/webp', $a->headers->get('Content-Type'));
+        $this->assertStringContainsString('immutable', (string) $a->headers->get('Cache-Control'));
+        $im = imagecreatefromwebp($a->baseResponse->getFile()->getPathname());
+        $this->assertSame([2048, 2048], [imagesx($im), imagesy($im)]);
+        $mid = imagecolorsforindex($im, imagecolorat($im, 48, 80));
+        $this->assertTrue($mid['red'] > 200 && $mid['green'] < 60 && $mid['alpha'] < 10);
+        $this->assertSame(127, imagecolorsforindex($im, imagecolorat($im, 1, 1))['alpha']);
+        $this->assertSame(127, imagecolorsforindex($im, imagecolorat($im, 96 + 48, 80))['alpha'], 'cell 1 (island 2) is empty');
+        // island 400 = page 1, slot 63 = column 0, row 3
+        $im = imagecreatefromwebp($this->get($m['atlases']['1'])->assertOk()->baseResponse->getFile()->getPathname());
+        $this->assertTrue(imagecolorsforindex($im, imagecolorat($im, 48, 3 * 128 + 80))['red'] > 200);
+        $this->get('/api/islands/belt/atlas/0-000000000000.webp')->assertNotFound();
+
+        // near-LOD sprite: only for the current render key
+        $sp = $this->get('/api/islands/belt/sprite/1-aaaaaaaaaaaa.webp')->assertOk();
+        $im = imagecreatefromwebp($sp->baseResponse->getFile()->getPathname());
+        $this->assertSame([512, 683], [imagesx($im), imagesy($im)]);
+        $this->get('/api/islands/belt/sprite/1-cccccccccccc.webp')->assertNotFound();
+        $this->get('/api/islands/belt/sprite/2-aaaaaaaaaaaa.webp')->assertNotFound();
+
+        // a new render of island 1 -> page 0 gets a new name, page 1 keeps its file; nothing to do -> no-op
+        $belt = app(\App\Services\Islands\IslandBelt::class);
+        $this->assertSame(['cells' => 0, 'atlases' => 0, 'pending' => 0], $belt->warm());
+        \Illuminate\Support\Facades\Storage::disk('belt-renders')->put('testnet/island/r/1/dddddddddddd/full.png', $png());
+        DB::table('rendered_images')->where('flow_id', 1)->update(['hash' => 'dddddddddddd', 'path' => 'testnet/island/r/1/dddddddddddd']);
+        $m2 = $this->app->make(\App\Services\Islands\IslandBelt::class)->manifest(true);
+        $this->assertNotSame($m['atlases']['0'], ((array) $m2['atlases'])['0']);
+        $this->assertSame($m['atlases']['1'], ((array) $m2['atlases'])['1']);
+        $this->assertSame('dddddddddddd', $m2['islands'][0][7]);
+        $this->get('/api/islands/belt/sprite/1-dddddddddddd.webp')->assertOk();
+
+        // stealth: nothing for anonymous visitors
+        $this->mode('stealth');
+        $this->app->make(\App\Services\Islands\IslandBelt::class)->forget();
+        $this->get('/api/islands/belt')->assertNotFound();
+        $this->get(((array) $m2['atlases'])['0'])->assertNotFound();
     }
 
     public function test_display_fix_declares_xlink_namespace(): void
