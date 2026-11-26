@@ -1157,10 +1157,12 @@ if (CFG) {
          */
         async reload(expect) {
             let d = null;
-            for (let i = 0; i < 6; i++) {
+            // the server's access node can lag the wallet's by 10-30 s: retry for up to ~30 s (refresh is throttled 20/min)
+            for (let i = 0; i < 9; i++) {
                 d = await refreshIsland(this.id, this.island ? this.island.owner : null);
                 if (!expect || (d && expect(d))) { break; }
-                await new Promise((r) => setTimeout(r, 1500 + i * 500));
+                if (i === 2) { this.say('Updating the island\u2026 the blockchain is catching up.'); }
+                await new Promise((r) => setTimeout(r, Math.min(4000, 1500 + i * 500)));
             }
             if (d) { this.island = d; } else { this.island = await getJson('/api/islands/' + this.id); }
             this.resetPlan();
@@ -1406,35 +1408,51 @@ if (CFG) {
         },
         targetActive(target) { const k = (this.drag && this.drag.key) || this.selected; return !!k && this.canDrop(k, target); },
 
-        // pointer drag (mouse + touch + pen): ghost follows the pointer, drop = element under the pointer with data-drop
+        // pointer drag (mouse + touch + pen): ghost follows the pointer, drop = element under the pointer with data-drop.
+        // Mouse / pen: drag starts after 7 px. Touch: long-press (280 ms without moving) starts the drag, so normal swipes
+        // still scroll the collection; while dragging, touchmove is cancelled so the page doesn't scroll.
         dragStart(e, key) {
-            if (!this.isOwner || this.busy || (e.button !== undefined && e.button !== 0)) { return; }
+            if (!this.isOwner || this.busy || (e.button !== undefined && e.button > 0)) { return; }
             const it = this.nftFromKey(key);
             if (!it) { return; }
+            const touch = e.pointerType === 'touch';
             const start = {x: e.clientX, y: e.clientY};
             const el = e.currentTarget;
             const img = el.querySelector('img');
             const label = (el.getAttribute('data-label') || '');
             let moved = false;
+            let armed = !touch;
+            let timer = null;
+            const begin = (x, y) => {
+                moved = true;
+                this.drag = {key, label, img: img ? img.currentSrc || img.src : '', x, y};
+                if (this.sheetOpen && touch) { this.sheetOpen = false; }
+                document.documentElement.classList.add('isp-dragging');
+                if (touch && navigator.vibrate) { try { navigator.vibrate(12); } catch (err) { /* optional */ } }
+            };
+            if (touch) { timer = setTimeout(() => { armed = true; begin(start.x, start.y); }, 280); }
+            const blockScroll = (ev) => { if (moved) { ev.preventDefault(); } };
             const move = (ev) => {
-                if (!moved && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 7) { return; }
-                if (!moved) {
-                    moved = true;
-                    this.drag = {key, label, img: img ? img.currentSrc || img.src : '', x: ev.clientX, y: ev.clientY};
-                    if (this.sheetOpen && ev.pointerType !== 'mouse') { this.sheetOpen = false; }
-                    document.documentElement.classList.add('isp-dragging');
-                }
+                const far = Math.hypot(ev.clientX - start.x, ev.clientY - start.y) >= 7;
+                if (!armed) { if (far) { clearTimeout(timer); cleanup(); } return; }
+                if (!moved) { if (!far) { return; } begin(ev.clientX, ev.clientY); }
                 ev.preventDefault();
                 this.drag = {...this.drag, x: ev.clientX, y: ev.clientY};
                 const t = document.elementFromPoint(ev.clientX, ev.clientY);
                 const d = t && t.closest('[data-drop]');
                 this.dropHover = d ? d.getAttribute('data-drop') : '';
             };
-            const up = (ev) => {
+            const cleanup = () => {
+                clearTimeout(timer);
                 window.removeEventListener('pointermove', move);
                 window.removeEventListener('pointerup', up);
-                window.removeEventListener('pointercancel', up);
+                window.removeEventListener('pointercancel', cancel);
+                window.removeEventListener('touchmove', blockScroll);
                 document.documentElement.classList.remove('isp-dragging');
+            };
+            const cancel = () => { cleanup(); this.drag = null; this.dropHover = ''; };
+            const up = (ev) => {
+                cleanup();
                 if (!moved) { return; }
                 const t = document.elementFromPoint(ev.clientX, ev.clientY);
                 const d = t && t.closest('[data-drop]');
@@ -1447,7 +1465,8 @@ if (CFG) {
             };
             window.addEventListener('pointermove', move, {passive: false});
             window.addEventListener('pointerup', up);
-            window.addEventListener('pointercancel', up);
+            window.addEventListener('pointercancel', cancel);
+            window.addEventListener('touchmove', blockScroll, {passive: false});
         },
         clicked(fn) { if (this._suppressClick && Date.now() - this._suppressClick < 350) { return; } fn(); },
 

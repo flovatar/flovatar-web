@@ -148,6 +148,8 @@ $isl-legendary: #EB3CF2;
 // the site wrappers clip with overflow: hidden, which turns them into scroll containers and breaks the sticky scene;
 // `clip` cuts the same overflow without that side effect (only on the island page)
 main:has(.isp), .jsloaded:has(.isp) { overflow: clip; }
+// testnet / staging banner (#env-banner, fixed at the bottom): keep the bottom sheet and the save bar above it
+body:has(#env-banner) .isp { --isp-env-bar: 28px; }
 .isp-grid { display: grid; grid-template-columns: minmax(0, 11fr) minmax(0, 9fr); gap: 28px; align-items: start;
   @include media('<desktop') { grid-template-columns: 1fr; gap: 18px; } }
 .isp-stage { position: sticky; top: 96px; @include media('<desktop') { position: static; } }
@@ -286,7 +288,7 @@ html.isp-dragging, html.isp-dragging * { cursor: grabbing !important; user-selec
 
 // phones / tablets: the collection is a bottom sheet over the page
 @include media('<desktop') {
-  .isp-collection { position: fixed; z-index: 62; left: 0; right: 0; bottom: 0; margin: 0; border-radius: 16px 16px 0 0; padding: 0 14px 12px; max-height: 64vh; max-height: 64dvh;
+  .isp-collection { position: fixed; z-index: 62; left: 0; right: 0; bottom: var(--isp-env-bar, 0px); margin: 0; border-radius: 16px 16px 0 0; padding: 0 14px 12px; max-height: 56vh; max-height: 56dvh;
     display: flex; flex-direction: column; box-shadow: 0 -10px 40px rgba(0, 0, 0, .55); transform: translateY(calc(100% - 52px)); transition: transform .3s ease;
     .isp-col-head h2 { display: none; }
     .isp-col-grid { max-height: none; flex: 1; min-height: 0; } }
@@ -295,8 +297,8 @@ html.isp-dragging, html.isp-dragging * { cursor: grabbing !important; user-selec
     font: 700 19px/1 $korolev-compressed; letter-spacing: .05em; text-transform: uppercase; cursor: pointer;
     &::before { content: ''; position: absolute; left: 50%; top: 6px; width: 40px; height: 4px; margin-left: -20px; border-radius: 2px; background: rgba(255, 255, 255, .35); } }
   .isp-owner { padding-bottom: 80px; }
-  .isp-pending { bottom: 62px; }
-  .isp-sheet-open .isp-pending { bottom: calc(64vh + 8px); bottom: calc(64dvh + 8px); }
+  .isp-pending { bottom: calc(62px + var(--isp-env-bar, 0px)); }
+  .isp-sheet-open .isp-pending { bottom: calc(56vh + 8px + var(--isp-env-bar, 0px)); bottom: calc(56dvh + 8px + var(--isp-env-bar, 0px)); }
 }
 
 // ---------------------------------------------------------===
