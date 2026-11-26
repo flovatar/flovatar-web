@@ -28,11 +28,13 @@
                         <button type="button" role="tab" class="isb-cat" :class="{active: tab === t.key, 'is-deeds': t.key === 'deeds'}" :aria-selected="tab === t.key"
                                 @click="setTab(t.key)" :data-tab="t.key">
                             <span class="isb-cat-label" x-text="t.label"></span>
-                            <span class="isb-cat-art">
-                                <template x-if="tabThumb(t.key)"><img :src="tabThumb(t.key)" alt=""></template>
-                                <template x-if="!tabThumb(t.key)"><svg viewBox="0 0 48 48" aria-hidden="true"><use :href="'#isb-i-' + t.key"></use></svg></template>
+                            {{-- category icon (public/images/islands/tab-*.svg): greys when idle, brand colours on the active tab --}}
+                            <span class="isb-cat-art" :class="{'is-empty': tabEmpty(t.key)}">
+                                <img class="isb-cat-icon" :src="tabIcon(t.key, false)" alt="" width="84" height="76" decoding="async">
+                                <img class="isb-cat-icon isb-cat-icon-on" :src="tabIcon(t.key, true)" alt="" width="84" height="76" decoding="async">
                             </span>
                             <span class="isb-cat-badge" x-show="tabBadge(t.key)" x-text="tabBadge(t.key)"></span>
+                            <span class="isb-cat-dot" x-show="t.key === 'tint' && tintValue" :style="tintValue ? 'background:' + tintValue : ''" aria-hidden="true"></span>
                         </button>
                     </li>
                 </template>
@@ -161,7 +163,7 @@
                         <ul class="isb-cards isb-options" :data-layer="tab">
                             <template x-if="!isRequired(tab)">
                                 <li><button type="button" class="isb-card isb-none" :class="{selected: !layers[tab]}" @click="pick(tab, null)" :aria-pressed="!layers[tab]" data-template="none">
-                                    <span class="isb-card-art"><svg viewBox="0 0 48 48" aria-hidden="true"><use :href="'#isb-i-' + tab"></use></svg></span>
+                                    <span class="isb-card-art"><img class="isb-none-icon" :src="tabIcon(tab, false)" alt=""></span>
                                     <span class="isb-card-name">None</span>
                                     <span class="isb-check" x-show="!layers[tab]">✓</span>
                                 </button></li>
@@ -296,14 +298,6 @@
 
     {{-- icons (outline, currentColor) --}}
     <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
-        <symbol id="isb-i-deeds" viewBox="0 0 48 48"><path d="M12 6h18l8 8v28H12z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M30 6v8h8M17 22h16M17 28h16M17 34h10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></symbol>
-        <symbol id="isb-i-sky" viewBox="0 0 48 48"><path d="M30 8a14 14 0 1 0 10 22A12 12 0 0 1 30 8z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M10 10l1.5 3 3 1.5-3 1.5L10 19l-1.5-3-3-1.5 3-1.5z" fill="currentColor"/></symbol>
-        <symbol id="isb-i-base" viewBox="0 0 48 48"><path d="M5 20c6-4 32-4 38 0-2 6-6 8-9 9l-4 10-5-6-5 8-3-10c-5-2-10-5-12-11z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M8 19c5 3 27 3 32 0" fill="none" stroke="currentColor" stroke-width="3"/></symbol>
-        <symbol id="isb-i-structure" viewBox="0 0 48 48"><path d="M8 40V22L24 9l16 13v18zM20 40V29h8v11" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/></symbol>
-        <symbol id="isb-i-fub" viewBox="0 0 48 48"><rect x="7" y="12" width="34" height="24" rx="3" fill="none" stroke="currentColor" stroke-width="3"/><path d="M16 36v6M32 36v6M14 20h6M14 26h4M24 20v8h4M34 20h-4v8h4" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></symbol>
-        <symbol id="isb-i-foreground" viewBox="0 0 48 48"><path d="M24 42V20M24 26c-8 0-12-6-12-12 8 0 12 5 12 12zM24 22c0-8 5-13 13-13 0 8-5 13-13 13zM10 42h28" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-        <symbol id="isb-i-fx" viewBox="0 0 48 48"><path d="M20 6l3 9 9 3-9 3-3 9-3-9-9-3 9-3zM36 28l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/></symbol>
-        <symbol id="isb-i-tint" viewBox="0 0 48 48"><path d="M24 6c8 10 13 17 13 23a13 13 0 0 1-26 0c0-6 5-13 13-23z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M18 30a6 6 0 0 0 6 6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></symbol>
         <symbol id="isb-i-pack" viewBox="0 0 48 48"><path d="M10 14l14-8 14 8v20l-14 8-14-8z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M10 14l14 8 14-8M24 22v20" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/></symbol>
         <symbol id="isb-i-flame" viewBox="0 0 48 48"><path d="M24 4c2 8 12 12 12 24a12 12 0 0 1-24 0c0-6 3-9 5-12 1 4 3 6 5 6-2-7 0-13 2-18z" fill="currentColor"/></symbol>
         <symbol id="isb-i-camera" viewBox="0 0 48 48"><path d="M6 16h8l4-6h12l4 6h8v22H6z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><circle cx="24" cy="26" r="7" fill="none" stroke="currentColor" stroke-width="3"/></symbol>
