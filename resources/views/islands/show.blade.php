@@ -80,8 +80,8 @@
                     <span class="isp-live-badge" x-show="needsLive && !zoom" x-text="liveBusy ? 'Preview…' : 'Preview'"></span>
                 </div>
                 <p class="isp-hint" x-show="!zoom">
-                    <span x-show="isOwner && selected" x-text="'Now click a glowing slot or the display.'"></span>
-                    <span x-show="isOwner && !selected">Drag an NFT from your collection onto a scene slot or onto the display, or click it and then a slot.</span>
+                    <span x-show="isOwner && selected">Now tap a glowing slot or the display. <button type="button" class="isl-link" @click="selected = null">cancel</button></span>
+                    <span x-show="isOwner && !selected">Drag an NFT from your collection onto a scene slot or onto the display, or tap it and then a slot.</span>
                     <span x-show="!isOwner && hasDisplay">Tap the display to browse the NFTs on it.</span>
                 </p>
             </div>
@@ -173,7 +173,7 @@
                     <ul class="isp-col-grid" data-islands="col-grid">
                         <template x-for="n in colItems" :key="nftKey(n)">
                             <li><button type="button" class="isp-nft" :class="{selected: selected === nftKey(n), placed: !!placedAt(n), family: isPremiumType(n.type)}"
-                                        @click="clicked(() => selectNft(n))" @pointerdown="dragStart($event, nftKey(n))" :data-nft="nftKey(n)" :data-label="n.name || (typeLabel(n.type) + ' #' + n.id)"
+                                        @click="clicked(() => selectNft(n))" @pointerdown="dragStart($event, nftKey(n))" @contextmenu.prevent" :data-nft="nftKey(n)" :data-label="n.name || (typeLabel(n.type) + ' #' + n.id)"
                                         :aria-pressed="selected === nftKey(n)" :title="(n.name || typeLabel(n.type) + ' #' + n.id) + (placedAt(n) ? ' (on the island: ' + placedAt(n) + ')' : '')">
                                 <span class="isp-nft-img"><img :src="nftThumb(n)" alt="" loading="lazy" draggable="false" x-show="nftThumb(n)"></span>
                                 <span class="isp-nft-name" x-text="n.name || (typeLabel(n.type) + ' #' + n.id)"></span>
@@ -188,7 +188,7 @@
                     <h3>In the scene <small x-text="premiumSlots.filter((s) => isOwner ? plan[s.chain] : residentAt(s.chain)).length + ' / ' + premiumSlots.length"></small></h3>
                     <ul class="isp-rlist">
                         <template x-for="s in premiumSlots" :key="s.chain">
-                            <li :class="{empty: !(isOwner ? planned(s.chain) : residentAt(s.chain)), pending: isOwner && slotChanged(s.chain)}" :data-slot="s.slot">
+                            <li :class="{empty: !(isOwner ? planned(s.chain) : residentAt(s.chain)), pending: isOwner && slotChanged(s.chain)}" :data-slot="s.slot" x-show="isOwner || residentAt(s.chain)">
                                 <b class="isp-rslot" x-text="s.slot"></b>
                                 <template x-for="r in [isOwner ? planned(s.chain) : residentAt(s.chain)].filter(Boolean)" :key="r.type + r.id">
                                     <span class="isp-rnft" :class="{invalid: !r.pending && !isValid(r)}">
