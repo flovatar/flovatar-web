@@ -1,9 +1,9 @@
 <x-guest-layout>
 {{-- Asteroid Islands builder v2 (ISLANDS_MODE; KB notes/islands-build.md §E). Layout and interaction follow the Sportvatar
-     builder: category tabs (Deeds, scene layers, Tint) with thumbnail grids, an info card, a big live preview with a tool
+     builder: category tabs (TerraKits, scene layers, Tint) with thumbnail grids, an info card, a big live preview with a tool
      bar, then review + sign in a dialog. Static shell, no user data: the wallet is read and the terraform transaction is
-     signed in the browser (resources/js/app/islands.js islandsBuilder). Redeem only: 1 land deed -> island of that
-     rarity, 5 same-rarity deeds -> next tier. The deeds are burned. No fees. No size figures for users. --}}
+     signed in the browser (resources/js/app/islands.js islandsBuilder). Redeem only: 1 TerraKit -> island of that
+     rarity, 5 same-rarity TerraKits -> next tier. The TerraKits are burned. No fees. No size figures for users. --}}
 <section class="isb" x-data="islandsBuilder" data-islands="builder" @keydown.escape.window="onEscape()">
     <header class="isb-head">
         <div class="isb-title">
@@ -11,7 +11,7 @@
             <h1>Terraform your island</h1>
         </div>
         <ol class="isb-steps" aria-label="Steps">
-            <li :class="stepState.deeds"><button type="button" @click="setTab('deeds')"><span class="n">1</span> Deeds</button></li>
+            <li :class="stepState.deeds"><button type="button" @click="setTab('deeds')"><span class="n">1</span> TerraKits</button></li>
             <li :class="stepState.design"><button type="button" @click="setTab('base')"><span class="n">2</span> Design</button></li>
             <li :class="stepState.terraform"><button type="button" @click="ctaClick()"><span class="n">3</span> Terraform</button></li>
         </ol>
@@ -44,14 +44,14 @@
         {{-- ============ info card + option grid ============ --}}
         <div class="isb-parts">
             <div class="isb-info" :class="{'is-layer': isLayerTab()}" data-islands="info">
-                <strong class="isb-info-cat" x-text="tab === 'deeds' ? 'Land deeds' : (tab === 'tint' ? 'Tint' : layerLabel(tab))"></strong>
+                <strong class="isb-info-cat" x-text="tab === 'deeds' ? 'TerraKits' : (tab === 'tint' ? 'Tint' : layerLabel(tab))"></strong>
 
                 {{-- deeds --}}
                 <template x-if="tab === 'deeds'">
                     <div class="isb-info-body">
-                        <div class="isb-mode" role="radiogroup" aria-label="How many deeds">
+                        <div class="isb-mode" role="radiogroup" aria-label="How many TerraKits">
                             <button type="button" :class="mode === 'single' ? 'active' : ''" @click="setMode('single')" role="radio" :aria-checked="mode === 'single'" data-islands="mode-single">
-                                <b>1 deed</b><span>Island of the same rarity</span></button>
+                                <b>1 TerraKit</b><span>Island of the same rarity</span></button>
                             <button type="button" :class="mode === 'fuse' ? 'active' : ''" @click="setMode('fuse')" role="radio" :aria-checked="mode === 'fuse'" data-islands="mode-fuse">
                                 <b>Fuse 5</b><span>Same rarity → next tier</span></button>
                         </div>
@@ -105,13 +105,13 @@
                         <div class="isb-deeds">
                             <template x-if="!user">
                                 <div class="isb-empty" data-islands="connect">
-                                    <p>Connect the wallet that holds your TerraKit land deeds. You can design an island without one.</p>
+                                    <p>Connect the wallet that holds your TerraKits. You can design an island without one.</p>
                                     <button type="button" class="isb-btn isb-btn-cta" @click="connect()"><span>Connect wallet</span></button>
                                     <p class="muted">Not sure your wallet still works? <a href="/terrakit/check">Check your TerraKit</a>.</p>
                                 </div>
                             </template>
                             <template x-if="user && dapper()">
-                                <div class="isb-empty isb-warn" data-islands="dapper"><p><b>Dapper Wallet can't sign this transaction.</b> Redeeming land deeds needs a wallet that signs the island transaction itself, such as Flow Wallet.</p></div>
+                                <div class="isb-empty isb-warn" data-islands="dapper"><p><b>Dapper Wallet can't sign this transaction.</b> Redeeming TerraKits needs a wallet that signs the island transaction itself, such as Flow Wallet.</p></div>
                             </template>
                             <template x-if="user && status === 'loading'"><p class="isb-empty">Reading your wallet on the Flow blockchain…</p></template>
                             <template x-if="user && status === 'error'">
@@ -119,11 +119,11 @@
                             </template>
                             <template x-if="user && status === 'ready'">
                                 <div>
-                                    <p class="isb-wallet">Wallet <span class="mono" x-text="short(user.addr)"></span> · <span x-text="deedCount + ' land deed' + (deedCount === 1 ? '' : 's')"></span>
+                                    <p class="isb-wallet">Wallet <span class="mono" x-text="short(user.addr)"></span> · <span x-text="deedCount + ' Asteroid TerraKit' + (deedCount === 1 ? '' : 's')"></span>
                                         <button type="button" class="isb-link" @click="loadInventory()">refresh</button></p>
                                     <template x-if="packs.length">
                                         <div class="isb-group" data-islands="packs">
-                                            <h3>Unopened TerraKit packs <small>1 land deed + 1 FUB voucher + 1 Flobot kit each</small></h3>
+                                            <h3>Unopened TerraKit packs <small>each holds an Asteroid TerraKit, a FUB TerraKit and a Flobot Kit</small></h3>
                                             <ul class="isb-cards">
                                                 <template x-for="p in packs" :key="p">
                                                     <li><div class="isb-card isb-pack">
@@ -138,20 +138,20 @@
                                     </template>
                                     <p class="isb-notice" x-show="packMessage" x-text="packMessage" aria-live="polite"></p>
                                     <template x-if="!hasDeeds">
-                                        <div class="isb-empty"><p>No TerraKit land deeds in this wallet<span x-show="packs.length"> yet: open a pack above</span>. You can still design an island and share the link.</p></div>
+                                        <div class="isb-empty"><p>No Asteroid TerraKits in this wallet<span x-show="packs.length"> yet: open a pack above</span>. You can still design an island and share the link.</p></div>
                                     </template>
                                     <template x-for="r in rarities" :key="r">
                                         <div class="isb-group" x-show="deedsOf(r).length">
                                             <h3><span class="isb-rar" :class="'isb-rar-' + r" x-text="r"></span>
-                                                <span x-text="deedsOf(r).length + ' deed' + (deedsOf(r).length === 1 ? '' : 's')"></span>
+                                                <span x-text="deedsOf(r).length + ' TerraKit' + (deedsOf(r).length === 1 ? '' : 's')"></span>
                                                 <button type="button" class="isb-link" x-show="canFuse(r)" @click="pickFive(r)" x-text="'fuse 5 → ' + (r === 'common' ? 'epic' : 'legendary')"></button></h3>
                                             <ul class="isb-cards">
                                                 <template x-for="d in deedsOf(r)" :key="d.id">
                                                     <li><button type="button" class="isb-card isb-deed" :class="{selected: isSelected(d.id), disabled: deedDisabled(d)}"
                                                                 :disabled="deedDisabled(d)" @click="toggleDeed(d)" :data-deed="d.id" :aria-pressed="isSelected(d.id)"
-                                                                :title="deedDisabled(d) ? 'Legendary deeds can\'t be fused' : ''">
+                                                                :title="deedDisabled(d) ? 'Legendary TerraKits can\'t be fused' : ''">
                                                         <span class="isb-card-art"><img loading="lazy" :src="deedImage(d)" alt=""></span>
-                                                        <span class="isb-card-name" x-text="'Deed #' + d.id"></span>
+                                                        <span class="isb-card-name" x-text="'TerraKit #' + d.id"></span>
                                                         <span class="isb-check" x-show="isSelected(d.id)" x-text="mode === 'fuse' ? pickIndex(d.id) : '✓'"></span>
                                                     </button></li>
                                                 </template>
@@ -257,7 +257,7 @@
                         <h2 id="isb-review-title">Terraform this island?</h2>
                         <dl class="isb-summary">
                             <div><dt>Island</dt><dd><span class="isb-rar" :class="'isb-rar-' + snap.rarity" x-text="snap.rarity"></span>
-                                <span x-text="snap.fused ? 'fused from 5 ' + snap.deedRarity + ' deeds' : 'from 1 ' + snap.deedRarity + ' deed'"></span></dd></div>
+                                <span x-text="snap.fused ? 'fused from 5 ' + snap.deedRarity + ' TerraKits' : 'from 1 ' + snap.deedRarity + ' TerraKit'"></span></dd></div>
                             <template x-for="p in snap.parts" :key="p.layer"><div :data-part="p.key"><dt x-text="p.layer"></dt><dd><span x-text="p.name"></span>
                                 <span class="isb-part-note" :class="p.note === 'permanent' ? 'perm' : 'free'" x-show="p.note" x-text="p.note"></span></dd></div></template>
                             <div x-show="snap.tint"><dt>Tint</dt><dd><span class="isb-swatch" :style="'background:' + snap.tint"></span> <span x-text="snap.tint && snap.tint.toUpperCase()"></span></dd></div>
@@ -265,13 +265,13 @@
                         </dl>
                         <div class="isb-burnbox" data-islands="burn-warning">
                             <p class="isb-burnbox-title"><svg viewBox="0 0 48 48" aria-hidden="true"><use href="#isb-i-flame"></use></svg>
-                                <span x-text="snap.deeds.length === 1 ? 'This land deed will be BURNED' : 'These ' + snap.deeds.length + ' land deeds will be BURNED'"></span></p>
+                                <span x-text="snap.deeds.length === 1 ? 'This TerraKit will be BURNED' : 'These ' + snap.deeds.length + ' TerraKits will be BURNED'"></span></p>
                             <ul class="isb-burn-deeds">
                                 <template x-for="d in snap.deeds" :key="d.id"><li><img :src="'/api/image/template/' + d.templateId" alt=""><span x-text="'#' + d.id"></span></li></template>
                             </ul>
                             <p><span x-text="snap.deeds.length === 1 ? 'It is' : 'They are'"></span> destroyed for good when the island is created. This can't be undone. <span x-show="snap.mutable && snap.mutable.length">You can change the <span x-text="snap.mutableText"></span> later; the other parts are permanent.</span><span x-show="!snap.mutable || !snap.mutable.length">The island's scene can't be changed later.</span></p>
                             <label><input type="checkbox" x-model="understood" data-islands="understood" :disabled="step === 'signing'">
-                                <span>I understand: burn <span x-text="snap.deeds.length"></span> land deed<span x-show="snap.deeds.length > 1">s</span> and create this island.</span></label>
+                                <span>I understand: burn <span x-text="snap.deeds.length"></span> TerraKit<span x-show="snap.deeds.length > 1">s</span> and create this island.</span></label>
                         </div>
                         <p class="isb-chain" :class="chainCheck === 'ok' ? 'ok' : (chainCheck && chainCheck !== 'checking' ? 'err' : '')" data-islands="chain-check">
                             <span x-show="chainCheck === 'checking'">Checking the scene with the island contract…</span>

@@ -4,9 +4,9 @@
  * Alpine components:
  *   islandsBelt        /islands             full-viewport WebGL belt (lazy chunk "b", ../islands/belt/*) with filters, search,
  *                                           tooltip + modal; island list as fallback / accessible view
- *   islandsBuilder     /islands/build       builder v2 (Sportvatar-builder UX): tabs Deeds / scene layers / Tint with
+ *   islandsBuilder     /islands/build       builder v2 (Sportvatar-builder UX): tabs TerraKits / scene layers / Tint with
  *                                           thumbnail grids, live animated preview, randomize, permalink hash; redeem =
- *                                           pick 1 deed or fuse 5 (packs can be opened in place), review dialog (deeds are
+ *                                           pick 1 TerraKit or fuse 5 (packs can be opened in place), review dialog (TerraKits are
  *                                           BURNED), sign the terraform tx. No size figures for users (sizeMeter flag)
  *   islandPage         /islands/{id}        scene with premium residents, standard-resident carousel, owner tools
  *                                           (name/description, residents: set / move / clear)
@@ -535,9 +535,9 @@ if (CFG) {
     }));
 
     // --------------------------------------------------------------------------- /islands/build
-    // Builder v2 (KB islands-build.md §E): Sportvatar-builder layout and interaction — category tabs (Deeds, the scene
+    // Builder v2 (KB islands-build.md §E): Sportvatar-builder layout and interaction — category tabs (TerraKits, the scene
     // layers, Tint) with thumbnail grids, a big live preview with rarity / burn badges and a tool bar, review + sign in
-    // a dialog. Anyone can play with it (a preview rarity without a wallet); terraforming needs the deed(s).
+    // a dialog. Anyone can play with it (a preview rarity without a wallet); terraforming needs the TerraKit(s).
     // Size budgets are never shown to users (sizeMeter = internal flag ISLANDS_SHOW_SIZE_METER).
     const svgs = {};               // template id -> {svg, svgFront, svgLength, svgFrontLength} (outside Alpine: big strings)
     const thumbUrls = new Map();   // scene key -> object URL
@@ -663,7 +663,7 @@ if (CFG) {
                 await sealed(txId);
                 await this.loadInventory();
                 const fresh = this.inv.deeds.filter((d) => !before.has(d.id));
-                this.packMessage = 'Pack #' + id + ' opened.' + (fresh.length ? ' New land deed: ' + fresh.map((d) => d.rarity + ' #' + d.id).join(', ') + '.' : '');
+                this.packMessage = 'Pack #' + id + ' opened.' + (fresh.length ? ' New Asteroid TerraKit: ' + fresh.map((d) => d.rarity + ' #' + d.id).join(', ') + '.' : '');
             } catch (e) {
                 this.packMessage = 'Pack #' + id + ' wasn\u2019t opened: ' + friendlyChainError(txErrorText(e));
             }
@@ -703,13 +703,13 @@ if (CFG) {
         get fromDeeds() { return !!this.selectedRarity; },
         setPreviewRarity(r) { if (!this.fromDeeds && RARITIES.includes(r)) { this.previewRarity = r; } },
         get selectionHint() {
-            if (!this.user) { return 'Connect the wallet that holds your TerraKit land deeds.'; }
+            if (!this.user) { return 'Connect the wallet that holds your TerraKits.'; }
             if (this.status === 'loading') { return 'Reading your wallet\u2026'; }
-            if (!this.hasDeeds) { return this.packs.length ? 'Open a TerraKit pack to get its land deed.' : 'This wallet has no TerraKit land deeds.'; }
-            if (this.mode === 'single') { return this.selected.length ? 'One ' + this.selectedRarity + ' deed: a ' + this.rarity + ' island.' : 'Pick the land deed to redeem.'; }
+            if (!this.hasDeeds) { return this.packs.length ? 'Open a TerraKit pack to get its Asteroid TerraKit.' : 'This wallet has no Asteroid TerraKits.'; }
+            if (this.mode === 'single') { return this.selected.length ? 'One ' + this.selectedRarity + ' TerraKit: ' + (/^[aeiou]/.test(this.rarity) ? 'an ' : 'a ') + this.rarity + ' island.' : 'Pick the TerraKit to redeem.'; }
             const n = this.selected.length;
-            if (n < 5) { return n ? 'Pick ' + (5 - n) + ' more ' + this.selectedRarity + ' deed' + (5 - n === 1 ? '' : 's') + ' to fuse.' : 'Pick 5 deeds of the same rarity.'; }
-            return '5 ' + this.selectedRarity + ' deeds fuse into one ' + this.rarity + ' island.';
+            if (n < 5) { return n ? 'Pick ' + (5 - n) + ' more ' + this.selectedRarity + ' TerraKit' + (5 - n === 1 ? '' : 's') + ' to fuse.' : 'Pick 5 TerraKits of the same rarity.'; }
+            return '5 ' + this.selectedRarity + ' TerraKits fuse into one ' + this.rarity + ' island.';
         },
         deedImage(d) { return '/api/image/template/' + d.templateId; },
 
@@ -719,7 +719,7 @@ if (CFG) {
             return orderedLayers(this.cfg).filter((name) => ((this.cfg.layers[name] || {}).allowed || []).includes(this.rarity));
         },
         get tabs() {
-            const t = [{key: 'deeds', label: 'Deeds'}];
+            const t = [{key: 'deeds', label: 'TerraKits'}];
             for (const name of this.sceneLayers) { t.push({key: name, label: this.layerLabel(name)}); }
             if (this.tintAllowed) { t.push({key: 'tint', label: 'Tint'}); }
             return t;
@@ -939,8 +939,8 @@ if (CFG) {
             if (this.dapper()) { return {label: 'Terraform', disabled: true, hint: 'Dapper Wallet can\u2019t sign this transaction. Use Flow Wallet.'}; }
             if (this.status === 'loading') { return {label: 'Reading wallet\u2026', disabled: true, hint: ''}; }
             if (this.status === 'error') { return {label: 'Try again', action: 'reload', hint: this.error}; }
-            if (!this.hasDeeds) { return {label: this.packs.length ? 'Open a pack' : 'No land deeds', action: this.packs.length ? 'deeds' : '', disabled: !this.packs.length, hint: this.selectionHint}; }
-            if (!this.deedsReady) { return {label: this.mode === 'fuse' ? 'Pick 5 deeds' : 'Pick your deed', action: 'deeds', hint: this.tab === 'deeds' ? '' : this.selectionHint}; }
+            if (!this.hasDeeds) { return {label: this.packs.length ? 'Open a pack' : 'No TerraKits', action: this.packs.length ? 'deeds' : '', disabled: !this.packs.length, hint: this.selectionHint}; }
+            if (!this.deedsReady) { return {label: this.mode === 'fuse' ? 'Pick 5 TerraKits' : 'Pick your TerraKit', action: 'deeds', hint: this.tab === 'deeds' ? '' : this.selectionHint}; }
             if (this.missingLayers().length) { return {label: 'Terraform', disabled: true, hint: 'No ' + this.rarity + ' art for ' + this.missingLayers().map((n) => this.layerLabel(n)).join(', ') + ' yet.'}; }
             if (this.problems.length) { return {label: 'Terraform', disabled: true, hint: this.problems[0]}; }
             return {label: 'Terraform island', action: 'review', hint: ''};
@@ -961,10 +961,10 @@ if (CFG) {
             };
         },
         get burnText() {
-            if (!this.fromDeeds) { return 'Pick a land deed to terraform \u2022 '; }
+            if (!this.fromDeeds) { return 'Pick a TerraKit to terraform \u2022 '; }
             const n = this.selected.length;
-            if (this.mode === 'fuse' && n < 5) { return 'Fuse 5 ' + this.selectedRarity + ' deeds \u2022 ' + n + ' of 5 picked \u2022 '; }
-            return 'You will burn ' + (n === 1 ? 'a ' + this.selectedRarity + ' deed' : n + ' ' + this.selectedRarity + ' deeds') + ' \u2022 ';
+            if (this.mode === 'fuse' && n < 5) { return 'Fuse 5 ' + this.selectedRarity + ' TerraKits \u2022 ' + n + ' of 5 picked \u2022 '; }
+            return 'You will burn ' + (n === 1 ? 'a ' + this.selectedRarity + ' TerraKit' : n + ' ' + this.selectedRarity + ' TerraKits') + ' \u2022 ';
         },
 
         // ---------------- review + sign (dialog)

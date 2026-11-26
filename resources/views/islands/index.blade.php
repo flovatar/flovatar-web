@@ -9,7 +9,7 @@
 @endphp
 @push('og')
     <meta property="og:title" content="Asteroid Islands · Kaax Asteroid Belt, Sector {{ $sector }} · Flovatar" />
-    <meta property="og:description" content="{{ $total }} Asteroid Islands orbit the storm-wrapped heart of the Kaax Asteroid Belt in Sector {{ $sector }}. Each one was terraformed from a TerraKit land deed and is home to NFTs that stay in their owner's wallet." />
+    <meta property="og:description" content="{{ $total }} Asteroid Islands orbit the storm-wrapped heart of the Kaax Asteroid Belt in Sector {{ $sector }}. Each one was terraformed from a TerraKit and is home to NFTs that stay in their owner's wallet." />
     <meta property="og:url" content="{{ rtrim(config('islands.site_url'), '/') }}/islands" />
     <meta property="og:site_name" content="Flovatar" />
     <meta property="og:image" content="{{ $ogImage }}" />
@@ -84,7 +84,7 @@
         </header>
 
         <div class="belt-tools" id="belt-tools">
-            <p class="belt-intro">Every island was terraformed from a TerraKit land deed. They circle the storm-wrapped rock at the heart of the belt; Flovatars, Flobots, Sportvatars and Psyche Likees live in the scene, and any other NFT can move in too.</p>
+            <p class="belt-intro">Every island was terraformed from a TerraKit. They circle the storm-wrapped rock at the heart of the belt; Flovatars, Flobots, Sportvatars and Psyche Likees live in the scene, and any other NFT can move in too.</p>
 
             <div class="belt-filters" role="group" aria-label="Filter islands">
                 <button type="button" class="belt-chip" :class="{'active': rarity === 'all'}" :aria-pressed="rarity === 'all' ? 'true' : 'false'" @click="rarity = 'all'">All</button>
@@ -116,7 +116,7 @@
                     <p>Connect your wallet to see your islands. <button type="button" class="isl-link" @click="connect()">Connect wallet</button></p>
                 </template>
                 <template x-if="user && inv">
-                    <p>Land deeds: <b x-text="deedCount('common')"></b> common · <b x-text="deedCount('epic')"></b> epic · <b x-text="deedCount('legendary')"></b> legendary · unopened TerraKit packs: <b x-text="packCount()"></b></p>
+                    <p>TerraKits: <b x-text="deedCount('common')"></b> common · <b x-text="deedCount('epic')"></b> epic · <b x-text="deedCount('legendary')"></b> legendary · unopened TerraKit packs: <b x-text="packCount()"></b></p>
                 </template>
             </div>
 
@@ -137,7 +137,7 @@
         {{-- server-rendered until the bundle has the full list --}}
         <div class="belt-ssr" x-show="!ready">
             @if($islands->isEmpty())
-                <p class="isl-empty">No island has been terraformed yet. Be the first: <a href="/islands/build">redeem a land deed</a>.</p>
+                <p class="isl-empty">No island has been terraformed yet. Be the first: <a href="/islands/build">redeem a TerraKit</a>.</p>
             @else
             <div class="belt-grid">
                 @foreach($islands as $i)
@@ -165,7 +165,7 @@
 
         <div x-show="ready" x-cloak>
             <p class="isl-error" x-show="loadError">We couldn't load the belt. Reload the page to try again.</p>
-            <p class="isl-empty" x-show="!shown() && !filtering()">No island has been terraformed yet. Be the first: <a href="/islands/build">redeem a land deed</a>.</p>
+            <p class="isl-empty" x-show="!shown() && !filtering()">No island has been terraformed yet. Be the first: <a href="/islands/build">redeem a TerraKit</a>.</p>
             <p class="isl-empty" x-show="!shown() && filtering()">No island matches this filter.</p>
             <div class="belt-grid">
                 <template x-for="i in listItems()" :key="i.id">
@@ -198,7 +198,7 @@
                         <h2 id="belt-modal-title" x-text="detail ? detail.name : title(modal)"></h2>
                         <p class="belt-modal-chips">
                             <span class="isl-chip" :class="'isl-r-' + modal.rarity" x-text="modal.rarity"></span>
-                            <span x-show="detail && detail.fused">Fused from 5 deeds</span>
+                            <span x-show="detail && detail.fused">Fused from 5 TerraKits</span>
                         </p>
                         <p class="belt-modal-demo" x-show="modal.demo">Placeholder island of the demo belt (it reuses the art of <span x-text="designation(modal.src || 0)"></span>). It does not exist on chain.</p>
                         <p class="belt-modal-desc" x-show="detail && detail.description" x-text="detail ? detail.description : ''"></p>

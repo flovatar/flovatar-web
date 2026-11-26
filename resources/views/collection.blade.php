@@ -465,7 +465,7 @@
                         </template>
                     </div>
                     <div x-show="islStatus === 'done' && !isl.length">
-                        <span class="no-results-msg">No Asteroid Islands here. <a href="/islands/build" class="underline">Redeem a TerraKit land deed</a>.</span>
+                        <span class="no-results-msg">No Asteroid Islands here. <a href="/islands/build" class="underline">Redeem a TerraKit</a>.</span>
                     </div>
                 </div>
 @endif
