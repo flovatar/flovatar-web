@@ -274,11 +274,19 @@ class IslandScene
     // ------------------------------------------------------------------------------------------------ display (round 4)
 
     /**
-     * Display template metadata `screen` (contract parseScreen): "x,y,w,h" or "x,y,w,h,x1,y1,x2,y2,x3,y3,x4,y4" (quad
-     * corners TL,TR,BR,BL); JSON {x,y,w,h,quad:[[x,y]x4]} is accepted too. Returns [x,y,w,h,quad(8 numbers)|[]] or null.
+     * Display template metadata (contract parseScreen): `screen` = "x,y,w,h" + optional `quad` = "x1,y1 x2,y2 x3,y3 x4,y4"
+     * (corners TL,TR,BR,BL; an invalid quad = no screen, like the contract). Also accepted: "x,y,w,h,x1,y1,…,y4" and JSON
+     * {x,y,w,h,quad:[[x,y]x4]}. Returns ['x','y','w','h','quad' => 8 numbers | []] or null.
      */
-    public static function parseScreen($value): ?array
+    public static function parseScreen($value, $quad = null): ?array
     {
+        if ($quad !== null && $quad !== '' && is_string($value)) {
+            $q = array_values(array_filter(explode(',', str_replace(' ', ',', (string) $quad)), fn ($x) => $x !== ''));
+            if (count($q) !== 8) {
+                return null;
+            }
+            $value = rtrim($value, ', ').','.implode(',', $q);
+        }
         if ($value === null || $value === '') {
             return null;
         }
@@ -325,7 +333,7 @@ class IslandScene
         $t = $templates[$tid] ?? null;
 
         return ['templateId' => $tid, 'name' => (string) data_get($t, 'name', '#'.$tid),
-            'screen' => self::parseScreen(((array) (data_get($t, 'metadata') ?? []))['screen'] ?? null)];
+            'screen' => self::parseScreen(((array) (data_get($t, 'metadata') ?? []))['screen'] ?? null, ((array) (data_get($t, 'metadata') ?? []))['quad'] ?? null)];
     }
 
     /** Resident drawn on the screen: the lowest standard slot (S1, S2, …) with a valid resident (contract screenResident). */

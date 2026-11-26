@@ -140,12 +140,17 @@ export function orderedLayers(cfg) {
 }
 
 /**
- * Display template metadata `screen` (contract parseScreen): "x,y,w,h" or "x,y,w,h,x1,y1,x2,y2,x3,y3,x4,y4" (quad corners
- * TL,TR,BR,BL in scene coordinates); JSON {x,y,w,h,quad:[[x,y]x4]} too. The API pre-parses it ({x,y,w,h,quad:[8]}).
- * Returns {x, y, w, h, quad: [8 numbers] | []} or null.
+ * Display template metadata (contract parseScreen): `screen` = "x,y,w,h" + optional `quad` = "x1,y1 x2,y2 x3,y3 x4,y4"
+ * (corners TL,TR,BR,BL in scene coordinates; an invalid quad = no screen). Also "x,y,w,h,x1,…,y4" and JSON
+ * {x,y,w,h,quad:[[x,y]x4]}. The API pre-parses it ({x,y,w,h,quad:[8]}). Returns {x, y, w, h, quad: [8] | []} or null.
  */
-export function parseScreen(raw) {
+export function parseScreen(raw, quad) {
     if (raw === undefined || raw === null || raw === '') { return null; }
+    if (quad !== undefined && quad !== null && quad !== '' && typeof raw === 'string') {
+        const q = String(quad).replace(/ /g, ',').split(',').filter((x) => x !== '');
+        if (q.length !== 8) { return null; }
+        raw = raw.replace(/[, ]+$/, '') + ',' + q.join(',');
+    }
     let v = null;
     if (typeof raw === 'object' && !Array.isArray(raw)) {
         v = [raw.x, raw.y, raw.w ?? raw.width, raw.h ?? raw.height];
@@ -165,7 +170,7 @@ export function parseScreen(raw) {
 /** Screen of a template info from /api/islands/config (pre-parsed `screen`, else metadata.screen). */
 export function templateScreen(t) {
     if (!t) { return null; }
-    return parseScreen(t.screen) || parseScreen(t.metadata && t.metadata.screen);
+    return parseScreen(t.screen) || parseScreen(t.metadata && t.metadata.screen, t.metadata && t.metadata.quad);
 }
 
 function fmt(n) { return String(Math.round(n * 10000) / 10000); }

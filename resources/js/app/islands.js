@@ -747,14 +747,23 @@ if (CFG) {
         },
 
         // ---------------- scene
-        isRequired(name) { return ((this.cfg.layers[name] || {}).required || []).includes(this.rarity); },
+        /** Required by the contract, and (round 4, Luca) the display as soon as there is display art. */
+        isRequired(name) {
+            if (((this.cfg.layers[name] || {}).required || []).includes(this.rarity)) { return true; }
+            return name === DISPLAY_LAYER && this.optionsFor(name).length > 0;
+        },
         /** Shared layers (sky, effects, display) list every enabled template, whatever the rarity; others are rarity-locked. */
         optionsFor(name) { return layerOptions(this.cfg, name, this.rarity); },
         rarityTag(t) { return t && t.rarity !== this.rarity && t.rarity !== 'any' ? t.rarity : ''; },
         get infos() { const m = {}; for (const t of ((this.cfg && this.cfg.templates) || [])) { m[t.id] = t; } return m; },
         get tintAllowed() { return !!this.cfg && (this.cfg.tintRarities || []).includes(this.rarity); },
         get tintValue() { return this.tintAllowed && this.tintOn && isHexColor(this.tint) ? this.tint.toLowerCase() : null; },
-        get problems() { return this.cfg ? validateScene(this.cfg, this.rarity, this.layers, this.tintValue, this.infos) : []; },
+        get problems() {
+            if (!this.cfg) { return []; }
+            const p = validateScene(this.cfg, this.rarity, this.layers, this.tintValue, this.infos);
+            if (this.isRequired(DISPLAY_LAYER) && this.sceneLayers.includes(DISPLAY_LAYER) && !this.layers[DISPLAY_LAYER]) { p.push('Pick a display'); }
+            return p;
+        },
         get selectedInfo() { const id = this.layers[this.tab]; return id ? this.infos[id] || null : null; },
         isAnimated(t) { return !!(t && t.metadata && (t.metadata.animated || /anim/i.test(String(t.metadata.motion || '')))) || /\(animated\)/i.test((t && t.description) || ''); },
         usedBy(t) { const n = Number((t && t.usage) || 0); return n === 1 ? '1 island' : n + ' islands'; },
@@ -1142,8 +1151,17 @@ if (CFG) {
             this.liveCheck();
             this.loadDisplays();
         },
-        async reload() {
-            const d = await refreshIsland(this.id, this.island ? this.island.owner : null);
+        /**
+         * Re-read the island from chain (server refresh). The access node behind the server can be a block behind the
+         * wallet's "sealed": with `expect(island)` the refresh is retried a few times until the change shows.
+         */
+        async reload(expect) {
+            let d = null;
+            for (let i = 0; i < 6; i++) {
+                d = await refreshIsland(this.id, this.island ? this.island.owner : null);
+                if (!expect || (d && expect(d))) { break; }
+                await new Promise((r) => setTimeout(r, 1500 + i * 500));
+            }
             if (d) { this.island = d; } else { this.island = await getJson('/api/islands/' + this.id); }
             this.resetPlan();
             this.liveCheck();
@@ -1453,6 +1471,11 @@ if (CFG) {
             const batches = [];
             for (let i = 0; i < Math.max(1, sets.length); i += MAX_SETS_PER_TX) { batches.push(sets.slice(i, i + MAX_SETS_PER_TX)); }
             const label = batches.length > 1 ? 'Save (' + batches.length + ' approvals)' : 'Save';
+            const want = {...this.plan};
+            const expect = (d) => Object.entries(want).every(([slot, v]) => {
+                const r = (d.residentsList || []).find((x) => x.chainSlot === slot);
+                return v ? !!r && r.type === v.type && Number(r.id) === Number(v.id) : !r;
+            });
             await this.run(label, async () => {
                 let last = '';
                 for (let b = 0; b < batches.length; b++) {
@@ -1461,7 +1484,7 @@ if (CFG) {
                     if (b < batches.length - 1) { await sealed(last); }
                 }
                 return last;
-            });
+            }, expect);
         },
 
         // ---------------- collection (owner's NFTs, read in the browser)
@@ -1668,13 +1691,14 @@ if (CFG) {
             if (this.dirty) { this.say('Save or discard your resident changes first.', 'error'); return; }
             if (lp.oneTime && !lp.choice) { return; }
             const label = lp.layer === 'sky' ? 'Change sky' : 'Choose display';
-            const ok = await this.run(label, () => islandSetLayerTx(this.id, lp.layer, lp.choice));
+            const ok = await this.run(label, () => islandSetLayerTx(this.id, lp.layer, lp.choice),
+                (d) => Number((d.layers || {})[lp.layer] || 0) === Number(lp.choice || 0));
             if (ok) { this.layerPick = null; this.refreshLive(); }
         },
 
         // ---------------- owner actions
         say(text, kind) { this.notice = text; this.noticeKind = kind || 'info'; },
-        async run(label, fn) {
+        async run(label, fn, expect) {
             if (this.busy) { return; }
             if (this.dapper()) { this.say('Dapper Wallet can\u2019t sign island transactions. Use the Flow Wallet that holds this island.', 'error'); return; }
             this.busy = true;
@@ -1683,7 +1707,7 @@ if (CFG) {
                 const txId = await fn();
                 this.say(label + ': waiting for the Flow blockchain\u2026');
                 await sealed(txId);
-                await this.reload();
+                await this.reload(expect);
                 this.say(label + ': done.', 'ok');
                 return true;
             } catch (e) {

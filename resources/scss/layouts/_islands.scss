@@ -145,6 +145,9 @@ $isl-legendary: #EB3CF2;
 // pick-and-place (desktop: a box under the details; phones: a bottom sheet), pending-changes bar.
 // ---------------------------------------------------------===
 .isp { padding-bottom: 120px; }
+// the site wrappers clip with overflow: hidden, which turns them into scroll containers and breaks the sticky scene;
+// `clip` cuts the same overflow without that side effect (only on the island page)
+main:has(.isp), .jsloaded:has(.isp) { overflow: clip; }
 .isp-grid { display: grid; grid-template-columns: minmax(0, 11fr) minmax(0, 9fr); gap: 28px; align-items: start;
   @include media('<desktop') { grid-template-columns: 1fr; gap: 18px; } }
 .isp-stage { position: sticky; top: 96px; @include media('<desktop') { position: static; } }
@@ -243,6 +246,10 @@ $isl-legendary: #EB3CF2;
   .isp-x { margin-left: auto; width: 28px; height: 28px; border-radius: 50%; border: 0; background: rgba(255, 255, 255, .12); color: #fff; font-size: 18px; line-height: 1; cursor: pointer; &:hover { background: $isl-pink; } }
 }
 .isp-dlist { counter-reset: d; }
+.isp-dzone { margin: 0 -8px; padding: 0 8px 4px; border-radius: 10px; border: 2px dashed transparent;
+  &.target { border-color: $isl-green; background: rgba(82, 246, 24, .08); }
+  &.hover { border-color: $isl-yellow; background: rgba(255, 238, 80, .12); } }
+.isp-btn-sm { min-height: 34px; padding: 4px 12px; font-size: 16px; margin-top: 8px; }
 .isp-onscreen { padding: 0 6px; border-radius: 999px; background: $isl-sky; color: $isl-ink; font-weight: 700; font-size: 11px; text-transform: uppercase; }
 
 // collection box
