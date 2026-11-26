@@ -221,12 +221,41 @@ class IslandsController extends Controller
         $owner = strtolower((string) $request->input('owner', ''));
         $owner = preg_match('/^0x[0-9a-f]{16}$/', $owner) ? $owner : ($island->flow_address ?? null);
         abort_unless($owner, 404);
+        // after a transaction the page passes its id: read the island at that tx's block, so a lagging access node can't
+        // answer with the state from before the change (falls back to the sealed head)
+        $height = null;
+        $tx = strtolower((string) $request->input('tx', ''));
+        if (preg_match('/^(0x)?[0-9a-f]{64}$/', $tx)) {
+            $height = $this->chain->txHeight($tx);
+        }
+        $data = null;
         try {
-            $data = $this->chain->island($owner, $id);
+            for ($try = 0; $try < 3; $try++) {
+                try {
+                    $data = $this->chain->island($owner, $id, $height);
+                    break;
+                } catch (Throwable $e) {
+                    if ($height === null || $try === 2) {
+                        throw $e;
+                    }
+                    usleep(1_500_000); // the node hasn't executed that block yet
+                }
+            }
         } catch (Throwable $e) {
-            report($e);
+            if ($height !== null) {
+                try {
+                    $data = $this->chain->island($owner, $id);
+                    $height = null;
+                } catch (Throwable $e2) {
+                    report($e2);
 
-            return response()->json(['error' => 'chain-unavailable'], 503);
+                    return response()->json(['error' => 'chain-unavailable'], 503);
+                }
+            } else {
+                report($e);
+
+                return response()->json(['error' => 'chain-unavailable'], 503);
+            }
         }
         if (! $data) {
             return response()->json(['error' => 'not-found'], 404);
@@ -234,7 +263,7 @@ class IslandsController extends Controller
         // the chain answer is the truth: the island IS in $owner's collection
         $island ??= new Island(['flow_id' => $id]);
         $island->flow_address = $owner;
-        $data['displays'] = RefreshIsland::displays($this->chain, $owner, $id);
+        $data['displays'] = RefreshIsland::displays($this->chain, $owner, $id, $height);
         RefreshIsland::apply($island, $data);
         RenderItemImages::debounced('island', $id, 5);
 

@@ -34,9 +34,19 @@ class IslandChain
         return 'import FlovatarAsteroidIsland from '.$addr."\n";
     }
 
-    public function run(string $body, array $args = [])
+    public function run(string $body, array $args = [], ?int $height = null)
     {
-        return $this->rest()->script($this->import().$body, $args);
+        return $this->rest()->script($this->import().$body, $args, $height);
+    }
+
+    /** Block height of a sealed transaction (the island page passes its tx id to the refresh), null if unknown yet. */
+    public function txHeight(string $txId): ?int
+    {
+        try {
+            return $this->rest()->transactionHeight($txId);
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     // ------------------------------------------------------------------------------------------- config
@@ -235,7 +245,8 @@ CDC, [['type' => 'UInt64', 'value' => (string) $id], ['type' => 'Bool', 'value' 
      * One island as stored in $owner's collection, with LIVE resident validation (checkResidents), or null when the
      * owner doesn't hold it.
      */
-    public function island(string $owner, int $id): ?array
+    /** $height: read the island AT that block (e.g. the block of the owner's transaction) instead of the sealed head. */
+    public function island(string $owner, int $id, ?int $height = null): ?array
     {
         $script = <<<'CDC'
 access(all) fun main(address: Address, id: UInt64): {String: AnyStruct}? {
@@ -255,14 +266,14 @@ CDC;
         $args = [['type' => 'Address', 'value' => $owner], ['type' => 'UInt64', 'value' => (string) $id]];
         if ((int) ($this->config()['contractVersion'] ?? 2) >= 3) {
             try {
-                $r = $this->run(str_replace('/*V3*/', ', "settableLayers": island.settableLayers(), "screenResident": island.screenResident()', $script), $args);
+                $r = $this->run(str_replace('/*V3*/', ', "settableLayers": island.settableLayers(), "screenResident": island.screenResident()', $script), $args, $height);
 
                 return is_array($r) ? $r : null;
             } catch (RuntimeException $e) {
                 // contract rolled back / not yet updated: v2 shape below
             }
         }
-        $r = $this->run(str_replace('/*V3*/', '', $script), $args);
+        $r = $this->run(str_replace('/*V3*/', '', $script), $args, $height);
 
         return is_array($r) ? $r : null;
     }
@@ -272,7 +283,7 @@ CDC;
      * the contract's ownership check: [slot => ['name' => …, 'thumbnail' => …]]. Separate from island() so one NFT
      * whose view resolver fails can't break the island refresh (callers catch).
      */
-    public function residentDisplays(string $owner, int $id): array
+    public function residentDisplays(string $owner, int $id, ?int $height = null): array
     {
         $mv = (string) config('services.flow.nftaddress');
         $r = $this->rest()->script('import FlovatarAsteroidIsland from '.Islands::contract()."\nimport MetadataViews from ".$mv."\n".<<<'CDC'
@@ -291,7 +302,7 @@ access(all) fun main(address: Address, id: UInt64): {String: {String: String}} {
     }
     return out
 }
-CDC, [['type' => 'Address', 'value' => $owner], ['type' => 'UInt64', 'value' => (string) $id]]);
+CDC, [['type' => 'Address', 'value' => $owner], ['type' => 'UInt64', 'value' => (string) $id]], $height);
         $out = [];
         foreach ((array) $r as $slot => $d) {
             $out[(string) $slot] = ['name' => mb_substr((string) ($d['name'] ?? ''), 0, 160), 'thumbnail' => mb_substr((string) ($d['thumbnail'] ?? ''), 0, 2000)];

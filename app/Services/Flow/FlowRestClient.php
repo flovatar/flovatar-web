@@ -28,13 +28,13 @@ class FlowRestClient
     }
 
     /**
-     * Execute a read-only Cadence script at the sealed head. Returns the decoded JSON-Cadence value
+     * Execute a read-only Cadence script at the sealed head (or at block $height). Returns the decoded JSON-Cadence value
      * (CadenceJson::decode). $args are JSON-Cadence values, e.g. ['type' => 'Address', 'value' => '0x...'].
      */
-    public function script(string $code, array $args = [])
+    public function script(string $code, array $args = [], ?int $height = null)
     {
         $res = Http::baseUrl($this->base)->acceptJson()->timeout(30)->connectTimeout(10)
-            ->post('/v1/scripts?block_height=sealed', [
+            ->post('/v1/scripts?block_height='.($height !== null && $height > 0 ? $height : 'sealed'), [
                 'script' => base64_encode($code),
                 'arguments' => array_map(fn ($a) => base64_encode(json_encode($a)), $args),
             ]);
@@ -43,6 +43,18 @@ class FlowRestClient
         }
 
         return CadenceJson::decode(json_decode(base64_decode(trim((string) $res->body(), '"')), true));
+    }
+
+    /** Block height of a sealed transaction (GET /v1/transaction_results/{id} -> block), or null while not sealed. */
+    public function transactionHeight(string $id): ?int
+    {
+        $r = Http::baseUrl($this->base)->acceptJson()->timeout(15)->connectTimeout(5)->get('/v1/transaction_results/'.preg_replace('/^0x/', '', $id));
+        if (! $r->successful() || strtolower((string) $r->json('status')) !== 'sealed' || ! $r->json('block_id')) {
+            return null;
+        }
+        $b = Http::baseUrl($this->base)->acceptJson()->timeout(15)->connectTimeout(5)->get('/v1/blocks/'.$r->json('block_id'));
+
+        return $b->successful() ? (int) ($b->json('0.header.height') ?? 0) ?: null : null;
     }
 
     /** GET /v1/transactions/{id}: proposal key, payer, authorizers, arguments (no result). */

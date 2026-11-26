@@ -72,11 +72,14 @@ async function loadTemplate(id) {
     return templateCache[id];
 }
 
-async function refreshIsland(id, owner) {
+async function refreshIsland(id, owner, tx) {
     const ax = window.axios;
     if (!ax) { return null; }
     try {
-        const r = await ax.post('/api/islands/' + id + '/refresh', owner ? {owner} : {});
+        const body = {};
+        if (owner) { body.owner = owner; }
+        if (tx) { body.tx = tx; }   // server reads the island at this transaction's block
+        const r = await ax.post('/api/islands/' + id + '/refresh', body);
         return r.data;
     } catch (e) { return null; }
 }
@@ -1026,7 +1029,7 @@ if (CFG) {
                 const ev = (tx.events || []).find((e) => /\.FlovatarAsteroidIsland\.Terraformed$/.test(e.type));
                 this.islandId = ev ? Number(ev.data.id) : null;
                 // index it right away (the island page reads the DB first), then show the success dialog
-                if (this.islandId) { this.txStatus = 'Your island is ready\u2026'; await refreshIsland(this.islandId, this.user.addr); }
+                if (this.islandId) { this.txStatus = 'Your island is ready\u2026'; await refreshIsland(this.islandId, this.user.addr, this.txId); }
                 this.txStatus = '';
                 this.step = 'done';
                 this.loadInventory();
@@ -1155,11 +1158,11 @@ if (CFG) {
          * Re-read the island from chain (server refresh). The access node behind the server can be a block behind the
          * wallet's "sealed": with `expect(island)` the refresh is retried a few times until the change shows.
          */
-        async reload(expect) {
+        async reload(expect, tx) {
             let d = null;
-            // the server's access node can lag the wallet's by 10-30 s: retry for up to ~30 s (refresh is throttled 20/min)
+            // the server reads the island at the tx's block; retry anyway while a lagging access node catches up
             for (let i = 0; i < 9; i++) {
-                d = await refreshIsland(this.id, this.island ? this.island.owner : null);
+                d = await refreshIsland(this.id, this.island ? this.island.owner : null, tx);
                 if (!expect || (d && expect(d))) { break; }
                 if (i === 2) { this.say('Updating the island\u2026 the blockchain is catching up.'); }
                 await new Promise((r) => setTimeout(r, Math.min(4000, 1500 + i * 500)));
@@ -1438,6 +1441,9 @@ if (CFG) {
                 if (!moved) { if (!far) { return; } begin(ev.clientX, ev.clientY); }
                 ev.preventDefault();
                 this.drag = {...this.drag, x: ev.clientX, y: ev.clientY};
+                // near the top / bottom edge: scroll the page so far drop targets come into view
+                const edge = 70;
+                if (ev.clientY < edge) { window.scrollBy(0, -Math.ceil((edge - ev.clientY) / 4)); } else if (ev.clientY > window.innerHeight - edge) { window.scrollBy(0, Math.ceil((ev.clientY - window.innerHeight + edge) / 4)); }
                 const t = document.elementFromPoint(ev.clientX, ev.clientY);
                 const d = t && t.closest('[data-drop]');
                 this.dropHover = d ? d.getAttribute('data-drop') : '';
@@ -1726,7 +1732,7 @@ if (CFG) {
                 const txId = await fn();
                 this.say(label + ': waiting for the Flow blockchain\u2026');
                 await sealed(txId);
-                await this.reload(expect);
+                await this.reload(expect, txId);
                 this.say(label + ': done.', 'ok');
                 return true;
             } catch (e) {
