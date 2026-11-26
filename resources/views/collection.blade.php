@@ -197,6 +197,9 @@
                             <option value="terrakit" x-text="'Terrakits ('+terrakitCountTotal()+')'"></option>
                             <option value="pack" x-text="'Packs ('+packCountTotal()+')'"></option>
                             <option value="sportvatar" x-text="'Sportvatar'"></option>
+@if(\App\Support\Islands::enabled())
+                            <option value="islands">Asteroid Islands</option>
+@endif
                         </select>
                         <ul class="collection-list">
                             <li x-bind:class="activeTab == 'flovatar' ? 'active' : ''"><button @click.prevent.stop="activeTab = 'flovatar'">Flovatars  <span class="count" x-text="flovatarCountTotal()"></span></button></li>
@@ -207,6 +210,9 @@
                             <li x-bind:class="activeTab == 'terrakit' ? 'active' : ''"><button @click.prevent.stop="activeTab = 'terrakit'">Terrakits  <span class="count" x-text="terrakitCountTotal()"></span></button></li>
                             <li x-bind:class="activeTab == 'pack' ? 'active' : ''"><button @click.prevent.stop="activeTab = 'pack'">Packs  <span class="count" x-text="packCountTotal()"></span></button></li>
                             <li x-bind:class="activeTab == 'sportvatar' ? 'active' : ''"  x-show="loggedIn()"><button @click.prevent.stop="activeTab = 'sportvatar'">Sportvatars </button></li>
+@if(\App\Support\Islands::enabled())
+                            <li x-bind:class="activeTab == 'islands' ? 'active' : ''" data-islands="collection-tab"><button @click.prevent.stop="activeTab = 'islands'">Islands</button></li>
+@endif
                         </ul>
                     </div>
                 </div>
@@ -440,6 +446,29 @@
                         <span class="no-results-msg">No Packs yet. Please wait for our next drop to buy some!</span>
                     </div>
                 </div>
+
+@if(\App\Support\Islands::enabled())
+                {{-- Asteroid Islands of this address (resources/js/app/islands.js islandsCollection; indexer DB) --}}
+                <div x-show="activeTab == 'islands'" x-data="islandsCollection()" data-islands="collection">
+                    <div class="flovatar-card-list isl-collection">
+                        <template x-for="i in isl" :key="i.id">
+                            <div class="col">
+                                <a :href="i.url" class="card isl-card" :class="'isl-r-' + i.rarity">
+                                    <span class="isl-card-img"><img loading="lazy" :src="i.image" :alt="i.name"></span>
+                                    <span class="isl-card-body">
+                                        <span class="isl-designation" x-text="i.designation"></span>
+                                        <span class="isl-card-name" x-text="i.name"></span>
+                                        <span class="isl-card-meta"><span class="isl-chip" :class="'isl-r-' + i.rarity" x-text="i.rarity"></span><span x-text="i.residents + '/' + i.capacity + ' residents'"></span></span>
+                                    </span>
+                                </a>
+                            </div>
+                        </template>
+                    </div>
+                    <div x-show="islStatus === 'done' && !isl.length">
+                        <span class="no-results-msg">No Asteroid Islands here. <a href="/islands/build" class="underline">Redeem a TerraKit land deed</a>.</span>
+                    </div>
+                </div>
+@endif
 
                 <div x-show="activeTab == 'sportvatar'" x-show="loggedIn()">
                     <div class="flovatar-card-list">

@@ -36,6 +36,10 @@ class Kernel extends ConsoleKernel
             $schedule->command('flow:process --queue')->everyMinute()->withoutOverlapping();
         }
         $schedule->command('flovatar:refresh-collectible-templates')->hourly();
+        if (\App\Support\Islands::active()) {
+            // Asteroid Islands: template cache + live resident validity (residents can move away without an island event)
+            $schedule->command('islands:sync --islands')->hourlyAt(29)->withoutOverlapping(30)->runInBackground();
+        }
         if (\App\Support\DustMarket::active()) {
             // ĐUST marketplace: drop offers whose storefront listing died on chain (ghost, expired, sold elsewhere)
             $schedule->command('dust-market:reconcile')->everyTenMinutes()->withoutOverlapping(10)->runInBackground();

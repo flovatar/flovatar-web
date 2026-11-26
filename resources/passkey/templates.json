@@ -929,6 +929,88 @@
       "customSigners": false,
       "cadence": "\nimport Flovatar, FlovatarComponent, FlovatarComponentTemplate, FlovatarPack, FlovatarMarketplace from 0xFlovatar\nimport FungibleToken from 0xFungible\nimport NonFungibleToken from 0xNonFungible\nimport FlowToken from 0xFlowToken\nimport MetadataViews from 0xMetadataViews\n\n\ntransaction {\n  // We want the account's address for later so we can verify if the account was initialized properly\n  let address: Address\n\n  prepare(account: auth(Capabilities) &Account) {\n    // save the address for the post check\n    self.address = account.address\n\n    let flovatarCapMeta = account.capabilities.get<&Flovatar.Collection>(Flovatar.CollectionPublicPath)\n    if(!flovatarCapMeta.check()) {\n        account.capabilities.unpublish(Flovatar.CollectionPublicPath)\n        account.capabilities.publish(\n            account.capabilities.storage.issue<&Flovatar.Collection>(Flovatar.CollectionStoragePath),\n            at: Flovatar.CollectionPublicPath\n        )\n    }\n\n    let flovatarComponentCapMeta = account.capabilities.get<&FlovatarComponent.Collection>(FlovatarComponent.CollectionPublicPath)\n    if(!flovatarComponentCapMeta.check()) {\n        account.capabilities.unpublish(FlovatarComponent.CollectionPublicPath)\n        account.capabilities.publish(\n            account.capabilities.storage.issue<&FlovatarComponent.Collection>(FlovatarComponent.CollectionStoragePath),\n            at: FlovatarComponent.CollectionPublicPath\n        )\n    }\n\n\n  }\n\n}\n"
     },
+    "island-clear-residents": {
+      "id": "island-clear-residents",
+      "file": "resources/js/flow/island-clear-residents.tx.js",
+      "function": "islandClearResidentsTx",
+      "sha256": "28637b9cea1f4f34072261ea039a683b03fc15cffbcdeed7926ccc75005043d2",
+      "argTypes": [
+        "UInt64",
+        "Array(String)"
+      ],
+      "limit": 9999,
+      "customSigners": false,
+      "cadence": "\nimport FlovatarAsteroidIsland from 0xIslands\n\ntransaction(islandId: UInt64, slots: [String]) {\n    let island: auth(FlovatarAsteroidIsland.Edit) &FlovatarAsteroidIsland.NFT\n    prepare(signer: auth(BorrowValue) &Account) {\n        let col = signer.storage.borrow<auth(FlovatarAsteroidIsland.Edit) &FlovatarAsteroidIsland.Collection>(from: FlovatarAsteroidIsland.CollectionStoragePath)\n            ?? panic(\"No island collection\")\n        self.island = col.borrowIslandForEdit(id: islandId) ?? panic(\"Island not found\")\n    }\n    execute {\n        if slots.length == 0 {\n            self.island.clearAllResidents()\n        } else {\n            for s in slots { self.island.clearResident(slot: s) }\n        }\n    }\n}\n"
+    },
+    "island-move-resident": {
+      "id": "island-move-resident",
+      "file": "resources/js/flow/island-move-resident.tx.js",
+      "function": "islandMoveResidentTx",
+      "sha256": "85e1d324a09284724d1c2cba9a5de9a7540e06bc4717fce230bc64d9d160b24c",
+      "argTypes": [
+        "UInt64",
+        "String",
+        "String"
+      ],
+      "limit": 9999,
+      "customSigners": false,
+      "cadence": "\nimport FlovatarAsteroidIsland from 0xIslands\n\ntransaction(islandId: UInt64, fromSlot: String, toSlot: String) {\n    let island: auth(FlovatarAsteroidIsland.Edit) &FlovatarAsteroidIsland.NFT\n    prepare(signer: auth(BorrowValue) &Account) {\n        let col = signer.storage.borrow<auth(FlovatarAsteroidIsland.Edit) &FlovatarAsteroidIsland.Collection>(from: FlovatarAsteroidIsland.CollectionStoragePath)\n            ?? panic(\"No island collection\")\n        self.island = col.borrowIslandForEdit(id: islandId) ?? panic(\"Island not found\")\n    }\n    execute { self.island.moveResident(fromSlot: fromSlot, toSlot: toSlot) }\n}\n"
+    },
+    "island-open-pack": {
+      "id": "island-open-pack",
+      "file": "resources/js/flow/island-open-pack.tx.js",
+      "function": "islandOpenPackTx",
+      "sha256": "ffc5190b4d46f0cb8abbfb3a00fe6e6bbc64bc5d60dea8825f1378c91b520147",
+      "argTypes": [
+        "UInt64"
+      ],
+      "limit": 9999,
+      "customSigners": false,
+      "cadence": "\nimport FlovatarComponent, FlovatarPack from 0xFlovatar\n\ntransaction(packId: UInt64) {\n    let packs: auth(FlovatarPack.WithdrawEnt) &FlovatarPack.Collection\n\n    prepare(signer: auth(Storage, Capabilities) &Account) {\n        if signer.storage.type(at: FlovatarComponent.CollectionStoragePath) == nil {\n            signer.storage.save(<-FlovatarComponent.createEmptyCollection(nftType: Type<@FlovatarComponent.NFT>()), to: FlovatarComponent.CollectionStoragePath)\n        }\n        if !signer.capabilities.get<&{FlovatarComponent.CollectionPublic}>(FlovatarComponent.CollectionPublicPath).check() {\n            signer.capabilities.unpublish(FlovatarComponent.CollectionPublicPath)\n            signer.capabilities.publish(signer.capabilities.storage.issue<&FlovatarComponent.Collection>(FlovatarComponent.CollectionStoragePath), at: FlovatarComponent.CollectionPublicPath)\n        }\n        self.packs = signer.storage.borrow<auth(FlovatarPack.WithdrawEnt) &FlovatarPack.Collection>(from: FlovatarPack.CollectionStoragePath)\n            ?? panic(\"No pack collection\")\n    }\n\n    execute {\n        self.packs.openPack(id: packId)\n    }\n}\n"
+    },
+    "island-set-name-description": {
+      "id": "island-set-name-description",
+      "file": "resources/js/flow/island-set-name-description.tx.js",
+      "function": "islandSetNameDescriptionTx",
+      "sha256": "c2ba2948379c2b9243684300c3d443644ce9b27bdefa8b4da2d0bf8ee1e710d1",
+      "argTypes": [
+        "UInt64",
+        "Optional(String)",
+        "Optional(String)"
+      ],
+      "limit": 9999,
+      "customSigners": false,
+      "cadence": "\nimport FlovatarAsteroidIsland from 0xIslands\n\ntransaction(islandId: UInt64, name: String?, description: String?) {\n    let island: auth(FlovatarAsteroidIsland.Edit) &FlovatarAsteroidIsland.NFT\n    prepare(signer: auth(BorrowValue) &Account) {\n        let col = signer.storage.borrow<auth(FlovatarAsteroidIsland.Edit) &FlovatarAsteroidIsland.Collection>(from: FlovatarAsteroidIsland.CollectionStoragePath)\n            ?? panic(\"No island collection\")\n        self.island = col.borrowIslandForEdit(id: islandId) ?? panic(\"Island not found\")\n    }\n    execute {\n        if name != nil { self.island.setName(name!, payment: nil) }\n        if description != nil { self.island.setDescription(description!, payment: nil) }\n    }\n}\n"
+    },
+    "island-set-residents": {
+      "id": "island-set-residents",
+      "file": "resources/js/flow/island-set-residents.tx.js",
+      "function": "islandSetResidentsTx",
+      "sha256": "8ef4d0d53f6c9e3faba6d1e0bb58c0433d21cba38f79ce4eda8cba9146f30d61",
+      "argTypes": [
+        "UInt64",
+        "Array(String)",
+        "Array(String)",
+        "Array(UInt64)"
+      ],
+      "limit": 9999,
+      "customSigners": false,
+      "cadence": "\nimport FlovatarAsteroidIsland from 0xIslands\n\ntransaction(islandId: UInt64, slots: [String], nftTypes: [String], nftIds: [UInt64]) {\n    let island: auth(FlovatarAsteroidIsland.Edit) &FlovatarAsteroidIsland.NFT\n    prepare(signer: auth(BorrowValue) &Account) {\n        assert(slots.length == nftTypes.length && slots.length == nftIds.length, message: \"length mismatch\")\n        let col = signer.storage.borrow<auth(FlovatarAsteroidIsland.Edit) &FlovatarAsteroidIsland.Collection>(from: FlovatarAsteroidIsland.CollectionStoragePath)\n            ?? panic(\"No island collection\")\n        self.island = col.borrowIslandForEdit(id: islandId) ?? panic(\"Island not found\")\n    }\n    execute {\n        var i = 0\n        while i < slots.length {\n            let t = CompositeType(nftTypes[i]) ?? panic(\"Unknown NFT type\")\n            self.island.setResident(slot: slots[i], nftType: t, nftId: nftIds[i], collectionPath: nil, metadata: {})\n            i = i + 1\n        }\n    }\n}\n"
+    },
+    "island-terraform": {
+      "id": "island-terraform",
+      "file": "resources/js/flow/island-terraform.tx.js",
+      "function": "islandTerraformTx",
+      "sha256": "416b426583bbb8779b75d4d38c78b24a69d0427c121a65ca17ea68a0b7629885",
+      "argTypes": [
+        "Array(UInt64)",
+        "Dictionary(String,UInt64)",
+        "Optional(String)"
+      ],
+      "limit": 9999,
+      "customSigners": false,
+      "cadence": "\nimport NonFungibleToken from 0xNonFungible\nimport FlovatarComponent from 0xFlovatar\nimport FlovatarAsteroidIsland from 0xIslands\n\ntransaction(deedIds: [UInt64], layers: {String: UInt64}, tint: String?) {\n    let deeds: @[FlovatarComponent.NFT]\n    let collection: &FlovatarAsteroidIsland.Collection\n\n    prepare(signer: auth(Storage, Capabilities) &Account) {\n        if signer.storage.type(at: FlovatarAsteroidIsland.CollectionStoragePath) == nil {\n            signer.storage.save(<-FlovatarAsteroidIsland.createEmptyCollection(nftType: Type<@FlovatarAsteroidIsland.NFT>()), to: FlovatarAsteroidIsland.CollectionStoragePath)\n        }\n        if !signer.capabilities.get<&FlovatarAsteroidIsland.Collection>(FlovatarAsteroidIsland.CollectionPublicPath).check() {\n            signer.capabilities.unpublish(FlovatarAsteroidIsland.CollectionPublicPath)\n            signer.capabilities.publish(\n                signer.capabilities.storage.issue<&FlovatarAsteroidIsland.Collection>(FlovatarAsteroidIsland.CollectionStoragePath),\n                at: FlovatarAsteroidIsland.CollectionPublicPath)\n        }\n        self.collection = signer.storage.borrow<&FlovatarAsteroidIsland.Collection>(from: FlovatarAsteroidIsland.CollectionStoragePath)!\n\n        let components = signer.storage.borrow<auth(NonFungibleToken.Withdraw) &FlovatarComponent.Collection>(from: FlovatarComponent.CollectionStoragePath)\n            ?? panic(\"No FlovatarComponent collection\")\n        self.deeds <- []\n        for id in deedIds {\n            self.deeds.append(<-(components.withdraw(withdrawID: id) as! @FlovatarComponent.NFT))\n        }\n    }\n\n    execute {\n        FlovatarAsteroidIsland.terraform(deeds: <-self.deeds, layers: layers, tint: tint, collection: self.collection, payment: nil)\n    }\n}\n"
+    },
     "pack-buy-dapper-v2": {
       "id": "pack-buy-dapper-v2",
       "file": "resources/js/flow/pack-buy-dapper-v2.tx.js",

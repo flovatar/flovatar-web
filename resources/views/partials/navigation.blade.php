@@ -24,6 +24,18 @@
                     </div>
                 </li>
                 <li class="{{request()->routeIs('marketplace') ? 'active ' : ''}}"><a href="{{ route('marketplace') }}">Marketplace</a></li>
+@if(\App\Support\Islands::enabled())
+                <li class="{{ request()->routeIs('islands.*') ? 'active ' : '' }}" id="nav-islands" data-islands="nav">
+                    <a href="/islands">Islands</a>
+                    <div class="sub-menu menu-drop" id="sub-nav-islands">
+                        <ul class="sub-nav">
+                            <li><a href="/islands">Asteroid belt</a></li>
+                            <li><a href="/islands#mine">My islands</a></li>
+                            <li><a href="/islands/build">Redeem land deeds</a></li>
+                        </ul>
+                    </div>
+                </li>
+@endif
                 <li class="{{request()->routeIs('showroom') ? 'active ' : ''}}" id="nav-showroom">
                     <a href="{{ route('showroom') }}">Showroom</a>
                     <div class="sub-menu menu-drop" id="sub-nav-showroom">

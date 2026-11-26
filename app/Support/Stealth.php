@@ -26,7 +26,7 @@ use Throwable;
  */
 class Stealth
 {
-    public const FEATURES = ['passkey', 'dust_market', 'quests', 'swap', 'terrakit'];
+    public const FEATURES = ['passkey', 'dust_market', 'quests', 'swap', 'terrakit', 'islands'];
 
     public const MODES = ['off', 'stealth', 'on'];
 
@@ -37,10 +37,11 @@ class Stealth
         'quests' => 'quests.enabled',
         'swap' => 'flovatar.dustSwap.enabled',
         'terrakit' => 'terrakit.check_enabled',
+        'islands' => 'islands.legacy_enabled', // never set: ISLANDS_MODE only
     ];
 
     /** Lazy JS/CSS bundle per feature (webpack chunk public/fx/<code>.js → storage/app/fx, served by FxAssetController). */
-    public const BUNDLES = ['passkey' => 'p', 'dust_market' => 'm', 'swap' => 's', 'quests' => 'q', 'terrakit' => 't'];
+    public const BUNDLES = ['passkey' => 'p', 'dust_market' => 'm', 'swap' => 's', 'quests' => 'q', 'terrakit' => 't', 'islands' => 'i'];
 
     /** Paths owned by a feature: in stealth mode anonymous requests without a stealth cookie get a plain 404 before any
      *  session/throttle middleware runs (StealthRoutes). Request::is() patterns. */
@@ -48,6 +49,7 @@ class Stealth
         'passkey' => ['passkey', 'passkey/*', '.well-known/webauthn'],
         'quests' => ['quests', 'quests/*'],
         'terrakit' => ['terrakit/check', 'terrakit/check/*'],
+        'islands' => ['islands', 'islands/*', 'api/islands', 'api/islands/*'],
     ];
 
     /** Server-to-server paths that authenticate themselves (HMAC) and must work in stealth mode. */

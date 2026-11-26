@@ -19,6 +19,7 @@ class PasskeyTemplatesTest extends TestCase
         '0xFindProfile' => '0x35717efbbce11c74', '0xFind' => '0x35717efbbce11c74', '0xMetadataViews' => '0x631e88ae7f1d7c20',
         '0xStorefront2' => '0x2d55b98eb200daef', '0xDuc' => '0x82ec283f88a62e65', '0xFut' => '0x82ec283f88a62e65',
         '0xTokenForwarding' => '0x51ea0e37c27a1f1a', '0xDapperMerchant' => '0x03df89ac89a3d64a', '0xHybridCustody' => '0x294e44e1ec6993c6',
+        '0xIslands' => '0x2c6a4c4342aeca55',
     ];
 
     private function registry(): TemplateRegistry

@@ -85,6 +85,10 @@
     {{-- ĐUST Quests (testnet): static-safe runtime config for resources/js/quests.js --}}
     <script>window.DUST_QUESTS = @json(\App\Support\DustQuests::bootstrap());</script>
 @endif
+@if(\App\Support\Islands::enabled())
+    {{-- Asteroid Islands (ISLANDS_MODE): static-safe runtime config for resources/js/app/islands.js --}}
+    <script>window.ISLANDS = @json(\App\Support\Islands::bootstrap());</script>
+@endif
 @php($fxBundles = \App\Support\Stealth::bundles())
 @if($fxBundles)
     <script>window.__FX = @json($fxBundles);</script>

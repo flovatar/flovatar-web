@@ -47,9 +47,9 @@ class RenderImages extends Command
         }
         // renders made by this backfill / safety net queue their browser job at backfill priority, not as "new item"
         $renderer->browserJobPriority = \App\Services\Render\RenderJobs::P_REST;
-        $types = $this->argument('type') === 'all' ? ItemRenderer::TYPES : [$this->argument('type')];
+        $types = $this->argument('type') === 'all' ? ItemRenderer::types() : [$this->argument('type')];
         foreach ($types as $type) {
-            if (! in_array($type, ItemRenderer::TYPES, true)) {
+            if (! in_array($type, ItemRenderer::types(), true)) {
                 $this->error('unknown type '.$type);
 
                 return self::FAILURE;

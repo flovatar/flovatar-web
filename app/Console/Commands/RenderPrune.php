@@ -36,10 +36,10 @@ class RenderPrune extends Command
         $days = max(0, (int) $this->option('days')); // 0 = anything superseded before now (tests)
         $dry = (bool) $this->option('dry-run');
         $limit = max(0, (int) $this->option('limit'));
-        $types = $this->option('type') ?: ItemRenderer::TYPES;
+        $types = $this->option('type') ?: ItemRenderer::types();
         foreach ($types as $t) {
-            if (! in_array($t, ItemRenderer::TYPES, true)) {
-                $this->error('unknown type '.$t.' (types: '.implode(', ', ItemRenderer::TYPES).')');
+            if (! in_array($t, ItemRenderer::types(), true)) {
+                $this->error('unknown type '.$t.' (types: '.implode(', ', ItemRenderer::types()).')');
 
                 return self::FAILURE;
             }

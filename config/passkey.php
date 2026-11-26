@@ -130,6 +130,8 @@ return [
         '0xTokenForwarding' => env('MIX_TOKEN_FORWARDING'),
         '0xDapperMerchant' => env('MIX_DAPPER_MERCHANT'),
         '0xHybridCustody' => env('MIX_HYBRID_CUSTODY'),
+        // Asteroid Islands contract (config/islands.php; set at runtime in the browser from window.ISLANDS.contract)
+        '0xIslands' => env('ISLANDS_CONTRACT_ADDRESS', env('FLOW_NETWORK') === 'testnet' ? '0x2c6a4c4342aeca55' : null),
         // ĐUST swap (IncrementFi; same per-network defaults as config/flovatar.php dustSwap, set at runtime in the browser)
         '0xSwapRouter' => env('DUST_SWAP_ROUTER', env('FLOW_NETWORK') === 'mainnet' ? '0xa6850776a94e6551' : '0x84e6590ef1493ae7'),
         '0xSwapConfig' => env('DUST_SWAP_CONFIG', env('FLOW_NETWORK') === 'mainnet' ? '0xb78ef7afa52ff906' : '0x84e6590ef1493ae7'),
