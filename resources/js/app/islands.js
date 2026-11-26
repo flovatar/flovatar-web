@@ -1714,10 +1714,13 @@ if (CFG) {
             const lp = this.layerPick;
             if (!lp) { return; }
             const out = {};
+            // each option = this island's scene with that sky / display swapped in (screen: the NFT placeholder)
+            const base = {...((this.island && this.island.layers) || {})};
+            try { await Promise.all(Object.values(base).map(async (id) => { if (!liveSvgs[id]) { liveSvgs[id] = await loadTemplate(id); } })); } catch (e) { /* drawn without */ }
             for (const t of this.layerOptionsOf(lp.layer)) {
                 try {
                     if (!liveSvgs[t.id]) { liveSvgs[t.id] = await loadTemplate(t.id); }
-                    let svg = composeScene(this.cfg, {[lp.layer]: t.id}, this.island.tint, null, liveSvgs);
+                    let svg = composeScene(this.cfg, {...base, [lp.layer]: t.id}, this.island.tint, null, liveSvgs);
                     const sc = templateScreen(t);
                     if (sc) { svg = insertScreen(svg, screenFragment(sc, SCREEN_PLACEHOLDER, 't' + t.id, 'S1'), liveSvgs[t.id]); }
                     out[t.id] = URL.createObjectURL(new Blob([displayFix(svg)], {type: 'image/svg+xml'}));
