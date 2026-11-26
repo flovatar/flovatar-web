@@ -333,7 +333,10 @@ export class BeltScene {
      * of islands, widening as it fills up; steeper and fitted to the width on portrait screens.
      */
     home(animate = false) {
-        const f = homeFrame(this.apo || [], this.camera.aspect || 1, FOV);
+        // frame the part of the canvas that page UI doesn't cover (setInsets)
+        const ins = this.inset || {left: 0, top: 0};
+        const free = this.width && this.height ? Math.max(1, this.width - ins.left) / Math.max(1, this.height - ins.top) : (this.camera.aspect || 1);
+        const f = homeFrame(this.apo || [], free, FOV);
         const dist = f.dist;
         this.homeDist = dist;
         this.homeElevation = f.elevation;
@@ -922,6 +925,29 @@ export class BeltScene {
         this.opts.onHover && this.opts.onHover(item, x, y);
     }
 
+    /**
+     * Page UI over the canvas (CSS px): the scene centre moves to the middle of the uncovered area (left panel on
+     * desktop, header card on phones) and the home view is fitted to that area.
+     */
+    setInsets(left = 0, top = 0) {
+        const l = Math.max(0, Math.round(left)), t = Math.max(0, Math.round(top));
+        if (this.inset && this.inset.left === l && this.inset.top === t) { return; }
+        this.inset = {left: l, top: t};
+        this._applyInsets();
+        if (!this._userZoomed && this.followId === null) { this.home(); }
+        if (!this.running) { this._render(0); }
+    }
+
+    _applyInsets() {
+        const ins = this.inset || {left: 0, top: 0};
+        if ((ins.left || ins.top) && this.width && this.height) {
+            this.camera.setViewOffset(this.width, this.height, -ins.left / 2, -ins.top / 2, this.width, this.height);
+        } else {
+            this.camera.clearViewOffset();
+        }
+        this.camera.updateProjectionMatrix();
+    }
+
     resize() {
         const el = this.canvas.parentElement || this.canvas;
         const w = Math.max(1, el.clientWidth), h = Math.max(1, el.clientHeight);
@@ -932,7 +958,7 @@ export class BeltScene {
         this.renderer.setPixelRatio(this.dpr);
         this.renderer.setSize(w, h, false);
         this.camera.aspect = w / h;
-        this.camera.updateProjectionMatrix();
+        this._applyInsets();
         this.uPxWorld.value = 2 * Math.tan(FOV * Math.PI / 360) / h;
         this.uMaxPx.value = Math.max(120, h * MAX_FRAC);
         this.uDpr.value = this.dpr;
