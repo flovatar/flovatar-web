@@ -167,6 +167,15 @@ class IslandsTest extends TestCase
 
         $b = $this->get('/islands/build')->assertOk()->assertHeader('X-Robots-Tag', 'noindex, nofollow');
         $this->assertStringContainsString('x-data="islandsBuilder"', $b->getContent());
+        // category tabs use the icon files (idle + selected), never inline placeholder symbols
+        $this->assertStringContainsString(':src="tabIcon(t.key, true)"', $b->getContent());
+        $this->assertStringNotContainsString('isb-i-sky', $b->getContent());
+        foreach (['deeds', 'sky', 'base', 'structure', 'fub', 'foreground', 'fx', 'tint'] as $tabKey) {
+            $this->assertFileExists(public_path('images/islands/tab-' . $tabKey . '.svg'));
+            $this->assertFileExists(public_path('images/islands/tab-' . $tabKey . '-on.svg'));
+        }
+        // the "unminted" stamp belongs to the builder's Save PNG only: island pages never mention it
+        $this->assertStringNotContainsStringIgnoringCase('unminted', $r->getContent());
         // the size budget is internal: no size meter, no KB / byte figure anywhere in the builder by default
         $this->assertDoesNotMatchRegularExpression('/\bKB\b|\bkB\b|bytes|isb-meter|data-islands="budget"/i', $b->getContent());
         $this->assertFalse(\App\Support\Islands::bootstrap()['sizeMeter']);

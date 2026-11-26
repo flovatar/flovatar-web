@@ -21,6 +21,7 @@ import Alpine from 'alpinejs';
 import * as fcl from '@onflow/fcl';
 import {WALLET_CADENCE, PREVIEW_CADENCE, RESIDENTS_CADENCE, WALLET_NFTS_CADENCE, DISPLAYS_CADENCE, OWNERSHIP_CADENCE} from '../islands/cadence.mjs';
 import {composeScene, displayFix, sceneBytes, islandRarity, validateScene, friendlyChainError, isHexColor, slotList, httpUrl, designation, setDesignationPrefix, normalizeAddress, RARITIES} from '../islands/compose.mjs';
+import {withWatermark} from '../islands/watermark.mjs';
 import {islandsFromManifest, demoIslands, parseIslandQuery} from '../islands/belt/orbits.mjs';
 import {islandTerraformTx} from '../flow/island-terraform.tx';
 import {islandSetResidentsTx} from '../flow/island-set-residents.tx';
@@ -537,6 +538,7 @@ if (CFG) {
     const svgs = {};               // template id -> {svg, svgFront, svgLength, svgFrontLength} (outside Alpine: big strings)
     const thumbUrls = new Map();   // scene key -> object URL
     const LAYER_LABELS = {sky: 'Sky', base: 'Base', structure: 'Structure', fub: 'FUB', foreground: 'Foreground', fx: 'Effects'};
+    const TAB_ICONS = ['deeds', 'sky', 'base', 'structure', 'fub', 'foreground', 'fx', 'tint'];
     const TINTS = ['#EF2AC1', '#91E3F9', '#FFEE50', '#52F618', '#FF6E03', '#AED7F7', '#8A4BFF', '#E8384F', '#2FD4B1'];
     // chance that Randomize fills an optional layer
     const RANDOM_FILL = {sky: 1, structure: 0.85, fub: 0.5, foreground: 0.65, fx: 0.6};
@@ -709,11 +711,10 @@ if (CFG) {
             if (k === 'deeds') { return this.selected.length ? String(this.selected.length) : ''; }
             return '';
         },
-        tabThumb(k) {
-            if (k === 'deeds' || k === 'tint') { return ''; }
-            const id = this.layers[k];
-            return id ? this.thumbs['sel:' + k] || '' : '';
-        },
+        /** Category icon of a tab (public/images/islands/tab-<key>[-on].svg; "on" = brand colours, shown on the active tab). */
+        tabIcon(k, on) { return TAB_ICONS.includes(k) ? '/images/islands/tab-' + k + (on ? '-on' : '') + '.svg' : ''; },
+        /** An optional layer left on None: its tab icon is dimmed. */
+        tabEmpty(k) { return k !== 'deeds' && k !== 'tint' && !this.layers[k]; },
         nextTab() {
             const keys = this.tabs.map((t) => t.key);
             const i = keys.indexOf(this.tab);
@@ -805,10 +806,6 @@ if (CFG) {
             // a number, not an object: Alpine wraps stored objects in proxies, so an identity check would never match
             const token = this._thumbToken = (this._thumbToken || 0) + 1;
             const jobs = [];
-            // selected part of every layer (category tabs + info card)
-            for (const name of this.sceneLayers) {
-                if (this.layers[name]) { jobs.push(['sel:' + name, {[name]: this.layers[name]}, name === 'sky' ? null : this.tintValue]); }
-            }
             if (this.isLayerTab()) {
                 const name = this.tab;
                 if (!this.isRequired(name)) { jobs.push([this.thumbKey(name, null), this.optionLayers(name, null), this.tintValue]); }
@@ -861,22 +858,31 @@ if (CFG) {
         },
 
         // ---------------- tools
+        /** PNG of the design. Always stamped "UNMINTED ISLAND" (like the Flovatar / Sportvatar builders): nothing that
+         *  leaves the builder can pass for a terraformed island. Island pages render real islands and never use this. */
         async savePng() {
-            if (!this.preview) { return; }
-            const img = new Image();
-            img.src = this.preview;
-            try { await img.decode(); } catch (e) { return; }
-            const c = document.createElement('canvas');
-            c.width = 1200; c.height = Math.round(1200 * 4033 / 3025);
-            c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-            c.toBlob((b) => {
+            if (!this.cfg || !this.preview) { return; }
+            let url = '';
+            try {
+                await Promise.all(Object.values(this.layers).map((id) => loadSvg(id)));
+                const svg = withWatermark(displayFix(composeScene(this.cfg, this.layers, this.tintValue, null, svgs)));
+                if (!svg.includes('id="isb-unminted"')) { return; }
+                url = URL.createObjectURL(new Blob([svg], {type: 'image/svg+xml'}));
+                const img = new Image();
+                img.src = url;
+                await img.decode();
+                const c = document.createElement('canvas');
+                c.width = 1200; c.height = Math.round(1200 * 4033 / 3025);
+                c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+                const b = await new Promise((res) => c.toBlob(res, 'image/png'));
                 if (!b) { return; }
                 const a = document.createElement('a');
                 a.href = URL.createObjectURL(b);
-                a.download = 'island-' + this.rarity + '-preview.png';
+                a.download = 'island-' + this.rarity + '-unminted.png';
                 document.body.appendChild(a); a.click(); a.remove();
                 setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-            }, 'image/png');
+            } catch (e) { console.log(e); }
+            if (url) { URL.revokeObjectURL(url); }
         },
         // size meter: internal art-production aid only (ISLANDS_SHOW_SIZE_METER)
         get budget() { return (this.cfg && this.cfg.budget || {})[this.rarity] || 0; },
