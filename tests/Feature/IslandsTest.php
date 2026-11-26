@@ -497,6 +497,12 @@ class IslandsTest extends TestCase
         $this->assertNull($j['screenSlot']);
         $this->get('/islands/10')->assertOk()->assertSee('data-islands="no-display"', false);
         $chain->cfg['displayMigration'] = true;
+        // the refresh POST is CSRF-exempt and sessionless (the front end sends no token to /api/*; else 419 for wallet
+        // users without a site session)
+        $req = \Illuminate\Http\Request::create('/api/islands/10/refresh', 'POST');
+        $this->assertTrue(\App\Support\PublicCache::isStateless($req));
+        $csrf = new \ReflectionProperty(\App\Http\Middleware\VerifyCsrfToken::class, 'except');
+        $this->assertContains('api/islands/*/refresh', $csrf->getDefaultValue());
         // contract v2 (no set_layer): no layer tools
         $chain->cfg['contractVersion'] = 2;
         $j = $this->getJson('/api/islands/10')->assertOk()->json();
