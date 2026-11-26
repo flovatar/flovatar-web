@@ -981,9 +981,10 @@ if (CFG) {
                 const tx = await sealed(this.txId);
                 const ev = (tx.events || []).find((e) => /\.FlovatarAsteroidIsland\.Terraformed$/.test(e.type));
                 this.islandId = ev ? Number(ev.data.id) : null;
+                // index it right away (the island page reads the DB first), then show the success dialog
+                if (this.islandId) { this.txStatus = 'Your island is ready\u2026'; await refreshIsland(this.islandId, this.user.addr); }
                 this.txStatus = '';
                 this.step = 'done';
-                if (this.islandId) { refreshIsland(this.islandId, this.user.addr); }
                 this.loadInventory();
             } catch (e) {
                 this.step = 'review';
