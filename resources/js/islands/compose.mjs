@@ -77,6 +77,28 @@ export function islandRarity(deedRarity, count) {
     return null;
 }
 
+/**
+ * The contract's per-rarity size budget (bytes) is an internal art-production limit: users never see a size or byte
+ * figure. When a combination is ever over budget, the builder shows this generic message instead (KB islands-build §E).
+ */
+export const OVER_BUDGET_MESSAGE = 'This combination can\u2019t be terraformed. Try a different part.';
+
+/** Is the scene within the contract budget for its rarity (true when no budget is known)? */
+export function withinBudget(cfg, rarity, layers, infos) {
+    const budget = ((cfg && cfg.budget) || {})[rarity];
+    return !budget || sceneBytes(layers, infos) <= budget;
+}
+
+/**
+ * Chain / wallet error text -> what the builder shows. Size-budget errors never leak byte figures to the user.
+ * Everything else is passed through (contract messages are already written for people).
+ */
+export function friendlyChainError(text) {
+    const s = String(text || '');
+    if (/size budget|exceeds the size|too large|svg.*length/i.test(s)) { return OVER_BUDGET_MESSAGE; }
+    return s.replace(/\b\d[\d,.]*\s*(?:k?B|KB|kB|bytes?)\b/g, '').trim();
+}
+
 /** Contract validateScene, client side (for UX; the chain re-checks everything). Returns a list of problems. */
 export function validateScene(cfg, rarity, layers, tint, infos) {
     const errors = [];
@@ -94,8 +116,7 @@ export function validateScene(cfg, rarity, layers, tint, infos) {
         if (t.rarity !== rarity) { errors.push(name + ': template rarity doesn\u2019t match'); }
         if (!t.enabled) { errors.push(name + ': template is disabled'); }
     }
-    const budget = (cfg.budget || {})[rarity];
-    if (budget && sceneBytes(layers, infos) > budget) { errors.push('The scene is over the ' + rarity + ' size budget'); }
+    if (!withinBudget(cfg, rarity, layers, infos)) { errors.push(OVER_BUDGET_MESSAGE); }
     if (tint) {
         if (!isHexColor(tint)) { errors.push('Tint must be #RRGGBB'); }
         if (!(cfg.tintRarities || []).includes(rarity)) { errors.push('Tint is not available for ' + rarity + ' islands'); }

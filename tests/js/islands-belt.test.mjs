@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
     BELT_EPOCH, BELT_INNER, BELT_OUTER, MIN_PERIAPSIS, PLANET_RADIUS, demoIslands, islandsFromManifest, meanAnomalyAt, orbitFor, orbitPath,
-    parseIslandQuery, positionAt, rand01, sizeScaleFor, solveKepler,
+    parseIslandQuery, positionAt, rand01, sizeScaleFor, solveKepler, homeFrame,
 } from '../../resources/js/islands/belt/orbits.mjs';
 import {designation, setDesignationPrefix, getDesignationPrefix} from '../../resources/js/islands/compose.mjs';
 
@@ -131,4 +131,26 @@ test('demo belt: N placeholders that reuse real art, own cells, never real ids',
     assert.deepEqual(demoIslands(real, 2000), demoIslands(real, 2000), 'deterministic');
     assert.deepEqual(demoIslands([], 100), []);
     assert.deepEqual(demoIslands(real.filter((i) => !i.hasCell), 100), []);
+});
+
+test('home view: close for a handful of islands, widening as the belt fills, portrait fits the width', () => {
+    const apo = (n) => Array.from({length: n}, (_, i) => { const o = orbitFor(i + 1, 0); return o.a * (1 + o.e); });
+    const tv = Math.tan(23 * Math.PI / 180);
+    const d = (n, aspect) => homeFrame(apo(n), aspect).dist;
+    // closer while the belt is small; monotonic as it fills up
+    assert.ok(d(7, 1.6) < 50, 'desktop, 7 islands: close framing');
+    assert.ok(d(7, 1.6) < d(20, 1.6) && d(20, 1.6) < d(160, 1.6) && d(160, 1.6) <= d(2007, 1.6) + 1e-9);
+    // the full belt still fits a landscape screen (framed radius vs half-width at that distance)
+    const full = homeFrame(apo(2007), 1.6);
+    assert.ok(full.radius <= full.dist * tv * 1.6 * 1.001);
+    // portrait: steeper look-down, width-fitted (at most a ~25% crop), and never inside the planet's halo
+    for (const n of [1, 7, 2007]) {
+        const f = homeFrame(apo(n), 390 / 844);
+        assert.ok(f.elevation > 0.8 && f.elevation <= 1.0);
+        assert.ok(f.radius <= f.dist * tv * (390 / 844) * 1.27 + 1e-9, 'portrait n=' + n);
+        assert.ok(f.dist > PLANET_RADIUS * 2.6);
+    }
+    assert.equal(homeFrame(apo(7), 1.6).elevation, 0.3);
+    // empty belt: still a sane view
+    assert.ok(homeFrame([], 1.6).dist > PLANET_RADIUS * 2.5);
 });

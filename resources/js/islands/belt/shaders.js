@@ -263,6 +263,7 @@ uniform vec4 uGrid;     // cols, rows, cell width in uv, cell height in uv
 uniform float uPxWorld; // world units per pixel at view depth 1
 uniform float uMinPx;
 uniform float uHoverPx;
+uniform float uMaxPx;   // cap (CSS px) for islands that pass close to the camera; highlighted ones are exempt
 uniform float uSway;
 varying vec2 vUv;
 varying vec2 vQuad;
@@ -276,6 +277,7 @@ void main() {
     float st = aState;
     float h = aLook.x * (st > 1.5 ? 0.55 : (st > 0.5 ? 1.16 : 1.0));
     h = max(h, (st > 0.5 && st < 1.5 ? uHoverPx : uMinPx * (st > 1.5 ? 0.6 : 1.0)) * uPxWorld * -mv.z);
+    if (st < 0.5 || st > 1.5) { h = min(h, uMaxPx * uPxWorld * -mv.z); }
     if (st > 2.5) { h = 0.0; }
     float sway = sin(uTime * 0.31 + aLook.z * 6.2832) * 0.045 * uSway;
     vec2 o = vec2(position.x * 0.75, position.y) * h;
@@ -344,6 +346,7 @@ attribute float aState;
 uniform float uPxWorld;
 uniform float uMinPx;
 uniform float uHoverPx;
+uniform float uMaxPx;
 uniform vec3 uGain; // intensity per rarity
 varying vec2 vQuad;
 varying vec3 vColor;
@@ -352,7 +355,7 @@ void main() {
     vec3 c = orbitPosition();
     vec4 mv = viewMatrix * vec4(c, 1.0);
     float st = aState;
-    float h = max(aLook.x, uMinPx * uPxWorld * -mv.z);
+    float h = min(max(aLook.x, uMinPx * uPxWorld * -mv.z), uMaxPx * uPxWorld * -mv.z);
     float gain = aLook.y < 0.5 ? uGain.x : (aLook.y < 1.5 ? uGain.y : uGain.z);
     if (st > 0.5 && st < 1.5) { gain = max(gain * 2.0, 0.55); h = max(h * 1.16, uHoverPx * uPxWorld * -mv.z); }
     if (st > 1.5 && st < 2.5) { gain = 0.0; }

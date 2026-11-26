@@ -94,44 +94,11 @@ $isl-legendary: #EB3CF2;
 .isl-inventory { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
 .isl-collection .isl-card { height: 100%; }
 
-// builder
-.isl-steps { display: flex; gap: 8px; list-style: none; padding: 0; margin: 0 0 18px;
-  li { padding: 6px 14px; border-radius: 999px; background: rgba(255, 255, 255, .08); font-size: 14px; font-weight: 700; text-transform: uppercase; opacity: .6;
-    &.active { background: $isl-pink; opacity: 1; } &.done { opacity: .9; } } }
-.isl-mode { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 620px; margin: 18px 0;
-  button { display: flex; flex-direction: column; text-align: left; padding: 14px 16px; border-radius: 10px; border: 2px solid rgba(255, 255, 255, .2); background: $isl-panel; color: #fff; cursor: pointer;
-    span { font-size: 14px; opacity: .8; } &.active { border-color: $isl-yellow; } } }
-.isl-deed-group h3 { display: flex; align-items: center; gap: 8px; margin-top: 18px; }
-.isl-deeds { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
-.isl-deed { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px; border-radius: 10px; background: $isl-panel; border: 3px solid transparent; color: #fff; cursor: pointer; font-size: 13px;
-  img { width: 100%; aspect-ratio: 1; object-fit: contain; }
-  &.selected { border-color: var(--isl-accent); box-shadow: 0 0 0 3px rgba(255, 238, 80, .25); }
-  &.disabled { opacity: .35; } }
-.isl-packs h2 { margin-top: 0; }
-.isl-pack-list { display: flex; flex-wrap: wrap; gap: 12px; }
-.isl-pack { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: $isl-panel2; }
-.isl-pack-art { width: 34px; height: 44px; border-radius: 6px; background: linear-gradient(160deg, $isl-pink, #6a2fc0); box-shadow: inset 0 0 0 3px rgba(255, 255, 255, .3); }
+// builder: see _islands-builder.scss (v2)
 .isl-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; }
 
-.isl-builder { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 26px; align-items: start;
-  @include media('<desktop') { grid-template-columns: 1fr; } }
-.isl-preview { position: sticky; top: 100px; @include media('<desktop') { position: static; } }
-.isl-preview-frame { aspect-ratio: 3025 / 4033; max-height: 72vh; margin: 0 auto; border-radius: 14px; background: radial-gradient(circle at 50% 40%, #2b2050, $isl-night 75%); overflow: hidden; border: 2px solid rgba(255, 255, 255, .12);
-  img { width: 100%; height: 100%; object-fit: contain; } &.busy { opacity: .6; } }
-.isl-meter { margin-top: 10px; font-size: 14px;
-  .isl-meter-bar { height: 10px; border-radius: 6px; background: rgba(255, 255, 255, .12); overflow: hidden; margin-bottom: 4px;
-    span { display: block; height: 100%; background: $isl-green; transition: width .2s; } }
-  &.near .isl-meter-bar span { background: $isl-yellow; } &.over .isl-meter-bar span { background: $isl-orange; } }
-.isl-layer { border: 0; padding: 0; margin: 0 0 16px;
-  legend { font-weight: 700; text-transform: uppercase; letter-spacing: .05em; font-size: 14px; color: $isl-peri; margin-bottom: 6px; small { text-transform: none; opacity: .7; font-weight: 400; margin-left: 4px; color: #fff; } } }
-.isl-choices { display: flex; flex-wrap: wrap; gap: 8px; }
-.isl-choice { display: flex; flex-direction: column; align-items: flex-start; padding: 8px 12px; border-radius: 8px; border: 2px solid rgba(255, 255, 255, .2); background: $isl-panel; color: #fff; cursor: pointer; font-size: 15px;
-  small { font-size: 12px; opacity: .7; } &.active { border-color: $isl-yellow; background: #45305e; } }
-.isl-tint { display: flex; align-items: center; gap: 10px; input[type=color] { width: 46px; height: 32px; border: 0; padding: 0; background: none; } }
-.isl-problems { color: $isl-yellow; font-size: 14px; padding-left: 18px; }
 .isl-summary { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 10px 0;
   > div { display: contents; } dt { text-transform: uppercase; font-size: 13px; letter-spacing: .05em; opacity: .75; padding-top: 2px; } dd { margin: 0; } }
-.isl-check { font-size: 15px; &.ok { color: $isl-green; } &.err { color: $isl-yellow; } }
 
 // island page
 .isl-island { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: 28px; align-items: start; @include media('<desktop') { grid-template-columns: 1fr; } }
