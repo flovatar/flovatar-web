@@ -48,7 +48,7 @@ class FubIndexer
             'manifest' => (string) $f['manifest'],
             'pending' => (string) ($f['pending'] ?? ''),
             'items' => (int) $f['items'],
-            'published_at' => ! empty($f['publishedAt']) ? Carbon::createFromTimestamp((int) $f['publishedAt']) : null,
+            'published_at' => ! empty($f['publishedAt']) ? Carbon::createFromTimestamp((int) (float) $f['publishedAt']) : null,
             'data' => ['heaviest' => (int) $r['heaviest'], 'composedCap' => (int) $r['composedCap'], 'maxLayers' => (int) $r['maxLayers'],
                 'largeCap' => (int) $r['largeCap'], 'largeItems' => (int) $f['largeItems'], 'voucherIds' => $f['voucherIds'] ?? [],
                 'feeTreasury' => (float) $f['feeTreasury'], 'feeBurn' => (float) $f['feeBurn'], 'tosHash' => (string) ($f['tosHash'] ?? ''),

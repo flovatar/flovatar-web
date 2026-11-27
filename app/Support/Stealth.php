@@ -55,7 +55,7 @@ class Stealth
         'quests' => ['quests', 'quests/*'],
         'terrakit' => ['terrakit/check', 'terrakit/check/*'],
         'islands' => ['islands', 'islands/*', 'api/islands', 'api/islands/*'],
-        'fub' => ['fub', 'fub/*', 'api/fub', 'api/fub/*', 'fub-content/*'],
+        'fub' => ['fub/*', 'api/fub', 'api/fub/*', 'fub-content/*'], // not the bare /fub (the 2022 page stays public)
     ];
 
     /** Server-to-server paths that authenticate themselves (HMAC) and must work in stealth mode. */

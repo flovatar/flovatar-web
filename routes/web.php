@@ -356,6 +356,14 @@ if (\App\Support\Islands::active()) {
     Route::middleware('stealth:islands')->group(__DIR__.'/islands.php');
 }
 
+// FUB v1 (studio, F.U.N. builder, assistant draft tools): FUB_MODE (off|stealth|on) + FUB contract configured.
+// /fub is re-registered here (overrides the 2022 route above): FubPagesController::index falls back to the old page
+// for requests that can't see the feature.
+if (\App\Support\Fub::active()) {
+    Route::get('fub', [\App\Http\Controllers\Fub\FubPagesController::class, 'index'])->name('fub');
+    require __DIR__.'/fub.php';
+}
+
 // Stealth gate: /__stealth/{secret} sets the signed fl_s cookie (STEALTH_SECRET in .env; ?off=1 clears it).
 // Lazy feature bundles /fx/{code}.js|css (webpack chunks kept OUT of public/, served only to requests that see the feature).
 Route::get('__stealth/{token}', [\App\Http\Controllers\StealthController::class, 'enter'])->where('token', '[A-Za-z0-9_\-]{1,200}');

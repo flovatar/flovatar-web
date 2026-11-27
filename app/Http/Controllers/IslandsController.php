@@ -70,7 +70,10 @@ class IslandsController extends Controller
                 ->header('Cache-Control', 'no-store');
         }
 
-        return view('islands.show', ['island' => $island, 'id' => $id, 'og' => ItemImages::og('island', $id)]);
+        // FUB v1: the permanent FUB building on this island links to its F.U.N. builder (site-hidden FUBs are not linked)
+        $fub = \App\Support\Fub::enabled() ? \App\Models\Fub::query()->visible()->where('island_id', $id)->first() : null;
+
+        return view('islands.show', ['island' => $island, 'id' => $id, 'og' => ItemImages::og('island', $id), 'fub' => $fub]);
     }
 
     public function fullSvg(int $id)

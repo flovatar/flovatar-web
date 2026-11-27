@@ -157,7 +157,7 @@ class DustMarketTest extends TestCase
                 parent::__construct('http://flow.invalid');
             }
 
-            public function script(string $code, array $args = [])
+            public function script(string $code, array $args = [], ?int $height = null)
             {
                 $out = [];
                 foreach ($args[1]['value'] as $id) {

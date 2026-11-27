@@ -64,6 +64,17 @@ class Fub
         return $a !== null && in_array($a, array_map(fn ($x) => self::normalizeAddress($x), (array) config('fub.admins', [])), true);
     }
 
+    /** window.FUB: same for every visitor, no user data. */
+    public static function bootstrap(): array
+    {
+        return [
+            'contract' => self::contract(),
+            'islands' => Islands::contract(),
+            'network' => (string) config('services.flow.network'),
+            'assistantUrl' => (string) config('fub.assistant_url', ''),
+        ];
+    }
+
     public static function contentUrl(string $path): string
     {
         $base = (string) config('fub.content_origin', '');

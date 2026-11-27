@@ -118,14 +118,17 @@ class DraftSync
             || (($c['metadata']['aiAssisted'] ?? 'false') === 'true') !== (bool) $it->ai_assisted;
     }
 
-    /** Execute the plan. Returns the list of [op, txId]. Throws on the first failed tx (state stays consistent: re-plan). */
-    public function sync(FubDraft $d): array
+    /**
+     * Execute up to $maxOps ops of the plan (bounded so one queue job stays short on the shared worker). Returns
+     * ['done' => [[op, txId]...], 'more' => bool]. Throws on the first failed tx (state stays consistent: re-plan).
+     */
+    public function sync(FubDraft $d, int $maxOps = 4): array
     {
         if (! $d->chain_fub_id) {
             throw new RuntimeException('Commit the FUB first');
         }
         $done = [];
-        for ($round = 0; $round < 3; $round++) {
+        for ($round = 0; $round < 8; $round++) {
             $cf = $this->chain->fub((int) $d->chain_fub_id) ?? throw new RuntimeException('FUB not found on chain');
             if ((array) $cf['fub'] && ($cf['fub']['creator'] ?? null) && strtolower((string) $cf['fub']['creator']) !== strtolower($d->owner_address)) {
                 throw new RuntimeException('This FUB belongs to another wallet');
@@ -135,7 +138,10 @@ class DraftSync
             if (! $ops) {
                 break;
             }
-            foreach ($ops as $op) {
+            if (count($done) >= $maxOps) {
+                return ['done' => $done, 'more' => true];
+            }
+            foreach (array_slice($ops, 0, $maxOps - count($done)) as $op) {
                 $r = $this->operator->send(FubOperator::tx($op['op']), $op['args']);
                 if (($r['error'] ?? '') !== '' || ($r['status'] ?? '') !== 'Sealed') {
                     throw new RuntimeException($op['op'].' failed: '.self::friendly((string) ($r['error'] ?? $r['status'] ?? 'unknown')));
@@ -164,7 +170,7 @@ class DraftSync
         // draft-deleted items that never reached the chain
         $d->items()->where('chain_state', 'deleted')->whereNull('chain_item_id')->delete();
 
-        return $done;
+        return ['done' => $done, 'more' => false];
     }
 
     public static function friendly(string $err): string
