@@ -111,7 +111,8 @@ class FubToolController extends Controller
     public function reorderLayers(Request $request)
     {
         [$a, $d] = $this->ctx($request);
-        $this->editor->reorderLayers($a, $d, (array) $request->input('keys', []), 'assistant');
+        // {keys: [every key, back to front]} or {key, position} (0 = back); same domain rules as the studio's arrows
+        $this->editor->reorder($a, $d, $request->only(['keys', 'key', 'position']), 'assistant');
 
         return $this->done($d);
     }
