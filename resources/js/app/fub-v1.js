@@ -437,6 +437,7 @@ Alpine.data('fubStudio', (draftId) => ({
         A.error = '';
         A.messages.push({role: 'user', content: text});
         A.input = '';
+        A.sentAt = Date.now();
         // thinking levels outlast the request: after a while say so (the API then answers 202 and we poll)
         const slow = setTimeout(() => { if (A.busy === 'Thinking\u2026') { A.busy = A_SLOW; } }, 12000);
         setTimeout(() => { if (A.busy) { this.aTank(); } }, 2500); // the price is reserved as soon as the run starts
@@ -487,7 +488,7 @@ Alpine.data('fubStudio', (draftId) => ({
                 continue; // transient: keep polling
             }
             if (!r.pending) { return r; }
-            const s = Math.round((Date.now() - t0) / 1000);
+            const s = Math.round((Date.now() - (A.sentAt || t0)) / 1000); // time since Send, not since polling began
             A.busy = A_SLOW + ' ' + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
             const n = ((r.run && r.run.actions) || []).filter((a) => a.ok && !A_READS.includes(a.tool)).length;
             if (n !== writes) { // show new layers/items as they land
@@ -502,6 +503,7 @@ Alpine.data('fubStudio', (draftId) => ({
         const A = this.assistant;
         const url = sessionStorage.getItem('fubA:run:' + this.id);
         if (!url || A.busy || !A.conv) { return; }
+        A.sentAt = null;
         A.busy = A_SLOW;
         try {
             const r = await this.aFetch(url);
