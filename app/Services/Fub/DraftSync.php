@@ -142,6 +142,12 @@ class DraftSync
                 return ['done' => $done, 'more' => true];
             }
             foreach (array_slice($ops, 0, $maxOps - count($done)) as $op) {
+                // the operator pays the fees: cap its transactions per draft per day (abuse = fee drain)
+                $budgetKey = 'fub:optx:'.$d->id.':'.now()->format('Ymd');
+                \Illuminate\Support\Facades\Cache::add($budgetKey, 0, now()->endOfDay());
+                if (\Illuminate\Support\Facades\Cache::increment($budgetKey) > (int) config('fub.operator.daily_tx_per_draft', 400)) {
+                    throw new RuntimeException('Daily chain-write budget for this draft reached; your changes are saved and will sync tomorrow (or ask the team).');
+                }
                 $r = $this->operator->send(FubOperator::tx($op['op']), $op['args']);
                 if (($r['error'] ?? '') !== '' || ($r['status'] ?? '') !== 'Sealed') {
                     throw new RuntimeException($op['op'].' failed: '.self::friendly((string) ($r['error'] ?? $r['status'] ?? 'unknown')));

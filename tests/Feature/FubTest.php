@@ -165,13 +165,26 @@ class FubTest extends TestCase
         $this->get('/fub/studio/1')->assertOk()->assertSee('data-fub="studio"', false);
     }
 
+    /** Unreleased product names must never appear in this public repo's pages/JS: compared by hash, so the test
+     *  itself doesn't spell them out. */
+    private const SECRET_NAME_HASHES = ['1d0ca65c19c17264759baf9d5ca93e44d5b7725f8911d756bd9e2e03fc1f4927', 'c7fddc5945253431bff7d1de52812d20c10a1fef1e79ed3b58cc87a3762f7335'];
+
+    private function assertNoSecretNames(string $text): void
+    {
+        preg_match_all('/[a-z0-9]+/', strtolower($text), $m);
+        foreach (array_unique($m[0]) as $word) {
+            $this->assertNotContains(hash('sha256', $word), self::SECRET_NAME_HASHES, 'unreleased name leaked');
+        }
+    }
+
     public function test_public_copy_never_names_the_assistant(): void
     {
         $this->on();
         foreach (['/fub', '/fub/studio/1'] as $u) {
-            $this->get($u)->assertDontSee('Desiglicious')->assertDontSee('Sloooosh');
+            $this->assertNoSecretNames($this->get($u)->getContent());
         }
-        $this->assertStringNotContainsStringIgnoringCase('desiglicious', file_get_contents(base_path('resources/js/app/fub-v1.js')));
+        $this->assertNoSecretNames(file_get_contents(base_path('resources/js/app/fub-v1.js')));
+        $this->assertNoSecretNames(file_get_contents(base_path('resources/views/fub-v1/studio.blade.php')));
     }
 
     // --------------------------------------------------------------------------------------------- studio API

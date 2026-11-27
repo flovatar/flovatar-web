@@ -28,6 +28,7 @@ return [
         'key_file' => env('FUB_OPERATOR_KEY_FILE', ''),
         'key_index' => (int) env('FUB_OPERATOR_KEY_INDEX', 1),
         'compute_limit' => (int) env('FUB_OPERATOR_COMPUTE_LIMIT', 9999),
+        'daily_tx_per_draft' => (int) env('FUB_OPERATOR_DAILY_TX_PER_DRAFT', 400), // fee-drain guard
     ],
 
     // Draft-tool API for the design assistant server (server-to-server bearer token; never in the browser).

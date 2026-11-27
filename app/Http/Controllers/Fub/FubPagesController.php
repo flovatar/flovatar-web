@@ -62,7 +62,7 @@ class FubPagesController extends Controller
     {
         $this->guard();
         $fub = Fub::where('flow_id', $id)->first();
-        if (! $fub) {
+        if (! $fub && $id <= (int) ($this->chain->config()['fubCount'] ?? 0)) { // no chain reads for ids that can't exist
             try {
                 $fub = app(FubIndexer::class)->refreshFub($id);
             } catch (Throwable $e) {
