@@ -252,7 +252,7 @@ Alpine.data('fubStudio', (draftId) => ({
         }
         if (ok) {
             const rep = ok.report;
-            this.notice = rep && rep.removed && rep.removed.length ? 'Saved. The sanitiser removed: ' + rep.removed.slice(0, 6).join(', ') + (rep.removed.length > 6 ? '\u2026' : '') : 'Saved.';
+            this.notice = rep && rep.removed && rep.removed.length ? 'Saved. The sanitiser removed: ' + rep.removed.slice(0, 6).map((x) => (x && x.what) || x).join(', ') + (rep.removed.length > 6 ? '\u2026' : '') : 'Saved.';
             this.formOpen = false;
         }
     },

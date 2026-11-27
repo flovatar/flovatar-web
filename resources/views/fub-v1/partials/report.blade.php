@@ -10,7 +10,7 @@
                     </label>
                     <label>Details (optional)<textarea maxlength="1000" x-model="details"></textarea></label>
                     <p class="isl-error" x-show="error" x-text="error"></p>
-                    <div class="fub-row"><button class="btn btn-yellow" @click="send()">Send report</button><button class="btn" @click="open = false">Cancel</button></div>
+                    <div class="fub-row"><button class="fub-btn" @click="send()">Send report</button><button class="fub-btn alt" @click="open = false">Cancel</button></div>
                 </div>
             </template>
             <p x-show="sent" x-text="sent"></p>
