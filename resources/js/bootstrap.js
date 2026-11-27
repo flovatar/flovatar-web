@@ -20,7 +20,7 @@ window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
  * this, so browsing never creates a session.
  */
 const csrfExemptPaths = [
-    /^\/api\//,
+    /^\/api\/(?!fub\/)/, // FUB studio API (/api/fub/*) is session-authenticated: it needs the CSRF token
     /^\/(search|showroom\/search|showroom\/flobot\/search|showroom\/dust-collectible\/search|transactions\/search|builder\/search|flobot\/builder\/search)\/?$/
 ];
 let csrfTokenPromise = null;
