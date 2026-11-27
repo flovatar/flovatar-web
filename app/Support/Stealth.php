@@ -26,7 +26,7 @@ use Throwable;
  */
 class Stealth
 {
-    public const FEATURES = ['passkey', 'dust_market', 'quests', 'swap', 'terrakit', 'islands'];
+    public const FEATURES = ['passkey', 'dust_market', 'quests', 'swap', 'terrakit', 'islands', 'fub'];
 
     public const MODES = ['off', 'stealth', 'on'];
 
@@ -38,10 +38,11 @@ class Stealth
         'swap' => 'flovatar.dustSwap.enabled',
         'terrakit' => 'terrakit.check_enabled',
         'islands' => 'islands.legacy_enabled', // never set: ISLANDS_MODE only
+        'fub' => 'fub.legacy_enabled',         // never set: FUB_MODE only
     ];
 
     /** Lazy JS/CSS bundle per feature (webpack chunk public/fx/<code>.js → storage/app/fx, served by FxAssetController). */
-    public const BUNDLES = ['passkey' => 'p', 'dust_market' => 'm', 'swap' => 's', 'quests' => 'q', 'terrakit' => 't', 'islands' => 'i'];
+    public const BUNDLES = ['passkey' => 'p', 'dust_market' => 'm', 'swap' => 's', 'quests' => 'q', 'terrakit' => 't', 'islands' => 'i', 'fub' => 'u'];
 
     /** Secondary chunks a feature bundle imports on demand (same gate, never listed in window.__FX): code => feature.
      *  b = the WebGL belt of /islands (three.js scene, loaded by the islands bundle only on that page). */
@@ -54,10 +55,11 @@ class Stealth
         'quests' => ['quests', 'quests/*'],
         'terrakit' => ['terrakit/check', 'terrakit/check/*'],
         'islands' => ['islands', 'islands/*', 'api/islands', 'api/islands/*'],
+        'fub' => ['fub/*', 'api/fub', 'api/fub/*', 'fub-content/*'], // not the bare /fub (the 2022 page stays public)
     ];
 
     /** Server-to-server paths that authenticate themselves (HMAC) and must work in stealth mode. */
-    public const SELF_AUTH_PATHS = ['quests/payout/*'];
+    public const SELF_AUTH_PATHS = ['quests/payout/*', 'api/fub-tools/*'];
 
     private const ATTR_GATED = 'stealth.gated';
 

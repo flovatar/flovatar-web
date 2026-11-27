@@ -42,6 +42,10 @@ class Kernel extends ConsoleKernel
             // WebGL belt textures: safety net for the on-demand warm job (no-op when every cell/atlas is current)
             $schedule->command('islands:belt-warm')->everyFiveMinutes()->withoutOverlapping(10)->runInBackground();
         }
+        if (\App\Support\Fub::active()) {
+            // FUB v1: drafts retention (90 days) + chain re-read safety net
+            $schedule->command('fub:maintain --refresh')->hourlyAt(41)->withoutOverlapping(30)->runInBackground();
+        }
         if (\App\Support\DustMarket::active()) {
             // ĐUST marketplace: drop offers whose storefront listing died on chain (ghost, expired, sold elsewhere)
             $schedule->command('dust-market:reconcile')->everyTenMinutes()->withoutOverlapping(10)->runInBackground();

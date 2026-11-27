@@ -22,6 +22,7 @@ return [
         'swap' => env('DUST_SWAP_MODE'),           // legacy: DUST_SWAP_ENABLED
         'terrakit' => env('TERRAKIT_CHECK_MODE'),  // legacy: TERRAKIT_CHECK_ENABLED
         'islands' => env('ISLANDS_MODE'),          // Asteroid Islands (no legacy flag: unset = off)
+        'fub' => env('FUB_MODE'),                  // FUB studio + F.U.N. builder (no legacy flag: unset = off)
     ],
 
     // Secret for /__stealth/{secret} (>= 32 chars; empty = the secret URL is disabled). Also signs the fl_s cookie.

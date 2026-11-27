@@ -60,6 +60,15 @@ class ProcessGraffleEvents extends BaseJob
             return;
         }
 
+        // FUB v1 (own contract, FUB_MODE): FlovatarUniverseBuilder events + NonFungibleToken.Deposited of F.U.N.s.
+        $fub = new \App\Services\Fub\FubEventProcessor();
+        if ($fub->handles($event)) {
+            if ($fub->process($event)) {
+                $this->event->update(['synced' => true]);
+            }
+            return;
+        }
+
         $dustMarket = new \App\Services\Market\DustStorefrontProcessor();
         if ($dustMarket->handles($event)) {
             if ($dustMarket->process($event)) {

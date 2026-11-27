@@ -19,6 +19,9 @@
          @keydown.escape.window="onEscape()" :class="{'isp-owner': isOwner, 'isp-has-changes': dirty, 'isp-sheet-open': sheetOpen}">
     <div class="container">
         <p class="isl-crumbs"><a href="/islands">Asteroid belt</a> › <span>{{ \App\Support\Islands::designation((int) $id) }}</span></p>
+        @if(!empty($fub))
+            <div class="isl-panel isl-fub-link" data-islands="fub-link"><p>🏗️ This island hosts the FUB <b>{{ $fub->name }}</b> ({{ number_format($fub->minted) }} F.U.N.s minted). <a class="btn btn-yellow" href="/fub/{{ $fub->flow_id }}">Visit the FUB</a></p></div>
+        @endif
 
         <div class="isl-panel" x-show="status === 'loading'"><p>Loading the island…</p></div>
         <div class="isl-panel isl-error" x-show="status === 'missing'" x-cloak><p>This island isn't in the belt yet. If you just terraformed it, give the blockchain a minute and reload.</p></div>

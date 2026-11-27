@@ -89,6 +89,10 @@
     {{-- Asteroid Islands (ISLANDS_MODE): static-safe runtime config for resources/js/app/islands.js --}}
     <script>window.ISLANDS = @json(\App\Support\Islands::bootstrap());</script>
 @endif
+@if(\App\Support\Fub::enabled())
+    {{-- FUB v1 (FUB_MODE): static-safe runtime config for resources/js/app/fub-v1.js --}}
+    <script>window.FUB = @json(\App\Support\Fub::bootstrap());</script>
+@endif
 @php($fxBundles = \App\Support\Stealth::bundles())
 @if($fxBundles)
     <script>window.__FX = @json($fxBundles);</script>
