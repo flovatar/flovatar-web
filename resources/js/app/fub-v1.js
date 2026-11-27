@@ -439,6 +439,7 @@ Alpine.data('fubStudio', (draftId) => ({
         A.input = '';
         // thinking levels outlast the request: after a while say so (the API then answers 202 and we poll)
         const slow = setTimeout(() => { if (A.busy === 'Thinking\u2026') { A.busy = A_SLOW; } }, 12000);
+        setTimeout(() => { if (A.busy) { this.aTank(); } }, 2500); // the price is reserved as soon as the run starts
         try {
             const r = await this.aFetch('/api/v1/conversations/' + A.conv.id + '/messages', {method: 'POST', body: JSON.stringify({content: text, level: A.level})});
             await this.aFinish(r, false);
