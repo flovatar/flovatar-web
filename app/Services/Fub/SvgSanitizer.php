@@ -170,7 +170,7 @@ final class SvgSanitizer
 
         return [
             'ok' => true, 'svg' => $svg, 'size' => $size, 'sha3' => hash('sha3-256', $svg), 'large' => $size > self::ITEM_MAX,
-            'errors' => [], 'removed' => $this->report['removed'], 'dangerous' => $this->report['dangerous'],
+            'errors' => [], 'removed' => array_values($this->report['removed']), 'dangerous' => $this->report['dangerous'],
             'warnings' => $this->report['warnings'], 'stats' => $this->counts, 'version' => self::VERSION,
         ];
     }
@@ -179,7 +179,7 @@ final class SvgSanitizer
     {
         return [
             'ok' => false, 'svg' => $svg, 'size' => strlen($svg), 'sha3' => '', 'large' => false, 'errors' => [$msg],
-            'removed' => $this->report['removed'] ?? [], 'dangerous' => $dangerous || ($this->report['dangerous'] ?? false),
+            'removed' => array_values($this->report['removed'] ?? []), 'dangerous' => $dangerous || ($this->report['dangerous'] ?? false),
             'warnings' => $this->report['warnings'] ?? [], 'stats' => $this->counts, 'version' => self::VERSION,
         ];
     }
