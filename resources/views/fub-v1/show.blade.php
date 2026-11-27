@@ -18,9 +18,9 @@
             <div class="fub-stage">
                 <div class="fub-canvas"><img :src="previewUrl" alt="Your F.U.N. preview" data-fub="preview"></div>
                 <div class="fub-row">
-                    <button class="btn" @click="dice()">🎲 Random</button>
+                    <button class="fub-btn alt" @click="dice()">🎲 Random</button>
                     <b x-text="fmtDust(total)"></b>
-                    <button class="btn btn-yellow" @click="mint()" :disabled="!!busy || problems.length > 0 || (quote && !quote.available)" data-fub="mint">Mint F.U.N.</button>
+                    <button class="fub-btn" @click="mint()" :disabled="!!busy || problems.length > 0 || (quote && !quote.available)" data-fub="mint">Mint F.U.N.</button>
                 </div>
                 <template x-for="p in problems"><p class="isl-error" x-text="p"></p></template>
                 <p class="isl-error" x-show="quote && !quote.available" x-text="quote ? reasonText(quote.reason) : ''"></p>

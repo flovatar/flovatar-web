@@ -5,7 +5,7 @@
     <div class="container">
         <p class="isl-crumbs"><a href="/fub">FUB</a> › <span>Studio</span></p>
 
-        <div class="isl-panel" x-show="!wallet"><p>Connect your wallet to open your studio.</p><button class="btn btn-yellow" @click="connect()">Connect wallet</button></div>
+        <div class="isl-panel" x-show="!wallet"><p>Connect your wallet to open your studio.</p><button class="fub-btn" @click="connect()">Connect wallet</button></div>
         <div class="isl-panel" x-show="wallet && loading"><p>Loading your draft…</p></div>
         <p class="isl-notice isl-error" x-show="error" x-text="error" x-cloak data-fub="error"></p>
         <p class="isl-notice isl-n-ok" x-show="notice" x-text="notice" x-cloak @click="notice = ''"></p>
@@ -30,7 +30,7 @@
                     <div class="fub-meter"><span x-text="'Layers ' + budget.layers + ' / ' + budget.maxLayers"></span><div class="bar"><i :style="'width:' + pct(budget.layers, budget.maxLayers) + '%'"></i></div></div>
                     <div class="fub-meter" :class="{warn: budget.heaviest > budget.composedCap}"><span x-text="'Heaviest F.U.N. ' + fmtBytes(budget.heaviest) + ' / ' + fmtBytes(budget.composedCap)"></span><div class="bar"><i :style="'width:' + pct(budget.heaviest, budget.composedCap) + '%'"></i></div></div>
                     <div class="fub-meter"><span x-text="'Large items ' + budget.largeItems + ' / ' + budget.largeCap"></span></div>
-                    <button class="btn" style="margin-top:10px" x-show="hasAssistant" @click="openAssistant()" data-fub="assistant-open">Design assistant</button>
+                    <button class="fub-btn alt" style="margin-top:10px" x-show="hasAssistant" @click="openAssistant()" data-fub="assistant-open">Design assistant</button>
                 </div>
 
                 {{-- ======== editor ======== --}}
@@ -80,7 +80,7 @@
                             <div class="fub-row">
                                 <input type="text" maxlength="24" placeholder="e.g. Background" x-model="newLayer.name" @keydown.enter="addLayer()" style="max-width:260px;border-radius:8px;border:0;padding:8px 10px;color:#1A1E2D" data-fub="layer-name">
                                 <label><input type="checkbox" x-model="newLayer.required"> required</label>
-                                <button class="btn" @click="addLayer()" data-fub="add-layer">Add layer</button>
+                                <button class="fub-btn alt" @click="addLayer()" data-fub="add-layer">Add layer</button>
                             </div>
                         </div>
                     </div>
@@ -111,7 +111,7 @@
                                 </template>
                                 <p x-show="!Object.keys(chain.vouchers).length">This wallet has no FUB vouchers.</p>
                                 <p x-show="selVouchers.length" x-text="'Selected ' + selVouchers.length + ': ' + capacity.slots + ' item slots, ' + capacity.mints.toLocaleString('en-US') + ' mints, ' + capacity.tier + ' tier (' + ({common: 8, epic: 12, legendary: 16})[capacity.tier] + ' layers)'"></p>
-                                <button class="btn btn-yellow" @click="commit()" :disabled="!selVouchers.length || !!busy" data-fub="commit">Commit and burn</button>
+                                <button class="fub-btn" @click="commit()" :disabled="!selVouchers.length || !!busy" data-fub="commit">Commit and burn</button>
                             </div>
                         </template>
                     </div>
@@ -122,7 +122,7 @@
                         <template x-if="chain && chain.vouchers && Object.keys(chain.vouchers).length">
                             <div class="isl-notice"><b>More room?</b> Absorb more vouchers before you publish:
                                 <div class="fub-vouchers" style="margin-top:6px"><template x-for="id in [].concat(...Object.values(chain.vouchers))" :key="'a' + id"><button :class="{on: selVouchers.includes(id)}" @click="toggleVoucher(id)" x-text="'#' + id"></button></template></div>
-                                <button class="btn" style="margin-top:6px" @click="absorb()" :disabled="!selVouchers.length">Absorb selected</button>
+                                <button class="fub-btn alt" style="margin-top:6px" @click="absorb()" :disabled="!selVouchers.length">Absorb selected</button>
                             </div>
                         </template>
                         <template x-if="preflightData">
@@ -140,7 +140,7 @@
                                         <p class="isl-error" x-show="chain && !chain.islands.length">You need an Asteroid Island without a FUB. <a href="/islands/build">Terraform one</a> first.</p>
                                         <details><summary>Creator terms</summary>@include('fub-v1.partials.terms')</details>
                                         <label style="display:flex;gap:8px;margin:10px 0"><input type="checkbox" x-model="acceptTerms" data-fub="terms"> I accept the creator terms. Publishing is final.</label>
-                                        <button class="btn btn-yellow" @click="publish()" :disabled="!acceptTerms || !islandId || !!busy" data-fub="publish">Publish</button>
+                                        <button class="fub-btn" @click="publish()" :disabled="!acceptTerms || !islandId || !!busy" data-fub="publish">Publish</button>
                                     </div>
                                 </template>
                             </div>
@@ -152,15 +152,15 @@
                     <div x-show="tab === 'manage'" class="isl-panel" data-fub="manage-panel">
                         <p><a :href="'/fub/' + d.chainFubId">Open the public builder</a></p>
                         <div class="fub-row">
-                            <button class="btn" @click="setStatus('pause')">Pause minting</button>
-                            <button class="btn" @click="setStatus('resume')">Resume</button>
-                            <button class="btn" @click="setStatus('close')">Close for good</button>
+                            <button class="fub-btn alt" @click="setStatus('pause')">Pause minting</button>
+                            <button class="fub-btn alt" @click="setStatus('resume')">Resume</button>
+                            <button class="fub-btn alt" @click="setStatus('close')">Close for good</button>
                         </div>
-                        <div class="fub-row"><input type="number" min="0" max="10" step="0.5" placeholder="New royalty %" x-model="royaltyNew" style="max-width:160px;border-radius:8px;border:0;padding:8px;color:#1A1E2D"><button class="btn" @click="lowerRoyalty()">Lower royalty</button></div>
-                        <div class="fub-row"><input type="text" placeholder="0x… payout address" x-model="payoutNew" style="max-width:260px;border-radius:8px;border:0;padding:8px;color:#1A1E2D"><button class="btn" @click="setPayout()">Change payout</button></div>
+                        <div class="fub-row"><input type="number" min="0" max="10" step="0.5" placeholder="New royalty %" x-model="royaltyNew" style="max-width:160px;border-radius:8px;border:0;padding:8px;color:#1A1E2D"><button class="fub-btn alt" @click="lowerRoyalty()">Lower royalty</button></div>
+                        <div class="fub-row"><input type="text" placeholder="0x… payout address" x-model="payoutNew" style="max-width:260px;border-radius:8px;border:0;padding:8px;color:#1A1E2D"><button class="fub-btn alt" @click="setPayout()">Change payout</button></div>
                         <h3>New items</h3>
                         <p class="muted">Add items to free slots in your existing layers (Layers tab). Once they are on chain, make them live:</p>
-                        <button class="btn btn-yellow" @click="commitAdditions()">Make new items live</button>
+                        <button class="fub-btn" @click="commitAdditions()">Make new items live</button>
                     </div>
                 </div>
             </div>
@@ -194,8 +194,8 @@
                     <label x-show="form.supply === 'curve'">Ceiling price (ĐUST)<input type="number" :min="form.price" x-model.number="form.price_cap"></label>
                     <label><span><input type="checkbox" x-model="form.large"> Large item (64 KB budget, limited per FUB)</span></label>
                     <div class="fub-row">
-                        <button class="btn btn-yellow" @click="saveItem()" :disabled="!!busy" data-fub="item-save">Save item</button>
-                        <button class="btn" @click="formOpen = false">Cancel</button>
+                        <button class="fub-btn" @click="saveItem()" :disabled="!!busy" data-fub="item-save">Save item</button>
+                        <button class="fub-btn alt" @click="formOpen = false">Cancel</button>
                     </div>
                 </div>
             </div>
@@ -206,7 +206,7 @@
                     <div class="fub-row" style="margin:0"><b class="grow" style="flex:1" x-text="assistant.meta ? assistant.meta.name : 'Design assistant'"></b><button class="isl-link" @click="assistant.open = false">Close</button></div>
                     <p class="isl-error" x-show="assistant.error" x-text="assistant.error"></p>
                     <template x-if="!assistant.token">
-                        <div><p>Sign in to the assistant with your wallet (a free signature, no transaction).</p><button class="btn btn-yellow" @click="aLogin()">Sign in</button></div>
+                        <div><p>Sign in to the assistant with your wallet (a free signature, no transaction).</p><button class="fub-btn" @click="aLogin()">Sign in</button></div>
                     </template>
                     <template x-if="assistant.token && assistant.tank">
                         <div style="display:flex;flex-direction:column;min-height:0;flex:1">
@@ -219,11 +219,11 @@
                                 <template x-for="l in assistant.meta.levels" :key="l.key"><label><input type="radio" :value="l.key" x-model="assistant.level"> <span x-text="l.name + ' ' + fmtDust(l.price)"></span></label></template>
                             </div>
                             <div class="msgs"><template x-for="(m, mi) in assistant.messages" :key="mi"><div class="m" :class="m.role" x-text="m.content"></div></template></div>
-                            <template x-if="assistant.confirm"><div class="isl-notice"><p x-text="assistant.confirm.summary"></p><button class="btn btn-yellow" @click="aConfirm(true)">Confirm</button> <button class="btn" @click="aConfirm(false)">Cancel</button></div></template>
+                            <template x-if="assistant.confirm"><div class="isl-notice"><p x-text="assistant.confirm.summary"></p><button class="fub-btn" @click="aConfirm(true)">Confirm</button> <button class="fub-btn alt" @click="aConfirm(false)">Cancel</button></div></template>
                             <textarea x-model="assistant.input" placeholder="Describe what to make or change…" style="border-radius:8px;padding:8px;color:#1A1E2D;min-height:60px"></textarea>
                             <div class="fub-row" style="margin:6px 0 0">
-                                <button class="btn" @click="aRecord()" x-text="assistant.recording ? 'Stop' : '🎤 Voice'"></button>
-                                <button class="btn btn-yellow" @click="aSend()" :disabled="!!assistant.busy">Send</button>
+                                <button class="fub-btn alt" @click="aRecord()" x-text="assistant.recording ? 'Stop' : '🎤 Voice'"></button>
+                                <button class="fub-btn" @click="aSend()" :disabled="!!assistant.busy">Send</button>
                                 <span class="muted" x-text="assistant.busy"></span>
                             </div>
                         </div>
