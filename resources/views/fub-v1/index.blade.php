@@ -20,6 +20,7 @@
             <div>
                 <div class="isl-panel" x-show="loading"><p>Reading your wallet…</p></div>
                 <p class="isl-notice isl-error" x-show="error" x-text="error" x-cloak></p>
+                <div class="isl-panel" x-show="needsVerify" x-cloak data-fub="verify"><button class="fub-btn" @click="verifyWallet()" :disabled="verifying" x-text="verifying ? 'Check your wallet…' : 'Verify wallet (free signature)'"></button></div>
                 <div class="isl-panel" x-show="state" x-cloak data-fub="wallet">
                     <h2>Your wallet</h2>
                     <p>

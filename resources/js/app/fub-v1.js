@@ -56,6 +56,17 @@ function walletMixin() {
             cb && cb(user);
         },
         connect() { fcl.authenticate(); },
+        // The wallet can be connected (FCL) without a server session: the drafts API needs the signed login
+        // (account-proof or signed message, /login). On a 401 the page shows a "Verify wallet" button.
+        needsVerify: false,
+        verifying: false,
+        verifyWallet() {
+            if (!window.user || !window.user.addr) { this.connect(); return; }
+            this.verifying = true;
+            window.addEventListener('login-failed', () => { this.verifying = false; this.error = 'The wallet signature was not accepted. Please try again.'; }, {once: true});
+            // success: handleLoginResponse reloads the page with the server session
+            Promise.resolve(window.createSignature(window.loginMessage)).finally(() => { setTimeout(() => { this.verifying = false; }, 20000); });
+        },
         fmtDust, fmtBytes,
         short(a) { return a ? a.slice(0, 6) + '\u2026' + a.slice(-4) : ''; },
     };
@@ -95,7 +106,8 @@ Alpine.data('fubHome', () => ({
             this.drafts = r.data.drafts;
             this.fubs = r.data.fubs;
         } catch (e) {
-            this.error = e.response && e.response.status === 401 ? 'Sign in with your wallet to see your drafts.' : apiErrorText(e);
+            this.needsVerify = !!(e.response && e.response.status === 401);
+            this.error = this.needsVerify ? 'Your wallet is connected. Verify it once with a free signature to see your drafts.' : apiErrorText(e);
         }
         this.loading = false;
     },
@@ -149,7 +161,10 @@ Alpine.data('fubStudio', (draftId) => ({
             this.setDraft(r.data);
             this.chain = await walletFub(this.wallet);
             this.dust = await dustBalance(this.wallet);
-        } catch (e) { this.error = apiErrorText(e); }
+        } catch (e) {
+            this.needsVerify = !!(e.response && e.response.status === 401);
+            this.error = this.needsVerify ? 'Your wallet is connected. Verify it once with a free signature to open this draft.' : apiErrorText(e);
+        }
         this.loading = false;
     },
     setDraft(d) {
