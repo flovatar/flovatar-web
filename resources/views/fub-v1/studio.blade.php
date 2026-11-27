@@ -8,6 +8,7 @@
         <div class="isl-panel" x-show="!wallet"><p>Connect your wallet to open your studio.</p><button class="fub-btn" @click="connect()">Connect wallet</button></div>
         <div class="isl-panel" x-show="wallet && loading"><p>Loading your draft…</p></div>
         <p class="isl-notice isl-error" x-show="error" x-text="error" x-cloak data-fub="error"></p>
+        <div class="isl-panel" x-show="needsVerify" x-cloak data-fub="verify"><button class="fub-btn" @click="verifyWallet()" :disabled="verifying" x-text="verifying ? 'Check your wallet…' : 'Verify wallet (free signature)'"></button></div>
         <p class="isl-notice isl-n-ok" x-show="notice" x-text="notice" x-cloak @click="notice = ''"></p>
 
         <template x-if="d">
