@@ -28,6 +28,11 @@ if (CFG) {
 
 const ax = () => window.axios;
 
+// design-assistant panel texts / read-only tool names (the assistant's name, levels and prices come from its API)
+const A_UNREACHABLE = 'The assistant is not reachable right now. Close and reopen the panel to try again.';
+const A_SLOW = 'Still thinking\u2026 this level can take a few minutes.';
+const A_READS = ['get_draft', 'get_item_svg', 'validate_svg'];
+
 async function sealed(txId) {
     const tx = await fcl.tx(txId).onceSealed();
     if (tx.statusCode !== 0 || tx.errorMessage) { throw new Error(tx.errorMessage || 'Transaction failed'); }
@@ -370,20 +375,31 @@ Alpine.data('fubStudio', (draftId) => ({
         this.assistant = this.assistant || {open: true, meta: null, token: '', conv: null, messages: [], input: '', level: '', busy: '', error: '', tank: null, recording: false, refillAmount: 0, confirm: null};
         this.assistant.open = true;
         const A = this.assistant;
+        if (!A.busy) { A.error = ''; } // reopening retries: an old "not reachable" must not stick
         try {
-            A.meta = await fetch(CFG.assistantUrl + '/api/v1/meta').then((r) => r.json());
-            A.level = A.level || (A.meta.levels[0] && A.meta.levels[0].key);
-            A.refillAmount = A.refillAmount || (A.meta.refillPresets || [])[0] || 0;
-            A.token = sessionStorage.getItem('fubA:' + this.wallet) || '';
-            if (A.token) { await this.aRefresh(); }
-        } catch (e) { A.error = 'The assistant is not reachable right now.'; }
+            const m = await fetch(CFG.assistantUrl + '/api/v1/meta');
+            if (!m.ok) { throw new Error('meta ' + m.status); }
+            A.meta = await m.json();
+        } catch (e) { A.error = A_UNREACHABLE; return; }
+        A.level = A.level || (A.meta.levels[0] && A.meta.levels[0].key);
+        A.refillAmount = A.refillAmount || (A.meta.refillPresets || [])[0] || 0;
+        A.token = A.token || sessionStorage.getItem('fubA:' + this.wallet) || '';
+        if (!A.token) { return; }
+        try {
+            await this.aRefresh();
+            await this.aResume();
+        } catch (e) { A.error = e.message; }
     },
     async aFetch(path, opts = {}) {
         const A = this.assistant;
-        const r = await fetch(CFG.assistantUrl + path, {...opts, headers: {'Accept': 'application/json', 'Content-Type': 'application/json', ...(A.token ? {'Authorization': 'Bearer ' + A.token} : {}), ...(opts.headers || {})}});
+        let r;
+        try {
+            r = await fetch(CFG.assistantUrl + path, {...opts, headers: {'Accept': 'application/json', 'Content-Type': 'application/json', ...(A.token ? {'Authorization': 'Bearer ' + A.token} : {}), ...(opts.headers || {})}});
+        } catch (e) { throw Object.assign(new Error(A_UNREACHABLE), {status: 0}); }
         const j = await r.json().catch(() => ({}));
         if (r.status === 401) { A.token = ''; sessionStorage.removeItem('fubA:' + this.wallet); }
-        if (!r.ok) { throw new Error(j.message || ('Error ' + r.status)); }
+        if (!r.ok) { throw Object.assign(new Error(r.status === 401 ? 'Your assistant session expired. Please sign in again.' : (j.message || ('Error ' + r.status))), {status: r.status}); }
+        if (A.error === A_UNREACHABLE) { A.error = ''; } // reachable again
         return j;
     },
     async aLogin() {
@@ -414,21 +430,106 @@ Alpine.data('fubStudio', (draftId) => ({
     async aSend() {
         const A = this.assistant;
         const text = (A.input || '').trim();
-        if (!text || !A.conv) { return; }
+        if (!text || !A.conv || A.busy) { return; }
         const lvl = this.aLevel();
         if (lvl && A.tank && Number(A.tank.balance) < Number(lvl.price)) { A.error = 'Your tank needs at least ' + fmtDust(lvl.price) + ' for this level.'; return; }
         A.busy = 'Thinking\u2026';
         A.error = '';
         A.messages.push({role: 'user', content: text});
         A.input = '';
+        // thinking levels outlast the request: after a while say so (the API then answers 202 and we poll)
+        const slow = setTimeout(() => { if (A.busy === 'Thinking\u2026') { A.busy = A_SLOW; } }, 12000);
         try {
             const r = await this.aFetch('/api/v1/conversations/' + A.conv.id + '/messages', {method: 'POST', body: JSON.stringify({content: text, level: A.level})});
-            A.messages.push(r.message);
-            A.tank = r.tank || A.tank;
-            if (r.pendingConfirm) { A.confirm = r.pendingConfirm; }
-            await this.load();
-        } catch (e) { A.error = e.message; }
+            await this.aFinish(r, false);
+        } catch (e) {
+            A.error = e.message;
+            await this.aTank();
+        }
+        clearTimeout(slow);
         A.busy = '';
+    },
+    // Reply, or a background run (202 {pending: {run, poll}}) that we poll until its reply is in the conversation.
+    async aFinish(r, resumed) {
+        const A = this.assistant;
+        if (r.pending) {
+            A.busy = A_SLOW;
+            if (r.tank) { A.tank = {...(A.tank || {}), ...r.tank}; } // already reserved: shows the lower tank right away
+            sessionStorage.setItem('fubA:run:' + this.id, r.pending.poll);
+            r = await this.aPoll(r.pending.poll);
+            if (!r) { A.error = 'Lost contact with this request. Its reply will appear in the conversation when it is done: close and reopen the assistant in a few minutes.'; return; }
+            sessionStorage.removeItem('fubA:run:' + this.id);
+        }
+        if (resumed) {
+            const c = await this.aFetch('/api/v1/conversations/' + A.conv.id); // the reply is stored there already
+            A.messages = c.messages || [];
+        } else if (r.message) {
+            A.messages.push(r.message);
+        }
+        if (r.pendingConfirm) { A.confirm = r.pendingConfirm; }
+        const st = r.message && r.message.receipt ? r.message.receipt.status : '';
+        if (st === 'refunded') { A.error = 'That request did not work out, so your \u0110UST was refunded. Please try again.'; }
+        if (st === 'failed') { A.error = 'That request stopped part-way. The changes listed in its receipt were saved.'; }
+        await this.aTank();
+        await this.load();
+    },
+    async aPoll(url) {
+        const A = this.assistant;
+        const t0 = Date.now();
+        let fails = 0;
+        let writes = -1;
+        while (Date.now() - t0 < 17 * 60 * 1000) { // the server stops a run after 15 min (and refunds it)
+            await new Promise((ok) => setTimeout(ok, 4000));
+            let r;
+            try { r = await this.aFetch(url); fails = 0; } catch (e) {
+                if ([401, 403, 404].includes(e.status) || ++fails >= 10) { return null; }
+                continue; // transient: keep polling
+            }
+            if (!r.pending) { return r; }
+            const s = Math.round((Date.now() - t0) / 1000);
+            A.busy = A_SLOW + ' ' + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+            const n = ((r.run && r.run.actions) || []).filter((a) => a.ok && !A_READS.includes(a.tool)).length;
+            if (n !== writes) { // show new layers/items as they land
+                if (writes >= 0) { try { this.setDraft((await ax().get('/api/fub/drafts/' + this.id)).data); } catch (e) { /* next time */ } }
+                writes = n;
+            }
+        }
+        return null;
+    },
+    // After a page reload / reopen: pick up a background run that was still thinking.
+    async aResume() {
+        const A = this.assistant;
+        const url = sessionStorage.getItem('fubA:run:' + this.id);
+        if (!url || A.busy || !A.conv) { return; }
+        A.busy = A_SLOW;
+        try {
+            const r = await this.aFetch(url);
+            await this.aFinish(r, true);
+        } catch (e) {
+            sessionStorage.removeItem('fubA:run:' + this.id);
+            if (e.status !== 404) { A.error = e.message; }
+        }
+        A.busy = '';
+    },
+    async aTank() {
+        const A = this.assistant;
+        try { A.tank = await this.aFetch('/api/v1/tank'); } catch (e) { /* keep the last known value */ }
+    },
+    aReceipt(rc) {
+        if (!rc) { return ''; }
+        const A = this.assistant;
+        const l = A && A.meta ? A.meta.levels.find((x) => x.key === rc.level) : null;
+        const parts = [l ? l.name : rc.level];
+        if (rc.status === 'running') { parts.push(fmtDust(rc.charged) + ' reserved'); }
+        else if (rc.status === 'refunded') { parts.push('refunded, nothing charged'); }
+        else if (rc.status === 'blocked') { parts.push('not run, nothing charged'); }
+        else { parts.push('charged ' + fmtDust(rc.charged)); }
+        if (rc.status === 'failed') { parts.push('stopped part-way'); }
+        const n = (rc.actions || []).filter((a) => a.ok && !A_READS.includes(a.tool)).length;
+        if (n) { parts.push(n + (n === 1 ? ' change' : ' changes')); }
+        if (rc.seconds) { parts.push(Math.round(rc.seconds) + ' s'); }
+        if (rc.balanceAfter !== undefined) { parts.push('tank ' + fmtDust(rc.balanceAfter)); }
+        return 'Receipt #' + rc.run + ': ' + parts.join(' \u00b7 ');
     },
     async aConfirm(yes) {
         const A = this.assistant;
@@ -438,6 +539,7 @@ Alpine.data('fubStudio', (draftId) => ({
         try {
             const r = await this.aFetch('/api/v1/conversations/' + A.conv.id + '/confirm', {method: 'POST', body: JSON.stringify({action_id: c.id, approve: !!yes})});
             if (r.message) { A.messages.push(r.message); }
+            if (r.tank) { A.tank = {...(A.tank || {}), ...r.tank}; }
             await this.load();
         } catch (e) { A.error = e.message; }
     },
