@@ -214,7 +214,7 @@
                             {{-- tank: refill any amount (burned on chain), quick chips, running totals (token-metered, Luca 2026-11-27) --}}
                             <div class="fub-row" style="margin:4px 0;font-size:14px;flex-wrap:wrap;gap:6px" data-fub="assistant-tank">
                                 <b x-text="'Tank ' + fmtDust2(assistant.tank.balance)" data-fub="assistant-balance"></b>
-                                <span class="muted" style="font-size:12px" x-show="assistant.convTotal > 0" x-text="'this conversation: ' + fmtDust2(assistant.convTotal)" data-fub="assistant-conv-total"></span>
+                                <span class="muted" style="font-size:12px" x-show="assistant.convTotal > 0 || assistant.live" x-text="'this conversation: ' + fmtDust2(Number(assistant.convTotal || 0) + (assistant.live ? Number(assistant.live.burned || 0) : 0))" data-fub="assistant-conv-total"></span>
                             </div>
                             <div class="fub-row" style="margin:2px 0;font-size:13px;flex-wrap:wrap;gap:6px" data-fub="assistant-refill">
                                 <input type="text" inputmode="numeric" x-model="assistant.refillAmount" :placeholder="'Đ ' + assistant.meta.refill.min + '–' + assistant.meta.refill.max.toLocaleString('en-US')" aria-label="Refill amount in ĐUST" style="border-radius:6px;color:#1A1E2D;background:#fff;width:120px;padding:2px 6px" data-fub="assistant-refill-amount">
