@@ -89,7 +89,7 @@ class FubPagesController extends Controller
     {
         return [
             'contract' => FubSupport::contract(), 'islands' => \App\Support\Islands::contract(),
-            'network' => config('fub.network', env('FLOW_NETWORK', 'emulator')),
+            'network' => (string) config('services.flow.network'),
             'assistantUrl' => (string) config('fub.assistant_url', ''), 'contentBase' => FubSupport::contentUrl(''),
             'tosHash' => self::tosHash(),
         ];
