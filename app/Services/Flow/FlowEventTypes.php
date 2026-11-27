@@ -83,6 +83,12 @@ class FlowEventTypes
         return array_map(fn ($e) => \App\Support\Islands::typeId($e), self::ISLAND_EVENTS);
     }
 
+    /** A.<fub>.FlovatarUniverseBuilder.<event> while the FUB feature is active (else []). */
+    public static function fubTypes(): array
+    {
+        return \App\Services\Fub\FubEventProcessor::types();
+    }
+
     public static function isIsland(string $type): bool
     {
         return \App\Support\Islands::active() && str_starts_with($type, 'A.'.\App\Support\Islands::contractHex().'.FlovatarAsteroidIsland.');
@@ -91,9 +97,14 @@ class FlowEventTypes
     /** Extra contract addresses the stream must follow (the island contract when it lives elsewhere). */
     public static function extraAddresses(): array
     {
-        $hex = \App\Support\Islands::active() ? \App\Support\Islands::contractHex() : '';
+        $out = [];
+        foreach ([\App\Support\Islands::active() ? \App\Support\Islands::contractHex() : '', \App\Support\Fub::active() ? \App\Support\Fub::contractHex() : ''] as $hex) {
+            if ($hex !== '' && $hex !== static::contractAddress() && ! in_array('0x'.$hex, $out, true)) {
+                $out[] = '0x'.$hex;
+            }
+        }
 
-        return ($hex !== '' && $hex !== static::contractAddress()) ? ['0x'.$hex] : [];
+        return $out;
     }
 
     public static function storefrontTypes(): array
@@ -128,6 +139,9 @@ class FlowEventTypes
         if (\App\Support\Islands::active()) {
             $types[] = \App\Support\Islands::typeId('NFT'); // island transfers (the contract has no own Deposit event)
         }
+        if (\App\Support\Fub::active()) {
+            $types[] = \App\Support\Fub::typeId('NFT'); // F.U.N. transfers
+        }
 
         return $types;
     }
@@ -140,7 +154,7 @@ class FlowEventTypes
 
     public static function all(): array
     {
-        return array_merge(static::contractTypes(), static::islandTypes(), static::storefrontTypes(), static::standardTypes());
+        return array_merge(static::contractTypes(), static::islandTypes(), static::fubTypes(), static::storefrontTypes(), static::standardTypes());
     }
 
     public static function isStorefront(string $type): bool
