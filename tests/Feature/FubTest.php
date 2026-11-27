@@ -351,6 +351,69 @@ class FubTest extends TestCase
         }
     }
 
+    public function test_layers_reorder_by_full_order_or_single_move_in_studio_and_tool_api(): void
+    {
+        $this->on();
+        $d = $this->draftFor(self::ALICE, ['critter' => 'Critter', 'hat' => 'Hat', 'wings' => 'Wings']);
+        $order = fn () => $d->fresh()->layers()->pluck('key')->all();
+        $g = $this->grantFor($d);
+
+        // tool API: move one layer to the back (position 0 = drawn first = behind everything)
+        $r = $this->tool('POST', 'layers/reorder', ['key' => 'wings', 'position' => 0], $g)->assertOk();
+        $this->assertSame(['wings', 'critter', 'hat'], array_column($r->json('draft.layers'), 'key'));
+        $this->assertSame(['wings', 'critter', 'hat'], $order());
+        $this->assertDatabaseHas('fub_tool_calls', ['fub_draft_id' => $d->id, 'source' => 'assistant', 'tool' => 'reorder_layers']);
+        $rev = $d->fresh()->revision;
+        // tool API: full order (a permutation of every key)
+        $this->tool('POST', 'layers/reorder', ['keys' => ['critter', 'wings', 'hat']], $g)->assertOk();
+        $this->assertSame(['critter', 'wings', 'hat'], $order());
+        $this->assertSame($rev + 1, $d->fresh()->revision);
+        // same order again: no-op (no revision bump, no extra log row)
+        $calls = DB::table('fub_tool_calls')->where('fub_draft_id', $d->id)->count();
+        $this->tool('POST', 'layers/reorder', ['keys' => ['critter', 'wings', 'hat']], $g)->assertOk();
+        $this->assertSame([$rev + 1, $calls], [$d->fresh()->revision, DB::table('fub_tool_calls')->where('fub_draft_id', $d->id)->count()]);
+
+        // not a permutation / bad shapes -> 422, order untouched
+        foreach ([['keys' => ['critter', 'wings']], ['keys' => ['critter', 'wings', 'hat', 'hat']], ['keys' => ['critter', 'critter', 'hat']],
+            ['keys' => ['critter', 'wings', 'nope']], ['keys' => 'critter,wings,hat'], ['keys' => ['critter', ['wings'], 'hat']],
+            ['keys' => ['a' => 'critter', 'b' => 'wings', 'c' => 'hat']], ['key' => 'nope', 'position' => 0], ['key' => 'hat', 'position' => 3],
+            ['key' => 'hat', 'position' => -1], ['key' => 'hat'], []] as $bad) {
+            $this->tool('POST', 'layers/reorder', $bad, $g)->assertStatus(422);
+        }
+        $this->assertSame(['critter', 'wings', 'hat'], $order());
+
+        // studio: the owner's arrows send the full order; the move form works too; others can't touch it
+        $this->as(self::ALICE)->postJson("/api/fub/drafts/{$d->id}/layers/reorder", ['keys' => ['wings', 'critter', 'hat']])->assertOk()
+            ->assertJsonPath('layers.0.key', 'wings');
+        $this->as(self::ALICE)->postJson("/api/fub/drafts/{$d->id}/layers/reorder", ['key' => 'hat', 'position' => 0])->assertOk()
+            ->assertJsonPath('layers.0.key', 'hat');
+        $this->as(self::BOB)->postJson("/api/fub/drafts/{$d->id}/layers/reorder", ['keys' => ['critter', 'wings', 'hat']])->assertNotFound();
+        $this->assertSame(['hat', 'wings', 'critter'], $order());
+
+        // another wallet's grant can't reorder this draft (scope = the granted draft)
+        $b = $this->draftFor(self::BOB, ['x' => 'X', 'y' => 'Y']);
+        $this->tool('POST', 'layers/reorder', ['keys' => ['critter', 'wings', 'hat']], $this->grantFor($b))->assertStatus(422);
+        $this->assertSame(['hat', 'wings', 'critter'], $order());
+        $this->tool('POST', 'layers/reorder', ['keys' => ['y', 'x']], $g)->assertStatus(422);
+        $this->assertSame(['x', 'y'], $b->fresh()->layers()->pluck('key')->all());
+
+        // published FUBs are frozen
+        $d->update(['status' => 'published']);
+        $this->tool('POST', 'layers/reorder', ['keys' => ['critter', 'wings', 'hat']], $g)->assertStatus(422);
+        $this->assertSame(['hat', 'wings', 'critter'], $order());
+    }
+
+    public function test_a_reorder_on_a_committed_draft_syncs_the_layer_order(): void
+    {
+        $d = $this->draftFor(self::ALICE);
+        $d->update(['chain_fub_id' => 9, 'description' => '', 'settings' => ['royalty' => 0.05, 'unique' => true, 'max_supply' => 500, 'license' => 'holder-commercial']]);
+        $this->assertSame([], array_column(DraftSync::plan($d->fresh(), $this->chainFub(), []), 'op'));
+        $this->app->make(\App\Services\Fub\DraftEditor::class)->moveLayer(self::ALICE, $d, 'hat', 0);
+        $plan = DraftSync::plan($d->fresh(), $this->chainFub(), []);
+        $this->assertSame(['setLayers'], array_column($plan, 'op'));
+        $this->assertSame('pending', $d->fresh()->sync_state);
+    }
+
     public function test_grants_expire_and_can_be_revoked(): void
     {
         $this->on();

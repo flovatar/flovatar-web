@@ -52,8 +52,8 @@
                                     <span class="fub-badge" x-text="l.required ? 'required' : 'optional'"></span>
                                     <template x-if="!published">
                                         <span>
-                                            <button class="isl-link" @click="moveLayer(li, -1)" title="Move down (drawn earlier)">↑</button>
-                                            <button class="isl-link" @click="moveLayer(li, 1)" title="Move up (drawn later)">↓</button>
+                                            <button class="isl-link" @click="moveLayer(li, -1)" title="Move toward the back (drawn earlier)" aria-label="Move layer toward the back">↑</button>
+                                            <button class="isl-link" @click="moveLayer(li, 1)" title="Move toward the front (drawn later)" aria-label="Move layer toward the front">↓</button>
                                             <button class="isl-link" @click="renameLayer(l)">Rename</button>
                                             <button class="isl-link" @click="toggleRequired(l)" x-text="l.required ? 'Make optional' : 'Make required'"></button>
                                             <button class="isl-link" @click="deleteLayer(l)">Delete</button>

@@ -170,21 +170,65 @@ class DraftEditor
         return $l;
     }
 
+    /**
+     * Reorder from request input (studio and assistant tool API): either the full order {keys: [back ... front]} or a
+     * single move {key, position} (0 = drawn first = the back). Layers are drawn in order, so the first layer is the back.
+     */
+    public function reorder(string $actor, FubDraft $d, array $in, string $source = 'studio'): void
+    {
+        if (array_key_exists('keys', $in)) {
+            if (! is_array($in['keys'])) {
+                throw ValidationException::withMessages(['keys' => 'keys must be the list of every layer key, back to front']);
+            }
+            $this->reorderLayers($actor, $d, $in['keys'], $source);
+
+            return;
+        }
+        $v = Validator::make($in, ['key' => ['required', 'string', 'max:16'], 'position' => ['required', 'integer']])->validate();
+        $this->moveLayer($actor, $d, $v['key'], (int) $v['position'], $source);
+    }
+
+    /** Full new drawing order: every layer key exactly once, first = back. Same layer count, so tier caps can't be exceeded. */
     public function reorderLayers(string $actor, FubDraft $d, array $keys, string $source = 'studio'): void
     {
         $this->authorize($actor, $d);
         $this->editable($d);
-        $have = $d->layers()->pluck('key')->sort()->values()->all();
-        $want = collect($keys)->map(fn ($k) => (string) $k)->sort()->values()->all();
-        if ($have !== $want) {
-            throw ValidationException::withMessages(['keys' => 'Give every layer key exactly once']);
-        }
         $old = $d->layers()->pluck('key')->all();
-        foreach (array_values($keys) as $i => $k) {
-            $d->layers()->where('key', $k)->update(['position' => $i]);
+        if (! array_is_list($keys) || collect($keys)->contains(fn ($k) => ! is_string($k))) {
+            throw ValidationException::withMessages(['keys' => 'keys must be a list of layer keys (strings), back to front']);
         }
+        $have = collect($old)->sort()->values()->all();
+        $want = collect($keys)->sort()->values()->all();
+        if ($have !== $want) {
+            throw ValidationException::withMessages(['keys' => 'Give every layer key exactly once (have: '.implode(', ', $old).')']);
+        }
+        if ($keys === $old) {
+            return; // already in this order: no revision bump, no chain sync
+        }
+        DB::transaction(function () use ($d, $keys) {
+            foreach ($keys as $i => $k) {
+                $d->layers()->where('key', $k)->update(['position' => $i]);
+            }
+        });
         $this->touch($d);
-        $this->log($d, $actor, $source, 'reorder_layers', true, 'Reordered layers', ['reorder' => $old]);
+        $this->log($d, $actor, $source, 'reorder_layers', true, 'Reordered layers: '.implode(', ', $keys), ['reorder' => $old]);
+    }
+
+    /** Move one layer to a 0-based position in the drawing order (0 = back, layer count - 1 = front). */
+    public function moveLayer(string $actor, FubDraft $d, string $key, int $position, string $source = 'studio'): void
+    {
+        $this->authorize($actor, $d);
+        $keys = $d->layers()->pluck('key')->all();
+        $from = array_search($key, $keys, true);
+        if ($from === false) {
+            throw ValidationException::withMessages(['key' => 'No layer "'.$key.'" in this draft (have: '.implode(', ', $keys).')']);
+        }
+        if ($position < 0 || $position >= count($keys)) {
+            throw ValidationException::withMessages(['position' => 'position must be between 0 (back) and '.(count($keys) - 1).' (front)']);
+        }
+        array_splice($keys, $from, 1);
+        array_splice($keys, $position, 0, [$key]);
+        $this->reorderLayers($actor, $d, $keys, $source);
     }
 
     public function deleteLayer(string $actor, FubDraft $d, string $key, bool $confirmed, string $source = 'studio'): void

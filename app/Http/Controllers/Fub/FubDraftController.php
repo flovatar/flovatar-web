@@ -116,7 +116,7 @@ class FubDraftController extends Controller
     {
         $a = $this->actor();
         $d = $this->draft($id, $a);
-        $this->editor->reorderLayers($a, $d, (array) $request->input('keys', []));
+        $this->editor->reorder($a, $d, $request->only(['keys', 'key', 'position']));
         $this->maybeSync($d->fresh());
 
         return response()->json($this->editor->snapshot($d->fresh()));
