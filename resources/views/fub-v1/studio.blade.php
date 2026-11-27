@@ -212,7 +212,7 @@
                         <div style="display:flex;flex-direction:column;min-height:0;flex:1">
                             <div class="fub-row" style="margin:4px 0;font-size:14px">
                                 <span x-text="'Tank ' + fmtDust(assistant.tank.balance)"></span>
-                                <select x-model.number="assistant.refillAmount" style="border-radius:6px;color:#1A1E2D"><template x-for="p in (assistant.meta.refillPresets || [])"><option :value="p" x-text="fmtDust(p)"></option></template></select>
+                                <select x-model.number="assistant.refillAmount" style="border-radius:6px;color:#1A1E2D;background:#fff;width:auto;padding:2px 6px"><template x-for="p in (assistant.meta.refillPresets || [])"><option :value="p" x-text="fmtDust(p)"></option></template></select>
                                 <button class="isl-link" @click="aRefill()">Refill (burn)</button>
                             </div>
                             <div class="fub-row" style="margin:4px 0;font-size:14px">
