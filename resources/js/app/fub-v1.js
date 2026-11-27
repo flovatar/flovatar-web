@@ -17,7 +17,7 @@ import Alpine from 'alpinejs';
 import * as fcl from '@onflow/fcl';
 import {mutate} from '../flow/fcl-tx';
 import * as C from '../fub/cadence.mjs';
-import {precheckSvg, fmtDust, fmtBytes, curvePrice, totalOf, selectionProblems, randomPicks, pickIds, txErrorText, apiErrorText, capacityOf, RARITIES} from '../fub/util.mjs';
+import {precheckSvg, fmtDust, fmtBytes, curvePrice, totalOf, selectionProblems, randomPicks, pickIds, txErrorText, apiErrorText, capacityOf, RARITIES, fmtDust2, mmss, refillProblem, parseDust, voiceLimit, voiceCost, receiptText} from '../fub/util.mjs';
 
 const CFG = window.FUB || null;
 
@@ -67,7 +67,7 @@ function walletMixin() {
             // success: handleLoginResponse reloads the page with the server session
             Promise.resolve(window.createSignature(window.loginMessage)).finally(() => { setTimeout(() => { this.verifying = false; }, 20000); });
         },
-        fmtDust, fmtBytes,
+        fmtDust, fmtBytes, fmtDust2, mmss,
         short(a) { return a ? a.slice(0, 6) + '\u2026' + a.slice(-4) : ''; },
     };
 }
@@ -384,10 +384,13 @@ Alpine.data('fubStudio', (draftId) => ({
         await this.api('delete', '?confirm=1', null, 'Deleting\u2026');
         window.location.href = '/fub';
     },
-    // ----- design assistant (optional; name, levels and prices come from its /api/v1/meta at runtime)
+    // ----- design assistant (optional; name, levels, models and token prices come from its /api/v1/meta at runtime)
+    // Token-metered (Luca 2026-11-27): refill any amount; each message burns ĐUST for the tokens it used; a run goes on
+    // while the tank can pay; voice up to 10 minutes with a live timer + Đ counter.
     async openAssistant() {
         if (!CFG.assistantUrl) { return; }
-        this.assistant = this.assistant || {open: true, meta: null, token: '', conv: null, messages: [], input: '', level: '', busy: '', error: '', tank: null, recording: false, refillAmount: 0, confirm: null};
+        this.assistant = this.assistant || {open: true, meta: null, token: '', conv: null, messages: [], input: '', level: '', busy: '', error: '', tank: null, recording: false,
+            refillAmount: '', confirm: null, dry: false, convTotal: 0, live: null, recSec: 0, recLimit: 0, voiceNote: ''};
         this.assistant.open = true;
         const A = this.assistant;
         if (!A.busy) { A.error = ''; } // reopening retries: an old "not reachable" must not stick
@@ -397,7 +400,8 @@ Alpine.data('fubStudio', (draftId) => ({
             A.meta = await m.json();
         } catch (e) { A.error = A_UNREACHABLE; return; }
         A.level = A.level || (A.meta.levels[0] && A.meta.levels[0].key);
-        A.refillAmount = A.refillAmount || (A.meta.refillPresets || [])[0] || 0;
+        A.meta.refill = A.meta.refill || {min: 100, max: 10000000, chips: A.meta.refillPresets || []};
+        A.refillAmount = A.refillAmount || String((A.meta.refill.chips || [])[1] || (A.meta.refill.chips || [])[0] || '');
         A.token = A.token || sessionStorage.getItem('fubA:' + this.wallet) || '';
         if (!A.token) { return; }
         try {
@@ -439,23 +443,33 @@ Alpine.data('fubStudio', (draftId) => ({
             const g = (await ax().post('/api/fub/drafts/' + this.id + '/grant')).data;
             A.conv = await this.aFetch('/api/v1/conversations', {method: 'POST', body: JSON.stringify({draft_id: this.id, grant: g.grant})});
             A.messages = A.conv.messages || [];
+            A.convTotal = Number(A.conv.conversationTotal || 0);
         }
     },
+    aLevelLabel(l) { return l.name + ' \u00b7 ' + l.model + (l.effort ? ' (' + l.effort + ')' : ''); },
+    aLevelBurn(l) { return '\u2248 ' + fmtDust(Math.round(Number(l.indicativeDust || 0))) + ' per message'; },
+    aRefillError() { const A = this.assistant; return A && A.meta ? refillProblem(A.refillAmount, A.meta.refill.min, A.meta.refill.max) : ''; },
+    aVoiceLimit() { const A = this.assistant; return A && A.meta ? voiceLimit(A.tank && A.tank.voice, A.meta.voice) : 0; },
+    aVoiceRate() { const A = this.assistant; return A && A.meta && A.meta.voice ? Number(A.meta.voice.dustPerSecond || 0) : 0; },
+    aRecCost() { const A = this.assistant; return voiceCost(A ? A.recSec : 0, this.aVoiceRate()); },
     aLevel() { const A = this.assistant; return A && A.meta ? A.meta.levels.find((l) => l.key === A.level) : null; },
     async aSend() {
         const A = this.assistant;
         const text = (A.input || '').trim();
         if (!text || !A.conv || A.busy) { return; }
         const lvl = this.aLevel();
-        if (lvl && A.tank && Number(A.tank.balance) < Number(lvl.price)) { A.error = 'Your tank needs at least ' + fmtDust(lvl.price) + ' for this level.'; return; }
+        // no fixed price: the tank must hold about one step of this level (the run then goes on while the tank pays)
+        if (lvl && A.tank && Number(A.tank.balance) < Number(lvl.minToStart || 0)) { A.dry = true; A.error = 'Your tank needs at least ' + fmtDust2(lvl.minToStart) + ' to start a ' + lvl.name + ' message. Refill to continue.'; return; }
         A.busy = 'Thinking\u2026';
         A.error = '';
+        A.dry = false;
+        A.live = {burned: 0, steps: 0};
         A.messages.push({role: 'user', content: text});
         A.input = '';
         A.sentAt = Date.now();
         // thinking levels outlast the request: after a while say so (the API then answers 202 and we poll)
         const slow = setTimeout(() => { if (A.busy === 'Thinking\u2026') { A.busy = A_SLOW; } }, 12000);
-        setTimeout(() => { if (A.busy) { this.aTank(); } }, 2500); // the price is reserved as soon as the run starts
+
         try {
             const r = await this.aFetch('/api/v1/conversations/' + A.conv.id + '/messages', {method: 'POST', body: JSON.stringify({content: text, level: A.level})});
             await this.aFinish(r, false);
@@ -471,7 +485,7 @@ Alpine.data('fubStudio', (draftId) => ({
         const A = this.assistant;
         if (r.pending) {
             A.busy = A_SLOW;
-            if (r.tank) { A.tank = {...(A.tank || {}), ...r.tank}; } // already reserved: shows the lower tank right away
+            if (r.tank) { A.tank = {...(A.tank || {}), ...r.tank}; }
             sessionStorage.setItem('fubA:run:' + this.id, r.pending.poll);
             r = await this.aPoll(r.pending.poll);
             if (!r) { A.error = 'Lost contact with this request. Its reply will appear in the conversation when it is done: close and reopen the assistant in a few minutes.'; return; }
@@ -484,9 +498,14 @@ Alpine.data('fubStudio', (draftId) => ({
             A.messages.push(r.message);
         }
         if (r.pendingConfirm) { A.confirm = r.pendingConfirm; }
-        const st = r.message && r.message.receipt ? r.message.receipt.status : '';
-        if (st === 'refunded') { A.error = 'That request did not work out, so your \u0110UST was refunded. Please try again.'; }
-        if (st === 'failed') { A.error = 'That request stopped part-way. The changes listed in its receipt were saved.'; }
+        const rc = r.message && r.message.receipt ? r.message.receipt : {};
+        const st = rc.status || '';
+        A.live = null;
+        if (rc.conversationTotal !== undefined && rc.conversationTotal !== null) { A.convTotal = Number(rc.conversationTotal); }
+        if (r.conversationTotal !== undefined && r.conversationTotal !== null) { A.convTotal = Number(r.conversationTotal); }
+        if (st === 'refunded') { A.error = 'That request did not work out, so nothing was charged. Please try again.'; }
+        if (st === 'failed') { A.error = 'That request stopped part-way. The changes listed in its receipt were saved; you paid only for the tokens used.'; }
+        if (st === 'stopped' && rc.stopReason === 'tank') { A.dry = true; } // tank-dry state: Refill, then say "continue"
         await this.aTank();
         await this.load();
     },
@@ -495,7 +514,7 @@ Alpine.data('fubStudio', (draftId) => ({
         const t0 = Date.now();
         let fails = 0;
         let writes = -1;
-        while (Date.now() - t0 < 17 * 60 * 1000) { // the server stops a run after 15 min (and refunds it)
+        while (Date.now() - t0 < 25 * 60 * 1000) { // the server starts no new step after 15 min (the last one may take 5 more)
             await new Promise((ok) => setTimeout(ok, 4000));
             let r;
             try { r = await this.aFetch(url); fails = 0; } catch (e) {
@@ -504,7 +523,12 @@ Alpine.data('fubStudio', (draftId) => ({
             }
             if (!r.pending) { return r; }
             const s = Math.round((Date.now() - (A.sentAt || t0)) / 1000); // time since Send, not since polling began
-            A.busy = A_SLOW + ' ' + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+            // live Đ burned so far (per-step debits) + steps, from the run status
+            const burned = Number((r.run && r.run.burned) || (r.pending && r.pending.burned) || 0);
+            const steps = Number((r.run && r.run.steps) || (r.pending && r.pending.steps) || 0);
+            A.live = {burned, steps};
+            if (r.tank) { A.tank = {...(A.tank || {}), balance: r.tank.balance}; }
+            A.busy = A_SLOW + ' ' + mmss(s) + ' \u00b7 ' + fmtDust2(burned) + ' burned' + (steps ? ' \u00b7 ' + steps + (steps === 1 ? ' step' : ' steps') : '');
             const n = ((r.run && r.run.actions) || []).filter((a) => a.ok && !A_READS.includes(a.tool)).length;
             if (n !== writes) { // show new layers/items as they land
                 if (writes >= 0) { try { this.setDraft((await ax().get('/api/fub/drafts/' + this.id)).data); } catch (e) { /* next time */ } }
@@ -537,18 +561,12 @@ Alpine.data('fubStudio', (draftId) => ({
         if (!rc) { return ''; }
         const A = this.assistant;
         const l = A && A.meta ? A.meta.levels.find((x) => x.key === rc.level) : null;
-        const parts = [l ? l.name : rc.level];
-        if (rc.status === 'running') { parts.push(fmtDust(rc.charged) + ' reserved'); }
-        else if (rc.status === 'refunded') { parts.push('refunded, nothing charged'); }
-        else if (rc.status === 'blocked') { parts.push('not run, nothing charged'); }
-        else { parts.push('charged ' + fmtDust(rc.charged)); }
-        if (rc.status === 'failed') { parts.push('stopped part-way'); }
+        let t = receiptText(rc, l ? l.name : rc.level);
         const n = (rc.actions || []).filter((a) => a.ok && !A_READS.includes(a.tool)).length;
-        if (n) { parts.push(n + (n === 1 ? ' change' : ' changes')); }
-        if (rc.seconds) { parts.push(Math.round(rc.seconds) + ' s'); }
-        if (rc.balanceAfter !== undefined) { parts.push('tank ' + fmtDust(rc.balanceAfter)); }
-        return 'Receipt #' + rc.run + ': ' + parts.join(' \u00b7 ');
+        if (n) { t += ' \u00b7 ' + n + (n === 1 ? ' change' : ' changes'); }
+        return t;
     },
+    aBurned(rc) { return rc && !['refunded', 'blocked', 'running'].includes(rc.status) ? fmtDust2(rc.charged) + ' burned' : ''; },
     async aConfirm(yes) {
         const A = this.assistant;
         const c = A.confirm;
@@ -563,16 +581,20 @@ Alpine.data('fubStudio', (draftId) => ({
     },
     async aRefill() {
         const A = this.assistant;
-        const amt = Number(A.refillAmount);
-        if (!amt) { return; }
-        if (!confirm('Refilling burns ' + fmtDust(amt) + ' from your wallet. Continue?')) { return; }
+        const bad = this.aRefillError();
+        if (bad) { A.error = bad; return; }
+        const amt = parseDust(A.refillAmount);
+        if (!confirm('Refilling burns ' + fmtDust(amt) + ' from your wallet into your tank. Continue?')) { return; }
         A.busy = 'Waiting for your wallet\u2026';
         try {
             const ref = (await this.aFetch('/api/v1/tank/refills/intent', {method: 'POST', body: JSON.stringify({amount: amt})})).ref;
             const txId = await mutate({cadence: C.REFILL_TANK_TX, args: (arg, t) => [arg(amt.toFixed(8), t.UFix64), arg(ref, t.String)], limit: 9999});
             A.busy = 'Burning on chain\u2026';
             await sealed(txId);
-            A.tank = await this.aFetch('/api/v1/tank/refills', {method: 'POST', body: JSON.stringify({tx: txId})});
+            await this.aFetch('/api/v1/tank/refills', {method: 'POST', body: JSON.stringify({tx: txId})});
+            await this.aTank();
+            A.dry = false;
+            A.error = '';
             this.dust = await dustBalance(this.wallet);
         } catch (e) { A.error = txErrorText(e); }
         A.busy = '';
@@ -580,33 +602,50 @@ Alpine.data('fubStudio', (draftId) => ({
     async aRecord() {
         const A = this.assistant;
         if (A.recording) { if (A.rec) { A.rec.stop(); } return; }
-        const lvl = this.aLevel();
-        const maxSec = (lvl && lvl.voiceSeconds) || 30;
+        await this.aTank(); // fresh affordable seconds
+        const maxSec = this.aVoiceLimit();
+        if (maxSec < 1) { A.error = 'Your tank cannot pay for voice right now (' + fmtDust2(this.aVoiceRate() * 60) + ' per minute). Refill first.'; A.dry = true; return; }
+        A.voiceNote = '';
         try {
             const stream = await navigator.mediaDevices.getUserMedia({audio: true});
             const chunks = [];
-            const rec = new MediaRecorder(stream);
+            let rec;
+            try { rec = new MediaRecorder(stream, {audioBitsPerSecond: 32000}); } catch (e) { rec = new MediaRecorder(stream); } // ~2.4 MB for 10 min
             A.rec = rec;
+            A.recSec = 0;
+            A.recLimit = maxSec;
+            const t0 = Date.now();
+            // live timer + Đ counter, updated every second; auto-stop at the limit (10 min or what the tank affords)
+            const tick = setInterval(() => {
+                A.recSec = Math.min(maxSec, (Date.now() - t0) / 1000);
+                if (A.recSec >= maxSec && rec.state === 'recording') { rec.stop(); }
+            }, 1000);
             rec.ondataavailable = (e) => chunks.push(e.data);
             rec.onstop = async () => {
+                clearInterval(tick);
                 A.recording = false;
+                A.recSec = Math.min(maxSec, (Date.now() - t0) / 1000);
                 stream.getTracks().forEach((t) => t.stop());
                 const blob = new Blob(chunks, {type: rec.mimeType || 'audio/webm'});
                 const fd = new FormData();
                 fd.append('audio', blob, 'voice.webm');
                 fd.append('level', A.level);
-                A.busy = 'Transcribing\u2026';
+                if (A.conv) { fd.append('conversation_id', A.conv.id); }
+                A.busy = 'Transcribing ' + mmss(A.recSec) + '\u2026';
                 try {
                     const r = await fetch(CFG.assistantUrl + '/api/v1/transcriptions', {method: 'POST', body: fd, headers: {'Accept': 'application/json', 'Authorization': 'Bearer ' + A.token}});
-                    const j = await r.json();
-                    if (!r.ok) { throw new Error(j.message || 'Transcription failed'); }
-                    A.input = j.text; // the user reviews/edits before sending
+                    const j = await r.json().catch(() => ({}));
+                    if (!r.ok) { throw new Error(j.message || (r.status === 413 ? 'This recording is too large to upload.' : 'Transcription failed')); }
+                    A.input = (A.input ? A.input + ' ' : '') + j.text; // the user reviews/edits before sending
+                    A.voiceNote = 'Voice ' + mmss(j.seconds) + ' transcribed \u00b7 ' + fmtDust2(j.charged) + ' charged';
+                    if (j.tank) { A.tank = {...(A.tank || {}), balance: j.tank.balance, voice: {...((A.tank && A.tank.voice) || {}), affordableSeconds: j.tank.voiceSeconds}}; }
+                    if (j.conversationTotal !== undefined && j.conversationTotal !== null) { A.convTotal = Number(j.conversationTotal); }
                 } catch (e) { A.error = e.message; }
                 A.busy = '';
+                A.recSec = 0;
             };
-            rec.start();
+            rec.start(1000);
             A.recording = true;
-            setTimeout(() => { if (rec.state === 'recording') { rec.stop(); } }, maxSec * 1000);
         } catch (e) { A.error = 'Microphone not available.'; }
     },
 }));
