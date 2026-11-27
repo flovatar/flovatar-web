@@ -218,7 +218,7 @@
                             <div class="fub-row" style="margin:4px 0;font-size:14px">
                                 <template x-for="l in assistant.meta.levels" :key="l.key"><label><input type="radio" :value="l.key" x-model="assistant.level"> <span x-text="l.name + ' ' + fmtDust(l.price)"></span></label></template>
                             </div>
-                            <div class="msgs"><template x-for="(m, mi) in assistant.messages" :key="mi"><div class="m" :class="m.role" x-text="m.content"></div></template></div>
+                            <div class="msgs" x-effect="assistant.messages.length; $nextTick(() => { $el.scrollTop = $el.scrollHeight; })"><template x-for="(m, mi) in assistant.messages" :key="mi"><div class="m" :class="m.role"><span x-text="m.content"></span><template x-if="m.receipt"><small data-fub="assistant-receipt" style="display:block;margin-top:4px;font-size:12px;opacity:.7" x-text="aReceipt(m.receipt)"></small></template></div></template></div>
                             <template x-if="assistant.confirm"><div class="isl-notice"><p x-text="assistant.confirm.summary"></p><button class="fub-btn" @click="aConfirm(true)">Confirm</button> <button class="fub-btn alt" @click="aConfirm(false)">Cancel</button></div></template>
                             <textarea x-model="assistant.input" placeholder="Describe what to make or change…" style="border-radius:8px;padding:8px;color:#1A1E2D;min-height:60px"></textarea>
                             <div class="fub-row" style="margin:6px 0 0">
