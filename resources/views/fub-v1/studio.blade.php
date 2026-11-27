@@ -211,22 +211,42 @@
                     </template>
                     <template x-if="assistant.token && assistant.tank">
                         <div style="display:flex;flex-direction:column;min-height:0;flex:1">
-                            <div class="fub-row" style="margin:4px 0;font-size:14px">
-                                <span x-text="'Tank ' + fmtDust(assistant.tank.balance)"></span>
-                                <select x-model.number="assistant.refillAmount" style="border-radius:6px;color:#1A1E2D;background:#fff;width:auto;padding:2px 6px"><template x-for="p in (assistant.meta.refillPresets || [])"><option :value="p" x-text="fmtDust(p)"></option></template></select>
-                                <button class="isl-link" @click="aRefill()">Refill (burn)</button>
+                            {{-- tank: refill any amount (burned on chain), quick chips, running totals (token-metered, Luca 2026-11-27) --}}
+                            <div class="fub-row" style="margin:4px 0;font-size:14px;flex-wrap:wrap;gap:6px" data-fub="assistant-tank">
+                                <b x-text="'Tank ' + fmtDust2(assistant.tank.balance)" data-fub="assistant-balance"></b>
+                                <span class="muted" style="font-size:12px" x-show="assistant.convTotal > 0" x-text="'this conversation: ' + fmtDust2(assistant.convTotal)" data-fub="assistant-conv-total"></span>
                             </div>
-                            <div class="fub-row" style="margin:4px 0;font-size:14px">
-                                <template x-for="l in assistant.meta.levels" :key="l.key"><label><input type="radio" :value="l.key" x-model="assistant.level"> <span x-text="l.name + ' ' + fmtDust(l.price)"></span></label></template>
+                            <div class="fub-row" style="margin:2px 0;font-size:13px;flex-wrap:wrap;gap:6px" data-fub="assistant-refill">
+                                <input type="text" inputmode="numeric" x-model="assistant.refillAmount" :placeholder="'Đ ' + assistant.meta.refill.min + '–' + assistant.meta.refill.max.toLocaleString('en-US')" aria-label="Refill amount in ĐUST" style="border-radius:6px;color:#1A1E2D;background:#fff;width:120px;padding:2px 6px" data-fub="assistant-refill-amount">
+                                <template x-for="p in (assistant.meta.refill.chips || [])"><button type="button" class="isl-link" style="font-size:12px" @click="assistant.refillAmount = String(p)" x-text="fmtDust(p)"></button></template>
+                                <button class="fub-btn alt" style="padding:2px 10px" @click="aRefill()" :disabled="!!aRefillError() || !!assistant.busy" data-fub="assistant-refill-btn">Refill (burn)</button>
                             </div>
-                            <div class="msgs" x-effect="assistant.messages.length; $nextTick(() => { $el.scrollTop = $el.scrollHeight; })"><template x-for="(m, mi) in assistant.messages" :key="mi"><div class="m" :class="m.role"><span x-text="m.content"></span><template x-if="m.receipt"><small data-fub="assistant-receipt" style="display:block;margin-top:4px;font-size:12px;opacity:.7" x-text="aReceipt(m.receipt)"></small></template></div></template></div>
+                            <p class="muted" style="margin:0;font-size:12px;color:#ffb4b4" x-show="assistant.refillAmount !== '' && aRefillError()" x-text="aRefillError()"></p>
+                            <template x-if="assistant.dry">
+                                <div class="isl-notice" data-fub="assistant-dry" style="margin:4px 0"><p style="margin:0 0 4px">Your tank ran dry. Refill to continue: your changes so far are saved, and the assistant picks up where it stopped when you say “continue”.</p>
+                                    <button class="fub-btn" @click="aRefill()" :disabled="!!aRefillError() || !!assistant.busy" x-text="'Refill ' + (aRefillError() ? '' : fmtDust(Number(String(assistant.refillAmount).replace(/[,\s_]/g, ''))))"></button></div>
+                            </template>
+                            <div style="margin:4px 0;font-size:13px" data-fub="assistant-levels">
+                                <template x-for="l in assistant.meta.levels" :key="l.key"><label style="display:block"><input type="radio" :value="l.key" x-model="assistant.level"> <b x-text="aLevelLabel(l)"></b> <span class="muted" x-text="aLevelBurn(l)"></span></label></template>
+                                <small class="muted" style="display:block;font-size:11px;opacity:.75" x-show="assistant.meta.billing" x-text="'Billed for the tokens each message actually uses (' + Number(assistant.meta.billing ? assistant.meta.billing.dustPerUsd : 0).toLocaleString('en-US') + ' Đ per $1 of AI cost); the size only sets the model and how fast the tank empties.'"></small>
+                            </div>
+                            <div class="msgs" x-effect="assistant.messages.length; $nextTick(() => { $el.scrollTop = $el.scrollHeight; })"><template x-for="(m, mi) in assistant.messages" :key="mi"><div class="m" :class="m.role"><span x-text="m.content"></span><template x-if="m.receipt && aBurned(m.receipt)"><b data-fub="assistant-burned" style="display:block;margin-top:4px;font-size:12px" x-text="aBurned(m.receipt)"></b></template><template x-if="m.receipt"><small data-fub="assistant-receipt" style="display:block;margin-top:2px;font-size:12px;opacity:.7" x-text="aReceipt(m.receipt)"></small></template></div></template></div>
                             <template x-if="assistant.confirm"><div class="isl-notice"><p x-text="assistant.confirm.summary"></p><button class="fub-btn" @click="aConfirm(true)">Confirm</button> <button class="fub-btn alt" @click="aConfirm(false)">Cancel</button></div></template>
                             <textarea x-model="assistant.input" placeholder="Describe what to make or change…" style="border-radius:8px;padding:8px;color:#1A1E2D;background:#fff;min-height:60px"></textarea>
-                            <div class="fub-row" style="margin:6px 0 0">
-                                <button class="fub-btn alt" @click="aRecord()" x-text="assistant.recording ? 'Stop' : '🎤 Voice'"></button>
-                                <button class="fub-btn" @click="aSend()" :disabled="!!assistant.busy">Send</button>
-                                <span class="muted" x-text="assistant.busy"></span>
+                            {{-- voice: up to 10 min (or what the tank affords), live timer + Đ counter while recording --}}
+                            <div class="fub-row" style="margin:4px 0 0;font-size:13px" x-show="assistant.recording" data-fub="assistant-rec">
+                                <b style="color:#ff5c5c">&#9679; REC</b>
+                                <b data-fub="assistant-rec-timer" x-text="mmss(assistant.recSec) + ' / ' + mmss(assistant.recLimit)"></b>
+                                <b data-fub="assistant-rec-cost" x-text="fmtDust2(aRecCost())"></b>
+                                <span class="muted" x-text="'(' + fmtDust2(aVoiceRate() * 60) + ' per minute)'"></span>
                             </div>
+                            <p class="muted" style="margin:2px 0 0;font-size:12px" x-show="!assistant.recording && assistant.voiceNote" x-text="assistant.voiceNote" data-fub="assistant-voice-note"></p>
+                            <div class="fub-row" style="margin:6px 0 0">
+                                <button class="fub-btn alt" @click="aRecord()" :disabled="!assistant.recording && !!assistant.busy" x-text="assistant.recording ? '■ Stop' : '🎤 Voice'" data-fub="assistant-voice"></button>
+                                <button class="fub-btn" @click="aSend()" :disabled="!!assistant.busy || assistant.recording">Send</button>
+                                <span class="muted" x-text="assistant.busy" data-fub="assistant-busy"></span>
+                            </div>
+                            <small class="muted" style="font-size:11px;opacity:.75" x-show="!assistant.recording" x-text="'Voice: up to ' + mmss(aVoiceLimit()) + (aVoiceLimit() < (assistant.meta.voice ? assistant.meta.voice.maxSeconds : 600) ? ' (what your tank can pay)' : '') + ' · ' + fmtDust2(aVoiceRate() * 60) + ' per minute'" data-fub="assistant-voice-limit"></small>
                         </div>
                     </template>
                 </div>

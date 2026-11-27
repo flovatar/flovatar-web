@@ -124,3 +124,66 @@ export function capacityOf(counts) {
     const tier = slots >= 625 ? 'legendary' : (slots >= 125 ? 'epic' : 'common');
     return {slots, mints, tier};
 }
+
+// ----- design assistant: token-metered ĐUST (Luca 2026-11-27) -----------------------------------------------------
+
+/** Đ with exactly 2 decimals (token-metered burns are fractions): 12.3 -> "Đ12.30". */
+export function fmtDust2(v) {
+    const n = Number(v || 0);
+    return '\u0110' + n.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+/** m:ss for a number of seconds (recording timer, limits). */
+export function mmss(sec) {
+    const s = Math.max(0, Math.floor(Number(sec) || 0));
+    return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+
+/** Refill amount check (whole ĐUST within the contract's tankMin..tankMax): '' when fine, else the reason. */
+export function refillProblem(amount, min, max) {
+    const raw = String(amount ?? '').replace(/[,\s_]/g, '');
+    if (raw === '') { return 'Enter how much \u0110UST to burn into your tank.'; }
+    const n = Number(raw);
+    if (!Number.isFinite(n) || !Number.isInteger(n)) { return 'Use a whole number of \u0110UST.'; }
+    if (n < Number(min)) { return 'The minimum refill is ' + fmtDust(min) + '.'; }
+    if (n > Number(max)) { return 'The maximum refill is ' + fmtDust(max) + '.'; }
+    return '';
+}
+
+/** Whole ĐUST from a refill input ("10,000" -> 10000), NaN when not a number. */
+export function parseDust(amount) {
+    return Number(String(amount ?? '').replace(/[,\s_]/g, ''));
+}
+
+/** Seconds of voice allowed now: the API's affordable seconds, capped at the maximum (10 min). */
+export function voiceLimit(tankVoice, metaVoice) {
+    const max = Number((metaVoice && metaVoice.maxSeconds) || 600);
+    const can = tankVoice && tankVoice.affordableSeconds !== undefined ? Number(tankVoice.affordableSeconds) : max;
+    return Math.max(0, Math.min(max, Math.floor(can)));
+}
+
+/** Live voice cost while recording: seconds x Đ per second. */
+export function voiceCost(sec, dustPerSecond) {
+    return Math.max(0, Number(sec) || 0) * Number(dustPerSecond || 0);
+}
+
+/** Receipt line of an assistant reply: Đ burned (2 decimals), steps, tokens, model, time, tank. */
+export function receiptText(rc, levelName) {
+    if (!rc) { return ''; }
+    const parts = [];
+    if (rc.status === 'running') { parts.push(fmtDust2(rc.charged) + ' burned so far'); }
+    else if (rc.status === 'refunded') { parts.push('refunded, nothing charged'); }
+    else if (rc.status === 'blocked') { parts.push('not run, nothing charged'); }
+    else { parts.push(fmtDust2(rc.charged) + ' burned'); }
+    parts.push(levelName || rc.level);
+    if (rc.modelLabel || rc.model) { parts.push(rc.modelLabel || rc.model); }
+    if (rc.steps) { parts.push(rc.steps + (rc.steps === 1 ? ' step' : ' steps')); }
+    const t = rc.tokens || {};
+    const tok = Number(t.input || 0) + Number(t.output || 0);
+    if (tok) { parts.push(tok.toLocaleString('en-US') + ' tokens (' + Number(t.input || 0).toLocaleString('en-US') + ' in, ' + Number(t.output || 0).toLocaleString('en-US') + ' out' + (t.cached ? ', ' + Number(t.cached).toLocaleString('en-US') + ' cached' : '') + ')'); }
+    if (rc.status === 'failed') { parts.push('stopped part-way'); }
+    if (rc.status === 'stopped') { parts.push(rc.stopReason === 'time' ? 'stopped at the time limit' : 'tank ran dry'); }
+    if (rc.seconds) { parts.push(Math.round(rc.seconds) + ' s'); }
+    if (rc.balanceAfter !== undefined) { parts.push('tank ' + fmtDust2(rc.balanceAfter)); }
+    return 'Receipt #' + rc.run + ': ' + parts.join(' \u00b7 ');
+}
