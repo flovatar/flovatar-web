@@ -122,7 +122,7 @@
                                     {{-- commit --}}
                                     <div x-show="tab === 'commit'" class="fub-pad" data-fub="commit-panel" role="tabpanel">
                                         <h3>Commit: burn FUB vouchers</h3>
-                                        <p>Committing burns the vouchers you pick and reserves your FUB on chain. From then on your items are written to the chain while you keep editing. You can absorb more vouchers until you publish (up to 30 in total).</p>
+                                        <p>Committing burns the vouchers you pick, reserves your FUB on chain and puts its building on one of your islands. From then on your items are written to the chain while you keep editing. You can absorb more vouchers until you publish (up to 30 in total).</p>
                                         <template x-if="chain">
                                             <div>
                                                 <template x-for="(ids, r) in chain.vouchers" :key="r">
@@ -132,7 +132,25 @@
                                                 </template>
                                                 <p x-show="!Object.keys(chain.vouchers).length">This wallet has no FUB vouchers.</p>
                                                 <p x-show="selVouchers.length" x-text="'Selected ' + selVouchers.length + ': ' + capacity.slots + ' item slots, ' + capacity.mints.toLocaleString('en-US') + ' mints, ' + capacity.tier + ' tier (' + ({common: 8, epic: 12, legendary: 16})[capacity.tier] + ' layers)'"></p>
-                                                <button class="fub-btn" @click="commit()" :disabled="!selVouchers.length || !!busy" data-fub="commit">Commit and burn</button>
+                                                {{-- island at commit (Luca 2026-11-28): required, permanent, one FUB per island --}}
+                                                <fieldset class="fub-isl-pick" data-fub="commit-islands">
+                                                    <legend>Island for your FUB building</legend>
+                                                    <p class="isl-error" x-show="!(chain.allIslands || []).length">You need an Asteroid Island to commit a FUB. <a href="/islands/build">Terraform one</a> first.</p>
+                                                    <p class="isl-error" x-show="(chain.allIslands || []).length && !(chain.allIslands || []).some((i) => i.free)">All your islands already host a FUB (one FUB per island). <a href="/islands/build">Terraform another island</a> first.</p>
+                                                    <div class="fub-isl-list" role="radiogroup" aria-label="Island for your FUB building">
+                                                        <template x-for="i in (chain.allIslands || [])" :key="'ci' + i.id">
+                                                            <label class="fub-isl-opt" :class="{on: commitIsland === i.id, off: !i.free}" :data-island="i.id" :title="i.free ? '' : islandBlockReason(i)">
+                                                                <input type="radio" name="commit-island" :value="i.id" :disabled="!i.free || !!busy" :checked="commitIsland === i.id" @change="pickCommitIsland(i)" :aria-describedby="i.free ? null : 'fub-isl-why-' + i.id">
+                                                                <span class="isl-chip" :class="'isl-r-' + i.rarity" x-text="i.rarity"></span>
+                                                                <span class="fub-isl-name"><b x-text="'Island #' + i.id"></b> <span x-text="i.name"></span></span>
+                                                                <small class="fub-isl-why" x-show="!i.free" :id="'fub-isl-why-' + i.id" x-text="islandBlockReason(i)"></small>
+                                                            </label>
+                                                        </template>
+                                                    </div>
+                                                </fieldset>
+                                                <p class="fub-perm" role="note" data-fub="commit-permanent"><b>This is permanent.</b> The FUB building goes on the island you pick and stays there for good, even if you sell or transfer the island. One FUB per island; it can never be moved.</p>
+                                                <button class="fub-btn" @click="commit()" :disabled="!selVouchers.length || !commitIsland || !!busy" data-fub="commit">Commit and burn</button>
+                                                <p class="muted" x-show="!commitIsland || !selVouchers.length" data-fub="commit-needs" x-text="!selVouchers.length ? 'Pick at least one voucher' + (!commitIsland ? ' and an island' : '') + ' to commit.' : 'Pick an island to commit.'"></p>
                                             </div>
                                         </template>
                                     </div>
@@ -153,12 +171,25 @@
                                                     <div>
                                                         <p x-text="preflightData.items + ' items in ' + preflightData.layers.length + ' layers · heaviest F.U.N. ' + fmtBytes(preflightData.heaviest) + ' of ' + fmtBytes(preflightData.composedCap)"></p>
                                                         <p class="mono muted" style="font-size:12px" x-text="'Manifest ' + preflightData.manifest"></p>
-                                                        <label style="display:block;margin:10px 0"><b>Island for your FUB building</b> (permanent, one FUB per island)
-                                                            <select x-model.number="islandId" class="fub-input" style="display:block;margin-top:4px" data-fub="island-picker">
-                                                                <template x-for="i in (chain ? chain.islands : [])" :key="i.id"><option :value="i.id" x-text="'Island #' + i.id + ' (' + i.rarity + ')'"></option></template>
-                                                            </select>
-                                                        </label>
-                                                        <p class="isl-error" x-show="chain && !chain.islands.length">You need an Asteroid Island without a FUB. <a href="/islands/build">Terraform one</a> first.</p>
+                                                        <template x-if="preflightData.islandId">
+                                                            <div class="fub-bound" data-fub="publish-island">
+                                                                <span class="fub-bound-label">Island</span>
+                                                                <b x-text="'Island #' + preflightData.islandId"></b>
+                                                                <span x-text="((chain && chain.allIslands || []).find((i) => i.id === Number(preflightData.islandId)) || {}).name || ''"></span>
+                                                                <small>Chosen at commit, permanent: your FUB building already stands there and stays with the island.</small>
+                                                            </div>
+                                                        </template>
+                                                        {{-- FUBs committed before the island-at-commit update (testnet only) still pick their island here --}}
+                                                        <template x-if="!preflightData.islandId">
+                                                            <div>
+                                                                <label style="display:block;margin:10px 0"><b>Island for your FUB building</b> (permanent, one FUB per island)
+                                                                    <select x-model.number="islandId" class="fub-input" style="display:block;margin-top:4px" data-fub="island-picker">
+                                                                        <template x-for="i in (chain ? chain.islands : [])" :key="i.id"><option :value="i.id" x-text="'Island #' + i.id + ' (' + i.rarity + ')'"></option></template>
+                                                                    </select>
+                                                                </label>
+                                                                <p class="isl-error" x-show="chain && !chain.islands.length">You need an Asteroid Island without a FUB. <a href="/islands/build">Terraform one</a> first.</p>
+                                                            </div>
+                                                        </template>
                                                         <details><summary>Creator terms</summary>@include('fub-v1.partials.terms')</details>
                                                         <label style="display:flex;gap:8px;margin:10px 0"><input type="checkbox" x-model="acceptTerms" data-fub="terms"> I accept the creator terms. Publishing is final.</label>
                                                         <button class="fub-btn" @click="publish()" :disabled="!acceptTerms || !islandId || !!busy" data-fub="publish">Publish</button>
@@ -282,6 +313,7 @@
                                                 </p>
                                                 <p class="fub-vm-status" x-show="!assistant.recording && assistant.busy" role="status"><i class="led" aria-hidden="true"></i><span x-text="assistant.busy" data-fub="assistant-busy"></span></p>
                                                 <p class="fub-vm-status note" x-show="!assistant.recording && !assistant.busy && assistant.voiceNote" x-text="assistant.voiceNote" data-fub="assistant-voice-note"></p>
+                                                <p class="fub-vm-status note" x-show="!assistant.recording && !assistant.busy && !assistant.voiceNote && assistant.refillNote" x-text="assistant.refillNote" role="status" data-fub="assistant-refill-note"></p>
                                                 <div class="fub-vm-keys">
                                                     <textarea x-model="assistant.input" placeholder="Describe what to make or change…" aria-label="Your message to the assistant" @keydown.enter="if ($event.metaKey || $event.ctrlKey) { $event.preventDefault(); aSend(); }" data-fub="assistant-input"></textarea>
                                                     <button type="button" class="fub-vm-key voice" :class="{rec: assistant.recording}" @click="aRecord()" :disabled="!assistant.recording && !!assistant.busy" :aria-label="assistant.recording ? 'Stop recording' : 'Record a voice message'" data-fub="assistant-voice">
@@ -363,6 +395,74 @@
             <div class="fub-row">
                 <button class="fub-btn" @click="saveItem()" :disabled="!!busy" data-fub="item-save">Save item</button>
                 <button class="fub-btn alt" @click="formOpen = false">Cancel</button>
+            </div>
+        </div>
+    </div>
+    </template>
+    {{-- ======== in-page confirm (no native confirm()) ======== --}}
+    <template x-if="dlg">
+    <div class="fub-modal" @keydown="dlgKey($event)" data-fub="confirm-dialog">
+        <div class="fub-modal_back" @click="dlgClose(false)" aria-hidden="true"></div>
+        <div class="fub-modal_box" x-ref="dlg" role="alertdialog" aria-modal="true" aria-labelledby="fub-dlg-title" aria-describedby="fub-dlg-body">
+            <h3 id="fub-dlg-title" x-text="dlg.title"></h3>
+            <div id="fub-dlg-body"><p x-text="dlg.body"></p><p class="fub-perm" x-show="dlg.warn" x-text="dlg.warn"></p></div>
+            <div class="fub-modal_actions">
+                <button type="button" class="fub-btn alt" data-dlg-cancel @click="dlgClose(false)">Cancel</button>
+                <button type="button" class="fub-btn" :class="{danger: dlg.danger}" @click="dlgClose(true)" x-text="dlg.ok" data-fub="confirm-ok"></button>
+            </div>
+        </div>
+    </div>
+    </template>
+
+    {{-- ======== tank refill: vending-machine dialog (burn notice, balances, pay with ĐUST or FLOW via auto-swap) ======== --}}
+    <template x-if="rf">
+    <div class="fub-modal" @keydown="rfKey($event)" data-fub="refill-dialog">
+        <div class="fub-modal_back" @click="rfClose()" aria-hidden="true"></div>
+        <div class="fub-modal_box fub-rf" x-ref="rf" role="dialog" aria-modal="true" aria-labelledby="fub-rf-title" aria-describedby="fub-rf-burn">
+            <div class="fub-rf_sign">
+                <small>Refill the tank</small>
+                <h3 id="fub-rf-title"><span class="sr-only">Refill amount: </span><span x-text="fmtDust(rf.amount)" data-fub="refill-amount"></span></h3>
+            </div>
+            <p id="fub-rf-burn" class="fub-rf_burn"><b>Burn notice.</b> Your ĐUST is burned on chain and credited to your tank; it can't be withdrawn.</p>
+            <dl class="fub-rf_bal">
+                <div><dt>Your ĐUST</dt><dd x-text="fmtDust2(dust)" data-fub="refill-dust-balance"></dd></div>
+                <div x-show="rf.q"><dt>Your FLOW (spendable)</dt><dd x-text="rf.q ? fmtFlow(rf.q.flowAvailable) : ''" data-fub="refill-flow-balance"></dd></div>
+            </dl>
+            <div class="fub-rf_opts" role="radiogroup" aria-label="Pay with">
+                <label class="fub-rf_opt" :class="{on: rf.method === 'dust', off: !rfOpts().dustOk}">
+                    <input type="radio" name="fub-rf-method" value="dust" x-model="rf.method" :disabled="!rfOpts().dustOk || !!rf.busy" data-rf-method="dust" aria-describedby="fub-rf-dust-note">
+                    <span class="fub-rf_coin dust" aria-hidden="true">Đ</span>
+                    <span class="fub-rf_txt"><b>Pay with ĐUST</b><span x-text="fmtDust(rf.amount) + ' from your wallet'"></span>
+                        <small id="fub-rf-dust-note" class="warn" x-show="!rfOpts().dustOk" x-text="rfOpts().dustReason"></small></span>
+                </label>
+                <label class="fub-rf_opt" x-show="rfSwapOn()" :class="{on: rf.method === 'flow', off: !rfOpts().flowOk}">
+                    <input type="radio" name="fub-rf-method" value="flow" x-model="rf.method" :disabled="!rfOpts().flowOk || !!rf.busy" data-rf-method="flow" aria-describedby="fub-rf-flow-note">
+                    <span class="fub-rf_coin flow" aria-hidden="true">F</span>
+                    <span class="fub-rf_txt"><b>Pay with FLOW</b><span x-text="rf.plan ? '≈ ' + fmtFlow(rf.q.flowIn) + ' FLOW, swapped to exactly ' + fmtDust(rf.amount) : (rf.loading ? 'Getting the price…' : '')" data-fub="refill-flow-quote"></span>
+                        <small>Auto-swap on Increment, burn, leftover FLOW back to you. One transaction.</small>
+                        <small id="fub-rf-flow-note" class="warn" x-show="!rfOpts().flowOk && !rf.loading" x-text="rfOpts().flowReason"></small></span>
+                </label>
+            </div>
+            <template x-if="rf.method === 'flow' && rf.plan">
+                <div class="fub-rf_quote" data-fub="refill-quote">
+                    <dl>
+                        <div><dt>Rate</dt><dd x-text="'1 FLOW ≈ ' + fmtDust(Math.round(rf.rate))"></dd></div>
+                        <div><dt>Price impact</dt><dd :class="{warn: rf.plan.level !== 'ok'}" x-text="fmtPct(rf.plan.impact)" data-fub="refill-impact"></dd></div>
+                        <div><dt>You pay at most</dt><dd x-text="fmtFlow(rf.plan.maxIn) + ' FLOW'" data-fub="refill-max"></dd></div>
+                    </dl>
+                    <div class="fub-rf_slip" role="group" aria-label="Maximum slippage"><span>Max slippage</span>
+                        <template x-for="v in rfSlippages()" :key="'s' + v"><button type="button" :class="{on: rf.slippage === v}" :aria-pressed="rf.slippage === v ? 'true' : 'false'" @click="rfSlippage(v)" :disabled="!!rf.busy" x-text="v + '%'"></button></template>
+                    </div>
+                    <p class="fub-rf_warn" x-show="rf.plan.level === 'warn'" role="alert" data-fub="refill-thin">Thin pool: this refill moves the price by <b x-text="fmtPct(rf.plan.impact)"></b>. A smaller refill (or paying with ĐUST) costs less per ĐUST.</p>
+                    <small class="fub-rf_age" x-text="(rf.loading ? 'Updating the price…' : 'Price updated ' + (rfAge() || 0) + ' s ago') + ' · refreshes every 15 s · if the price moves past your maximum, nothing is spent.'"></small>
+                </div>
+            </template>
+            <p class="fub-rf_error" x-show="rf.error" x-text="rf.error" role="alert" data-fub="refill-error"></p>
+            <p class="fub-rf_busy" x-show="rf.busy" role="status"><i class="led" aria-hidden="true"></i><span x-text="rf.busy"></span></p>
+            <div class="fub-modal_actions">
+                <button type="button" class="fub-btn alt" @click="rfClose()" :disabled="!!rf.busy" data-fub="refill-cancel">Cancel</button>
+                <button type="button" class="fub-vm-refill" @click="rfPay()" :disabled="!rfCanPay()" data-fub="refill-pay"
+                        x-text="rf.method === 'flow' ? ('Pay ' + (rf.plan ? '≈ ' + fmtFlow(rf.q.flowIn) + ' FLOW' : 'with FLOW') + ' & burn') : ('Burn ' + fmtDust(rf.amount))"></button>
             </div>
         </div>
     </div>

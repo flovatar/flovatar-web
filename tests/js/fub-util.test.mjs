@@ -1,6 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {precheckSvg, curvePrice, totalOf, selectionProblems, randomPicks, pickIds, capacityOf, fmtDust, txErrorText, fmtDust2, mmss, refillProblem, parseDust, voiceLimit, voiceCost, receiptText, receiptShort, tankPercent, messagesLeft, fmtDustShort} from '../../resources/js/fub/util.mjs';
+import {precheckSvg, curvePrice, totalOf, selectionProblems, randomPicks, pickIds, capacityOf, fmtDust, txErrorText, fmtDust2, mmss, refillProblem, parseDust, voiceLimit, voiceCost, receiptText, receiptShort, tankPercent, messagesLeft, fmtDustShort, islandLabel, islandBlockReason, refillOptions, fmtFlow, fmtPct} from '../../resources/js/fub/util.mjs';
+import {payPlan} from '../../resources/js/app/dust-swap-math.js';
 import * as C from '../../resources/js/fub/cadence.mjs';
 
 test('precheck flags dangerous SVG and accepts clean art', () => {
@@ -93,4 +94,49 @@ test('token-metered assistant helpers: Đ with 2 decimals, timer, refill range, 
     assert.match(receiptText({...rc, status: 'running', charged: 12}, 'Sip'), /^Receipt #7: \u011012.00 burned so far/);
     assert.match(receiptText({...rc, status: 'refunded', charged: 0}, 'Sip'), /refunded, nothing charged/);
     assert.equal(receiptText(null), '');
+});
+
+test('island picker labels and reasons (commit step)', () => {
+    assert.equal(islandLabel({id: 8, rarity: 'common', name: ''}), 'Island #8 (common)');
+    assert.equal(islandLabel({id: 5, rarity: 'common', name: 'Meadow Outpost'}), 'Island #5 \u00b7 Meadow Outpost (common)');
+    assert.equal(islandBlockReason({id: 1, free: true}), '');
+    assert.equal(islandBlockReason({id: 1, free: false, reason: 'hosts-fub', fubId: 3}), 'Already hosts FUB #3');
+    assert.equal(islandBlockReason({id: 1, free: false, reason: 'no-building', rarity: 'legendary'}), 'No FUB building for legendary islands yet');
+});
+
+test('refill dialog options: ĐUST balance, FLOW quote, thin pool, FLOW balance', () => {
+    // real testnet pool after seeding: 23,695 Đ / 78.89 FLOW; Đ1,234 costs 4.34731518 FLOW
+    const plan = (available, amount = 1234, quoteIn = 4.34731518) => payPlan({quoteIn, priceOut: amount, reserveIn: 78.89151114, reserveOut: 23695.00318821, available, slippagePct: 1, warnPct: 5, blockPct: 10});
+    const p = plan(15);
+    assert.equal(p.level, 'warn');
+    assert.ok(p.impact > 5 && p.impact < 6, String(p.impact));
+    assert.ok(Math.abs(p.maxIn - 4.39078834) < 1e-8, String(p.maxIn));
+    let o = refillOptions({amount: 1234, dust: 2000, plan: p, swapOn: true});
+    assert.deepEqual([o.dustOk, o.flowOk], [true, true]);
+    o = refillOptions({amount: 1234, dust: 100.5, plan: p, swapOn: true});
+    assert.equal(o.dustOk, false);
+    assert.match(o.dustReason, /you have \u0110100\.5/);
+    o = refillOptions({amount: 1234, dust: 0, plan: plan(1), swapOn: true});
+    assert.equal(o.flowOk, false);
+    assert.match(o.flowReason, /Not enough FLOW/);
+    o = refillOptions({amount: 5000, dust: 0, plan: plan(100, 5000, 21.1631143), swapOn: true});
+    assert.match(o.flowReason, /too thin/);
+    assert.match(refillOptions({amount: 1, dust: 0, plan: null, swapOn: false}).flowReason, /not available/);
+    assert.match(refillOptions({amount: 1, dust: 0, plan: null, swapOn: true}).flowReason, /Getting/);
+    assert.equal(refillOptions({amount: 1, dust: 0, plan: null, swapOn: true, quoteError: 'X'}).flowReason, 'X');
+    assert.equal(fmtFlow(4.34731518), '4.3473');
+    assert.equal(fmtPct(5.8123), '5.81%');
+});
+
+test('generated Cadence: commit takes the island, FLOW refill swaps then burns', () => {
+    assert.match(C.COMMIT_TX, /transaction\(voucherIds: \[UInt64\], name: String, islandId: UInt64\)/);
+    assert.match(C.REFILL_TANK_FLOW_TX, /swapTokensForExactTokens/);
+    assert.match(C.REFILL_TANK_FLOW_TX, /import SwapRouter from 0xSwapRouter/);
+    assert.match(C.REFILL_TANK_FLOW_TX, /refillTank\(payment: <-self\.payment, account: self\.account, ref: ref\)/);
+    assert.match(C.WALLET_FUB_SCRIPT, /"islands": islandList/);
+});
+
+test('swap revert messages are friendly', () => {
+    assert.match(txErrorText(new Error('error: assertion failed: [IncSwapErrorMsg:SwapRouter: EXCESSIVE_INPUT_AMOUNT][IncSwapErrorCode:5]')), /moved above your maximum/);
+    assert.match(txErrorText(new Error('[IncSwapErrorMsg:SwapRouter: expired][IncSwapErrorCode:2]')), /expired/);
 });

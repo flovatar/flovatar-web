@@ -20,12 +20,39 @@ import {mutate} from '../flow/fcl-tx';
 import * as C from '../fub/cadence.mjs';
 import {precheckSvg, fmtDust, fmtBytes, curvePrice, totalOf, selectionProblems, randomPicks, pickIds, txErrorText, apiErrorText, capacityOf, RARITIES, fmtDust2, mmss, refillProblem, parseDust, voiceLimit, voiceCost, receiptText, receiptShort, tankPercent, messagesLeft, fmtDustShort} from '../fub/util.mjs';
 import {mdToHtml} from '../fub/md.mjs';
+import {islandLabel, islandBlockReason, refillOptions, fmtFlow, fmtPct} from '../fub/util.mjs';
+import {getDustSwapQuoteScript} from '../flow/get-dust-swap-quote.script';
+import {ufix, payPlan, dustPerFlow, clampSlippage} from './dust-swap-math';
 
 const CFG = window.FUB || null;
+// ĐUST ⇄ FLOW swap config (window.DUST_SWAP, config flovatar.dustSwap): "pay with FLOW" for tank refills. Absent = ĐUST only.
+const SWAP = window.DUST_SWAP && window.DUST_SWAP.enabled ? window.DUST_SWAP : null;
+const REFILL_IMPACT_WARN = 5; // % — thin-pool warning in the refill dialog (Luca 2026-11-28)
 
 if (CFG) {
     if (CFG.contract) { fcl.config().put('0xFUB', CFG.contract); }
     if (CFG.islands) { fcl.config().put('0xIslands', CFG.islands); }
+}
+if (SWAP) {
+    fcl.config().put('0xSwapRouter', SWAP.router).put('0xSwapConfig', SWAP.swapConfig).put('0xSwapFactory', SWAP.factory);
+}
+
+// ---- in-page dialogs: focus handling (no native alert/confirm anywhere in the FUB pages)
+const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+function focusables(root) { return root ? Array.from(root.querySelectorAll(FOCUSABLE)).filter((el) => el.offsetParent !== null) : []; }
+function focusFirst(root, selector) {
+    if (!root) { return; }
+    const el = (selector && root.querySelector(selector)) || focusables(root)[0] || root;
+    el.focus();
+}
+/** Keep Tab / Shift+Tab inside the dialog. */
+function trapTab(e, root) {
+    const f = focusables(root);
+    if (!f.length) { e.preventDefault(); return; }
+    const first = f[0];
+    const last = f[f.length - 1];
+    if (e.shiftKey && (document.activeElement === first || !root.contains(document.activeElement))) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && (document.activeElement === last || !root.contains(document.activeElement))) { e.preventDefault(); first.focus(); }
 }
 
 const ax = () => window.axios;
@@ -79,7 +106,11 @@ async function walletFub(address) {
     const vouchers = {};
     for (const [rar, ids] of Object.entries(r.vouchers || {})) { vouchers[rar] = (ids || []).map(Number).sort((a, b) => a - b); }
     const islands = Object.entries(r.freeIslands || {}).map(([id, rarity]) => ({id: Number(id), rarity})).sort((a, b) => a.id - b.id);
-    return {vouchers, islands, fubs: (r.fubs || []).map(Number), funCollection: !!r.funCollection};
+    // every island with its FUB state (commit step: taken islands shown disabled with the reason)
+    const allIslands = (r.islands || islands.map((i) => ({...i, free: true, reason: ''})))
+        .map((i) => ({id: Number(i.id), rarity: i.rarity, name: i.name || '', free: !!i.free, reason: i.reason || '', fubId: i.fubId == null ? null : Number(i.fubId)}))
+        .sort((a, b) => (b.free - a.free) || (a.id - b.id));
+    return {vouchers, islands, allIslands, fubs: (r.fubs || []).map(Number), funCollection: !!r.funCollection};
 }
 
 async function dustBalance(address) {
@@ -147,7 +178,11 @@ Alpine.data('fubStudio', (draftId) => ({
     selVouchers: [],
     preflightData: null,
     islandId: null,
+    commitIsland: null,  // island chosen at commit (permanent binding)
     acceptTerms: false,
+    dlg: null,           // generic confirm dialog {title, body, warn, ok, danger}
+    rf: null,            // tank refill dialog state
+    islandLabel, islandBlockReason, fmtFlow, fmtPct,
     royaltyNew: null,
     payoutNew: '',
     poll: null,
@@ -228,9 +263,29 @@ Alpine.data('fubStudio', (draftId) => ({
         [keys[i], keys[j]] = [keys[j], keys[i]];
         this.api('post', '/layers/reorder', {keys}, 'Reordering\u2026');
     },
-    deleteLayer(l) {
+    async deleteLayer(l) {
         const n = this.itemsOf(l.key).length;
-        if (confirm('Delete layer "' + l.name + '"' + (n ? ' and its ' + n + ' item(s)' : '') + '?')) { this.api('delete', '/layers/' + l.key + '?confirm=1', null, 'Deleting\u2026'); }
+        if (await this.ask({title: 'Delete layer?', body: 'Delete layer \u201c' + l.name + '\u201d' + (n ? ' and its ' + n + ' item(s)' : '') + '?', ok: 'Delete', danger: true})) { this.api('delete', '/layers/' + l.key + '?confirm=1', null, 'Deleting\u2026'); }
+    },
+    // ----- generic in-page confirm (replaces window.confirm): resolves true / false
+    ask(o) {
+        return new Promise((resolve) => {
+            this.dlgReturn = document.activeElement;
+            this.dlgResolve = resolve;
+            this.dlg = {title: o.title || 'Are you sure?', body: o.body || '', warn: o.warn || '', ok: o.ok || 'Continue', danger: !!o.danger};
+            this.$nextTick(() => focusFirst(this.$refs.dlg, '[data-dlg-cancel]'));
+        });
+    },
+    dlgClose(v) {
+        const r = this.dlgResolve;
+        this.dlg = null;
+        this.dlgResolve = null;
+        if (this.dlgReturn && this.dlgReturn.focus) { this.dlgReturn.focus(); }
+        if (r) { r(!!v); }
+    },
+    dlgKey(e) {
+        if (e.key === 'Escape') { e.preventDefault(); this.dlgClose(false); }
+        else if (e.key === 'Tab') { trapTab(e, this.$refs.dlg); }
     },
     // ----- items
     openItem(it, layerKey) {
@@ -280,7 +335,7 @@ Alpine.data('fubStudio', (draftId) => ({
             this.formOpen = false;
         }
     },
-    deleteItem(it) { if (confirm('Delete "' + it.name + '"?')) { this.api('delete', '/items/' + it.id + '?confirm=1', null, 'Deleting\u2026'); } },
+    async deleteItem(it) { if (await this.ask({title: 'Delete item?', body: 'Delete \u201c' + it.name + '\u201d?', ok: 'Delete', danger: true})) { this.api('delete', '/items/' + it.id + '?confirm=1', null, 'Deleting\u2026'); } },
     pick(l, it) {
         if (this.picks[l.key] === it.id && !l.required) { delete this.picks[l.key]; } else { this.picks[l.key] = it.id; }
         this.picks = {...this.picks};
@@ -302,26 +357,37 @@ Alpine.data('fubStudio', (draftId) => ({
         const i = this.selVouchers.indexOf(id);
         if (i >= 0) { this.selVouchers.splice(i, 1); } else if (this.selVouchers.length < 30) { this.selVouchers.push(id); }
     },
+    get commitIslandObj() { return this.chain && this.commitIsland ? (this.chain.allIslands || []).find((i) => i.id === this.commitIsland) || null : null; },
+    pickCommitIsland(i) { if (i && i.free && !this.busy) { this.commitIsland = i.id; } },
     async commit() {
         if (!this.selVouchers.length) { this.error = 'Pick at least one FUB voucher.'; return; }
-        if (!confirm('Commit burns ' + this.selVouchers.length + ' FUB voucher(s) for good. Continue?')) { return; }
+        const isl = this.commitIslandObj;
+        if (!isl || !isl.free) { this.error = 'Pick the island for your FUB building.'; return; }
+        const ok = await this.ask({
+            title: 'Commit and burn?',
+            body: 'This burns ' + this.selVouchers.length + ' FUB voucher(s) for good and puts your FUB building on ' + islandLabel(isl) + '.',
+            warn: 'This is permanent: the FUB stays on this island forever, even if you sell or transfer the island. One FUB per island.',
+            ok: 'Commit and burn', danger: true,
+        });
+        if (!ok) { return; }
         this.busy = 'Waiting for your wallet\u2026';
         this.error = '';
         try {
-            const txId = await mutate({cadence: C.COMMIT_TX, args: (arg, t) => [arg(this.selVouchers.map(String), t.Array(t.UInt64)), arg(this.d.name, t.String)], limit: 9999});
+            const txId = await mutate({cadence: C.COMMIT_TX, args: (arg, t) => [arg(this.selVouchers.map(String), t.Array(t.UInt64)), arg(this.d.name, t.String), arg(String(isl.id), t.UInt64)], limit: 9999});
             this.busy = 'Committing on chain\u2026';
             await sealed(txId);
             const r = await ax().post('/api/fub/drafts/' + this.id + '/link', {tx: txId});
             this.setDraft(r.data);
             this.selVouchers = [];
+            this.commitIsland = null;
             this.chain = await walletFub(this.wallet);
-            this.notice = 'Committed! FUB #' + r.data.chainFubId + ' is yours. Your items are now being written to the chain.';
+            this.notice = 'Committed! FUB #' + r.data.chainFubId + ' is yours, its building stands on ' + islandLabel(isl) + '. Your items are now being written to the chain.';
         } catch (e) { this.error = e.response ? apiErrorText(e) : txErrorText(e); }
         this.busy = '';
     },
     async absorb() {
         if (!this.selVouchers.length) { return; }
-        if (!confirm('Absorbing burns ' + this.selVouchers.length + ' more voucher(s) into this FUB. Continue?')) { return; }
+        if (!(await this.ask({title: 'Absorb vouchers?', body: 'Absorbing burns ' + this.selVouchers.length + ' more voucher(s) into this FUB for good.', ok: 'Absorb and burn', danger: true}))) { return; }
         this.busy = 'Waiting for your wallet\u2026';
         try {
             const txId = await mutate({cadence: C.ABSORB_TX, args: (arg, t) => [arg(String(this.d.chainFubId), t.UInt64), arg(this.selVouchers.map(String), t.Array(t.UInt64))], limit: 9999});
@@ -340,14 +406,16 @@ Alpine.data('fubStudio', (draftId) => ({
         this.busy = 'Checking\u2026';
         try { this.preflightData = (await ax().get('/api/fub/drafts/' + this.id + '/preflight')).data; } catch (e) { this.error = apiErrorText(e); }
         this.busy = '';
-        if (this.chain && this.chain.islands.length && !this.islandId) { this.islandId = this.chain.islands[0].id; }
+        // island chosen at commit (permanent); only FUBs committed before 2026-11-28 (testnet) still pick it here
+        if (this.preflightData && this.preflightData.islandId) { this.islandId = Number(this.preflightData.islandId); }
+        else if (this.chain && this.chain.islands.length && !this.islandId) { this.islandId = this.chain.islands[0].id; }
     },
     async publish() {
         const p = this.preflightData;
         if (!p || p.blockers.length) { return; }
         if (!this.islandId) { this.error = 'Pick the island for your FUB building.'; return; }
         if (!this.acceptTerms) { this.error = 'Please accept the creator terms.'; return; }
-        if (!confirm('Publishing is final: items, prices and supply rules can never change, and the FUB building on island #' + this.islandId + ' is permanent. Publish now?')) { return; }
+        if (!(await this.ask({title: 'Publish now?', body: 'Publishing is final: items, prices and supply rules can never change. Your FUB opens on Island #' + this.islandId + '.', ok: 'Publish', danger: true}))) { return; }
         this.busy = 'Waiting for your wallet\u2026';
         this.error = '';
         try {
@@ -372,8 +440,8 @@ Alpine.data('fubStudio', (draftId) => ({
         } catch (e) { this.error = e.response ? apiErrorText(e) : txErrorText(e); }
         this.busy = '';
     },
-    setStatus(action) {
-        if (action === 'close' && !confirm('Closing ends minting for good. Continue?')) { return; }
+    async setStatus(action) {
+        if (action === 'close' && !(await this.ask({title: 'Close for good?', body: 'Closing ends minting for good.', ok: 'Close', danger: true}))) { return; }
         this.creatorTx(C.SET_STATUS_TX, (arg, t) => [arg(String(this.d.chainFubId), t.UInt64), arg(action, t.String)], 'Updating\u2026');
     },
     lowerRoyalty() {
@@ -390,11 +458,11 @@ Alpine.data('fubStudio', (draftId) => ({
         const p = this.preflightData;
         if (!p || !p.pending) { this.error = 'No staged additions on chain yet.'; return; }
         if (p.blockers.length) { return; }
-        if (!confirm('Make ' + p.pendingIds.length + ' new item(s) live? They can never change after this.')) { return; }
+        if (!(await this.ask({title: 'Make items live?', body: 'Make ' + p.pendingIds.length + ' new item(s) live? They can never change after this.', ok: 'Make live'}))) { return; }
         this.creatorTx(C.COMMIT_ADDITIONS_TX, (arg, t) => [arg(String(p.fubId), t.UInt64), arg(p.pending, t.String)], 'Making the new items live\u2026');
     },
     async deleteDraft() {
-        if (!confirm('Delete this draft and its uploaded art now? (A committed FUB stays on chain unpublished.)')) { return; }
+        if (!(await this.ask({title: 'Delete this draft?', body: 'Delete this draft and its uploaded art now? (A committed FUB stays on chain unpublished.)', ok: 'Delete', danger: true}))) { return; }
         await this.api('delete', '?confirm=1', null, 'Deleting\u2026');
         window.location.href = '/fub';
     },
@@ -658,27 +726,114 @@ Alpine.data('fubStudio', (draftId) => ({
             await this.load();
         } catch (e) { A.error = e.message; }
     },
+    // ----- tank refill: in-page vending-machine dialog (burn notice, balances, pay with ĐUST or FLOW via auto-swap)
     async aRefill() {
         const A = this.assistant;
         const bad = this.aRefillError();
         if (bad) { A.error = bad; return; }
         const amt = parseDust(A.refillAmount);
-        if (!confirm('Refilling burns ' + fmtDust(amt) + ' from your wallet into your tank. Continue?')) { return; }
-        A.busy = 'Waiting for your wallet\u2026';
+        this.rfReturn = document.activeElement;
+        this.rf = {amount: amt, method: this.dust >= amt || !SWAP ? 'dust' : 'flow', slippage: SWAP ? clampSlippage(SWAP.slippageDefault || 1, SWAP.slippageMax || 3) : 1,
+            q: null, plan: null, qErr: '', qAt: 0, now: Date.now(), busy: '', error: '', loading: !!SWAP};
+        this.$nextTick(() => focusFirst(this.$refs.rf, '[data-rf-method="' + this.rf.method + '"]'));
+        this.dust = await dustBalance(this.wallet);
+        if (SWAP) {
+            await this.rfQuote();
+            if (this.rf && this.rf.method === 'dust' && this.dust < amt && this.rfOpts().flowOk) { this.rf.method = 'flow'; }
+            if (this.rf && this.rf.method === 'flow' && !this.rfOpts().flowOk && this.dust >= amt) { this.rf.method = 'dust'; }
+            clearInterval(this.rfTimer);
+            this.rfTimer = setInterval(() => this.rfQuote(), 15000); // live quote every ~15 s while open
+        }
+        clearInterval(this.rfClock);
+        this.rfClock = setInterval(() => { if (this.rf) { this.rf.now = Date.now(); } }, 1000);
+    },
+    /** FLOW needed for exactly rf.amount ĐUST (router getAmountsIn) + price impact + max with slippage. Fails closed. */
+    async rfQuote() {
+        const R = this.rf;
+        if (!R || !SWAP || R.busy) { return; }
+        R.loading = true;
         try {
-            const ref = (await this.aFetch('/api/v1/tank/refills/intent', {method: 'POST', body: JSON.stringify({amount: amt})})).ref;
-            const txId = await mutate({cadence: C.REFILL_TANK_TX, args: (arg, t) => [arg(amt.toFixed(8), t.UFix64), arg(ref, t.String)], limit: 9999});
-            A.busy = 'Burning on chain\u2026';
+            const q = await getDustSwapQuoteScript(true, true, ufix(R.amount), this.wallet);
+            if (!this.rf || this.rf.amount !== R.amount) { return; } // dialog closed / another amount meanwhile
+            const pair = String(q.pairAddress || '').toLowerCase();
+            if (SWAP.pair && pair !== String(SWAP.pair).toLowerCase()) { throw new Error('unexpected pool ' + pair); }
+            const r = this.rf;
+            r.q = {flowIn: Number(q.amountIn), reserveDust: Number(q.reserveDust), reserveFlow: Number(q.reserveFlow), flowAvailable: Number(q.flowAvailable), dustBalance: Number(q.dustBalance)};
+            r.plan = payPlan({quoteIn: r.q.flowIn, priceOut: r.amount, reserveIn: r.q.reserveFlow, reserveOut: r.q.reserveDust, available: r.q.flowAvailable,
+                slippagePct: r.slippage, warnPct: REFILL_IMPACT_WARN, blockPct: SWAP.impactBlock || 10});
+            r.rate = dustPerFlow(r.q.reserveDust, r.q.reserveFlow);
+            r.qErr = '';
+            r.qAt = Date.now();
+            this.dust = r.q.dustBalance;
+        } catch (e) {
+            if (this.rf) { this.rf.q = null; this.rf.plan = null; this.rf.qErr = 'The FLOW price is not available right now.'; }
+        }
+        if (this.rf) { this.rf.loading = false; }
+    },
+    rfSlippage(v) {
+        const R = this.rf;
+        if (!R || R.busy) { return; }
+        R.slippage = clampSlippage(v, (SWAP && SWAP.slippageMax) || 3);
+        if (R.q) { R.plan = payPlan({quoteIn: R.q.flowIn, priceOut: R.amount, reserveIn: R.q.reserveFlow, reserveOut: R.q.reserveDust, available: R.q.flowAvailable,
+            slippagePct: R.slippage, warnPct: REFILL_IMPACT_WARN, blockPct: SWAP.impactBlock || 10}); }
+    },
+    rfOpts() { const R = this.rf; return R ? refillOptions({amount: R.amount, dust: this.dust, plan: R.plan, swapOn: !!SWAP, quoteError: R.qErr}) : {}; },
+    rfSwapOn() { return !!SWAP; },
+    rfSlippages() { const m = (SWAP && SWAP.slippageMax) || 3; return [0.5, 1, 2, 3].filter((x) => x <= m); },
+    rfCanPay() { const R = this.rf; const o = this.rfOpts(); return !!R && !R.busy && (R.method === 'flow' ? o.flowOk : o.dustOk); },
+    rfAge() { const R = this.rf; return R && R.qAt ? Math.max(0, Math.round((R.now - R.qAt) / 1000)) : null; },
+    rfClose() {
+        if (this.rf && this.rf.busy) { return; } // never hide a wallet / chain step in progress
+        clearInterval(this.rfTimer);
+        clearInterval(this.rfClock);
+        this.rf = null;
+        if (this.rfReturn && this.rfReturn.focus) { this.rfReturn.focus(); }
+    },
+    rfKey(e) {
+        if (e.key === 'Escape') { e.preventDefault(); this.rfClose(); }
+        else if (e.key === 'Tab') { trapTab(e, this.$refs.rf); }
+    },
+    async rfPay() {
+        const A = this.assistant;
+        const R = this.rf;
+        if (!R || !this.rfCanPay()) { return; }
+        R.error = '';
+        R.busy = 'Preparing\u2026';
+        try {
+            const ref = (await this.aFetch('/api/v1/tank/refills/intent', {method: 'POST', body: JSON.stringify({amount: R.amount})})).ref;
+            let txId;
+            if (R.method === 'flow') {
+                R.busy = '';
+                await this.rfQuote(); // fresh price right before the wallet opens
+                if (!this.rfOpts().flowOk) { throw new Error(this.rfOpts().flowReason || 'The FLOW price changed.'); }
+                R.busy = 'Waiting for your wallet\u2026';
+                const deadline = Math.floor(Date.now() / 1000) + ((SWAP && SWAP.deadlineSeconds) || 300);
+                const maxIn = ufix(R.plan.maxIn, 'up');
+                txId = await mutate({cadence: C.REFILL_TANK_FLOW_TX, args: (arg, t) => [arg(ufix(R.amount), t.UFix64), arg(maxIn, t.UFix64), arg(ufix(deadline), t.UFix64), arg(ref, t.String)], limit: 9999});
+                R.busy = 'Swapping FLOW and burning on chain\u2026';
+            } else {
+                R.busy = 'Waiting for your wallet\u2026';
+                txId = await mutate({cadence: C.REFILL_TANK_TX, args: (arg, t) => [arg(ufix(R.amount), t.UFix64), arg(ref, t.String)], limit: 9999});
+                R.busy = 'Burning on chain\u2026';
+            }
+            A.busy = R.busy;
             await sealed(txId);
             await this.aFetch('/api/v1/tank/refills', {method: 'POST', body: JSON.stringify({tx: txId})});
             await this.aTank();
             if (A.tank) { this.aPeak(Number(A.tank.balance) || 0); } // a refill is the new "full" mark of the gauge
             A.dry = false;
             A.error = '';
+            A.refillNote = fmtDust(R.amount) + ' burned into your tank' + (R.method === 'flow' ? ' (paid with FLOW)' : '') + '.';
             if (!A.wide) { A.slotOpen = false; }
             this.dust = await dustBalance(this.wallet);
-        } catch (e) { A.error = txErrorText(e); }
-        A.busy = '';
+            R.busy = '';
+            A.busy = '';
+            this.rfClose();
+        } catch (e) {
+            R.error = e && e.response ? apiErrorText(e) : txErrorText(e);
+            R.busy = '';
+            A.busy = '';
+        }
     },
     async aRecord() {
         const A = this.assistant;

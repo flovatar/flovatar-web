@@ -99,6 +99,9 @@ export function pickIds(layers, picks) {
 export function txErrorText(e) {
     const s = String((e && (e.message || e.errorMessage)) || e || '');
     if (/declined|rejected|cancel/i.test(s)) { return 'You cancelled the transaction in your wallet.'; }
+    // Increment swap guards (pay with FLOW): the tx reverted, nothing was spent
+    if (/EXCESSIVE_INPUT_AMOUNT/.test(s)) { return 'The FLOW price moved above your maximum (slippage). Nothing was spent: try again.'; }
+    if (/SwapRouter: expired/i.test(s)) { return 'The FLOW price quote expired. Nothing was spent: try again.'; }
     const m = /error: (?:assertion failed|panic): ([^\n]+)/i.exec(s) || /message: "?([^"\n]+)/i.exec(s);
     return m ? m[1].trim() : (s.length > 300 ? s.slice(0, 300) + '\u2026' : s) || 'The transaction failed.';
 }
@@ -224,4 +227,56 @@ export function messagesLeft(balance, indicative, levelName) {
     const n = Math.floor(Math.max(0, Number(balance) || 0) / ind);
     if (n < 1) { return 'Not enough for a ' + levelName + ' message: refill first'; }
     return 'About ' + n.toLocaleString('en-US') + ' ' + levelName + (n === 1 ? ' message' : ' messages') + ' in your tank';
+}
+
+/** "Island #8 (common)" / with its name when it has one. */
+export function islandLabel(i) {
+    if (!i) { return ''; }
+    return 'Island #' + i.id + (i.name ? ' \u00b7 ' + i.name : '') + (i.rarity ? ' (' + i.rarity + ')' : '');
+}
+
+/** Why an island can't take a new FUB (commit step), '' when it can. */
+export function islandBlockReason(i) {
+    if (!i || i.free) { return ''; }
+    if (i.reason === 'hosts-fub') { return i.fubId ? 'Already hosts FUB #' + i.fubId : 'Already hosts a FUB'; }
+    if (i.reason === 'no-building') { return 'No FUB building for ' + (i.rarity || 'this') + ' islands yet'; }
+    return 'Not available';
+}
+
+/**
+ * Tank refill dialog: which payment options can be used right now.
+ *   amount   ĐUST to burn; dust = wallet ĐUST balance
+ *   plan     dust-swap-math payPlan() result for "FLOW in for exactly `amount` ĐUST" (null while loading / on error)
+ *   swapOn   the site has the ĐUST/FLOW swap configured; quoteError = text when the quote failed
+ * -> {dustOk, dustReason, flowOk, flowReason}
+ */
+export function refillOptions({amount, dust, plan, swapOn, quoteError}) {
+    const a = Number(amount) || 0;
+    const d = Number(dust) || 0;
+    const dustOk = a > 0 && d >= a;
+    const dustReason = dustOk ? '' : 'Not enough \u0110UST: you have ' + fmtDust(Math.floor(d * 100) / 100) + '.';
+    let flowReason = '';
+    if (!swapOn) {
+        flowReason = 'Paying with FLOW is not available on this site.';
+    } else if (quoteError) {
+        flowReason = quoteError;
+    } else if (!plan) {
+        flowReason = 'Getting the FLOW price\u2026';
+    } else if (plan.level === 'block') {
+        flowReason = 'The \u0110UST/FLOW pool is too thin for this amount (price impact ' + fmtPct(plan.impact) + '). Refill less or pay with \u0110UST.';
+    } else if (!plan.enough) {
+        flowReason = 'Not enough FLOW: this needs up to ' + fmtFlow(plan.maxIn) + ' FLOW.';
+    }
+    return {dustOk, dustReason, flowOk: flowReason === '', flowReason};
+}
+
+export function fmtFlow(v) {
+    const n = Number(v) || 0;
+    return n.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: n < 10 ? 4 : 2});
+}
+
+export function fmtPct(v) {
+    const n = Number(v);
+    if (!Number.isFinite(n)) { return '\u2014'; }
+    return (n < 10 ? n.toFixed(2) : n.toFixed(1)) + '%';
 }
