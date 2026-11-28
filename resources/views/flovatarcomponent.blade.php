@@ -142,6 +142,7 @@
                             </ul>
                         </div>
                     </div>
+                    @include('partials.evm-bridge', ['evmSlug' => 'flobits', 'evmId' => $componentId])
                     @include('partials.dust-market', ['dustKind' => 'flobit', 'dustId' => $componentId])
                     <div class="content-box" x-show="isSale() || (isOwned() && showSale)">
                         <div class="title-row">

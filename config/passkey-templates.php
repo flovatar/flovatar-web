@@ -31,6 +31,8 @@ return [
     'component-sale-create' => ['sha256' => '3c95c3e31dcecb5b5561d9ff35be0e09f4bd8875a9fbd28447c94bcc6144a3e1', 'label' => 'List the Flobit for sale'],
     'component-sale-update' => ['sha256' => 'c417b6749c0a2b9e2883139e72409d24ccacbe650a7ba1b9102be7b0c98be09f', 'label' => 'Change the Flobit price'],
     'component-send-gift' => ['sha256' => '6dcffa8a8508326045bf1423a15256849f97cc5f989e95d34c6811966048ba06', 'label' => 'Send the Flobit as a gift'],
+    'evm-bridge-from' => ['sha256' => '13eaf7e3fde7bf3ebdfbf7b352747a5d0e79b517ffd48553825b2d45adfdfd87', 'label' => 'Bring back from Flow EVM'],
+    'evm-bridge-to' => ['sha256' => 'c9d3949533058cbfa2b5c4d6af1eb336195e46f8d060c7a8fbcc907d1bc4308e', 'label' => 'Bridge to Flow EVM'],
     'flobot-add-background' => ['sha256' => 'e2fd482361870c932baad43d685d53a20a652f9acb2246d3d4c0233287e85a87', 'label' => 'Add a background'],
     'flobot-create' => ['sha256' => 'c49aeadd476177a88b0527f78968f2ab2eff801e6298ceb3afcdc1dab1c0572f', 'label' => 'Create a Flobot'],
     'flobot-remove-background' => ['sha256' => '8a1e8113ecee5388f94d012d713ad8814b7837d2c2c57ef87d1cd9feb00be5f9', 'label' => 'Remove the background'],

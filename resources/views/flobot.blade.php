@@ -167,6 +167,7 @@
 
 
 
+        <div class="container">@include('partials.evm-bridge', ['evmSlug' => 'flobots', 'evmId' => $flobotId])</div>
         @if(\App\Support\DustMarket::enabled())
         <div class="container dust-market-flobot">@include('partials.dust-market', ['dustKind' => 'flobot', 'dustId' => $flobotId])</div>
         @endif

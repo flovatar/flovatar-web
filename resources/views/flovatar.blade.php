@@ -146,6 +146,7 @@
                         </p>
                     </div>
 
+                    @include('partials.evm-bridge', ['evmSlug' => 'flovatar', 'evmId' => $flovatarId])
                     @include('partials.dust-market', ['dustKind' => 'flovatar', 'dustId' => $flovatarId])
                     <div class="content-box" x-show="isSale() || (isOwned() && showSale)">
                         <div class="title-row">

@@ -45,6 +45,7 @@ class PublicCache
     public const ALWAYS_STATELESS_PATHS = [
         'api/image/*', 'templates/svg/*', 'templates/data/*',
         'flovatars/json/*', 'flobots/json/*', 'components/json/*', 'collectibles/json/*',
+        'accessories/json/*', 'evm/collections/*',
     ];
 
     /** Public pages: anonymous GETs get the shared-cache header. */

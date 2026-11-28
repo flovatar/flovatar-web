@@ -1,0 +1,89 @@
+// ---------------------------------------------------------===
+// Flow EVM (EVM-A 2026-11): item-page bridge panel (.evm-bridge), profile "On Flow EVM" section and the /evm
+// gallery (.evm-page). Markup only rendered when config('evm.ui'). Brand colours as the TerraKit check page.
+// Prefixed class names only (the site's global .dust/.flow styles bleed into generic names).
+// ---------------------------------------------------------===
+
+$evm-panel: #343B5A;
+$evm-ink: #1A1E2D;
+$evm-peri: #AED7F7;
+$evm-yellow: #FFEE50;
+$evm-pink: #EF2AC1;
+$evm-sky: #91E3F9;
+$evm-green: #52F618;
+
+.evm-bridge {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(52, 59, 90, .92);
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.45;
+  [x-cloak] { display: none !important; }
+  .evm-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .evm-badge { display: inline-block; padding: 1px 8px; border-radius: 4px; background: $evm-sky; color: $evm-ink; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  .evm-badge.is-evm { background: $evm-pink; color: #fff; }
+  .evm-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-all; }
+  .evm-muted { opacity: .8; }
+  .evm-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .evm-confirm { margin-top: 10px; padding: 10px 12px; border-radius: 8px; background: $evm-ink; }
+  .evm-confirm ul { margin: 6px 0 8px 18px; padding: 0; }
+  .evm-confirm li { margin: 2px 0; }
+  a { color: $evm-sky; text-decoration: underline; }
+  .btn[disabled] { opacity: .5; pointer-events: none; }
+}
+
+.evm-page {
+  padding: 140px 0 80px;
+  color: #fff;
+  font-size: 17px;
+  line-height: 1.5;
+  @include media('<tablet') { padding: 110px 0 60px; font-size: 16px; }
+  [x-cloak] { display: none !important; }
+  .container { max-width: 1080px; }
+  h1 { color: $evm-peri; text-transform: uppercase; margin: 6px 0 14px; }
+  h2 { color: $evm-peri; font-size: 22px; margin: 30px 0 10px; text-transform: uppercase; }
+  a { color: $evm-sky; text-decoration: underline; }
+  .evm-eyebrow { color: $evm-pink; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; font-size: 14px; }
+  .evm-panel { padding: 20px 22px; border-radius: 10px; background: $evm-panel; margin: 16px 0; }
+  .evm-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .evm-row input { flex: 1 1 320px; min-width: 0; padding: 12px 14px; border-radius: 8px; border: 0; background: #fff; color: $evm-ink; font-size: 16px; }
+  .evm-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-all; }
+  .evm-err { color: #ffb3b3; }
+  .evm-steps { margin: 8px 0 0 20px; padding: 0; }
+  .evm-steps li { margin: 6px 0; }
+}
+
+.evm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 14px;
+  margin-top: 12px;
+}
+.evm-card {
+  background: $evm-ink;
+  border-radius: 10px;
+  overflow: hidden;
+  color: #fff;
+  font-size: 14px;
+  .evm-img { aspect-ratio: 1 / 1; background: #fff; display: flex; align-items: center; justify-content: center; }
+  .evm-img img { width: 100%; height: 100%; object-fit: contain; }
+  .evm-body { padding: 10px 12px 12px; }
+  .evm-name { font-weight: 700; margin: 0 0 4px; line-height: 1.25; }
+  .evm-tag { display: inline-block; padding: 0 6px; border-radius: 4px; font-size: 11px; background: rgba(255, 255, 255, .16); margin-right: 4px; }
+  .evm-tag.is-legacy { background: $evm-yellow; color: $evm-ink; }
+  .evm-card-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  a { color: $evm-sky; }
+}
+
+.evm-profile {
+  margin: 30px 0;
+  padding: 18px 20px;
+  border-radius: 10px;
+  background: rgba(52, 59, 90, .92);
+  color: #fff;
+  h3 { color: $evm-peri; text-transform: uppercase; margin: 0 0 6px; }
+  .evm-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-all; }
+  a { color: $evm-sky; }
+}

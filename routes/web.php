@@ -208,10 +208,14 @@ if(config('flovatar.isTest')){
 });
 
 
-Route::get('flovatars/json/{flovatarId}', [JsonController::class, 'flovatar']);
-Route::get('flobots/json/{flobotId}', [JsonController::class, 'flobot']);
-Route::get('components/json/{componentId}',  [JsonController::class, 'component']);
-Route::get('collectibles/json/{collectibleId}', [JsonController::class, 'collectible']);
+Route::get('flovatars/json/{flovatarId}', [JsonController::class, 'flovatar'])->whereNumber('flovatarId');
+Route::get('flobots/json/{flobotId}', [JsonController::class, 'flobot'])->whereNumber('flobotId');
+Route::get('components/json/{componentId}',  [JsonController::class, 'component'])->whereNumber('componentId');
+Route::get('collectibles/json/{collectibleId}', [JsonController::class, 'collectible'])->whereNumber('collectibleId');
+// EVM-A (Flow EVM): accessory tokenURI + collection-level contractURI, and the read-only EVM wallet gallery
+Route::get('accessories/json/{accessoryId}', [JsonController::class, 'accessory'])->whereNumber('accessoryId');
+Route::get('evm/collections/{slug}.json', [JsonController::class, 'evmCollection'])->where('slug', '[a-z]+');
+Route::get('evm', [\App\Http\Controllers\EvmController::class, 'gallery'])->name('evm.gallery');
 
 Route::get('flovatars/{flovatarId}', [RedirectController::class, 'flovatar']);
 Route::get('flobots/{flobotId}', [RedirectController::class, 'flobot']);

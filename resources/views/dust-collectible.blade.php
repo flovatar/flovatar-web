@@ -106,6 +106,7 @@
                         </div>
                     </div>
 
+                    @include('partials.evm-bridge', ['evmSlug' => 'collectibles', 'evmId' => $collectibleId])
                     @include('partials.dust-market', ['dustKind' => 'collectible', 'dustId' => $collectibleId])
                     <div class="content-box" x-show="isSale() || (isOwned() && showSale)">
                         <div class="title-row">

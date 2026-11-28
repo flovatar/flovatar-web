@@ -159,6 +159,8 @@
                 </div>
                 @endif
 
+                @include('partials.evm-holdings', ['evmFlowAddress' => $headlessShell ? '' : $address])
+
                 @if(\App\Support\DustMarket::enabled())
                 {{-- ĐUST marketplace: this wallet's ĐUST storefront listings, read on chain --}}
                 <div class="dust-listings-section" x-data="dustListings('')" x-show="dustRows.length > 0" x-cloak>

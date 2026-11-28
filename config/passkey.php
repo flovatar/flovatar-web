@@ -136,6 +136,9 @@ return [
         '0xSwapRouter' => env('DUST_SWAP_ROUTER', env('FLOW_NETWORK') === 'mainnet' ? '0xa6850776a94e6551' : '0x84e6590ef1493ae7'),
         '0xSwapConfig' => env('DUST_SWAP_CONFIG', env('FLOW_NETWORK') === 'mainnet' ? '0xb78ef7afa52ff906' : '0x84e6590ef1493ae7'),
         '0xSwapFactory' => env('DUST_SWAP_FACTORY', env('FLOW_NETWORK') === 'mainnet' ? '0xb063c16cac85dbd1' : '0x84e6590ef1493ae7'),
+        // Flow EVM + VM bridge (EVM-A; same per-network defaults as resources/js/app/evm.js)
+        '0xEVM' => env('MIX_EVM_CONTRACT', env('FLOW_NETWORK') === 'mainnet' ? '0xe467b9dd11fa00df' : '0x8c5303eaa26202d6'),
+        '0xFlowEVMBridge' => env('MIX_EVM_BRIDGE', env('FLOW_NETWORK') === 'mainnet' ? '0x1e4aa0b87d10b141' : '0xdfc20aee650fcbdf'),
     ],
 
     // Testnet faucet shown in the passkey account panel (deposit address).

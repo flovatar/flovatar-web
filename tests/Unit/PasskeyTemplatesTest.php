@@ -20,6 +20,7 @@ class PasskeyTemplatesTest extends TestCase
         '0xStorefront2' => '0x2d55b98eb200daef', '0xDuc' => '0x82ec283f88a62e65', '0xFut' => '0x82ec283f88a62e65',
         '0xTokenForwarding' => '0x51ea0e37c27a1f1a', '0xDapperMerchant' => '0x03df89ac89a3d64a', '0xHybridCustody' => '0x294e44e1ec6993c6',
         '0xIslands' => '0x2c6a4c4342aeca55',
+        '0xEVM' => '0x8c5303eaa26202d6', '0xFlowEVMBridge' => '0xdfc20aee650fcbdf',
     ];
 
     private function registry(): TemplateRegistry
@@ -50,7 +51,8 @@ class PasskeyTemplatesTest extends TestCase
             // every allowlisted template resolves (only one authorizer, no custom signers, all aliases known)
             $tpl = $this->registry()->find($pin['sha256']);
             $code = $this->registry()->resolve($tpl['cadence']);
-            $this->assertDoesNotMatchRegularExpression('/\b0x[A-Za-z][A-Za-z0-9_]*\b/', $code, $id);
+            // unresolved alias = 0x<Name> that is not a 16-hex address (testnet bridge 0xdfc20aee650fcbdf starts with a letter)
+            $this->assertDoesNotMatchRegularExpression('/\b0x(?![0-9a-f]{16}\b)[A-Za-z][A-Za-z0-9_]*\b/', $code, $id);
             $this->assertCount(count($manifest[$id]['argTypes']), TemplateRegistry::parameterTypes($tpl['cadence']), $id);
         }
     }
