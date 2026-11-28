@@ -265,7 +265,7 @@ export function refillOptions({amount, dust, plan, swapOn, quoteError}) {
     } else if (plan.level === 'block') {
         flowReason = 'The \u0110UST/FLOW pool is too thin for this amount (price impact ' + fmtPct(plan.impact) + '). Refill less or pay with \u0110UST.';
     } else if (!plan.enough) {
-        flowReason = 'Not enough FLOW: this needs up to ' + fmtFlow(plan.maxIn) + ' FLOW.';
+        flowReason = 'Not enough FLOW: this needs up to ' + fmtFlow(plan.need || plan.maxIn) + ' FLOW.';
     }
     return {dustOk, dustReason, flowOk: flowReason === '', flowReason};
 }

@@ -11,7 +11,8 @@
  *
  * Integration hook for other pages (Pack Rewind, FUB, …), no extra markup needed besides the modal partial
  * (partials/buy-dust-modal, included by layouts when DustEvm/DustSwap is on):
- *   window.FlovatarBuyDust.open({amount: 3000, reason: 'The ĐUST pack costs Đ3,000'})  → resolves {txId, amount} or null
+ *   window.FlovatarBuyDust.open({amount: 3000, reason: 'The ĐUST pack costs Đ3,000'})
+ *       → resolves {txId, amount, method} as soon as the purchase is sealed, or null if the user closes without buying
  *   window.addEventListener('buy-dust:done', (e) => e.detail)   // {txId, amount, method}
  */
 import Alpine from 'alpinejs';
@@ -28,6 +29,8 @@ function txText(e, sym) {
     const t = evmTxErrorText(s, sym);
     if (t) { return t; }
     if (/Price moved: less DUST|INSUFFICIENT_OUTPUT_AMOUNT/.test(s)) { return 'The FLOW price moved past your slippage. Nothing was spent: try again.'; }
+    // a wallet that returns nothing / a JS TypeError is not something to show the user verbatim
+    if (/^(TypeError|ReferenceError)|Cannot read properties of|is not a function|undefined/.test(s)) { return 'The wallet did not return a transaction. Nothing was spent: try again.'; }
     const m = /error: (?:assertion failed|panic): ([^\n]+)/i.exec(s);
     return m ? m[1].trim() : (s.length > 240 ? s.slice(0, 240) + '\u2026' : s) || 'The transaction failed.';
 }
@@ -233,6 +236,9 @@ Alpine.data('buyDust', (opts) => ({
             this.busy = '';
             window.dispatchEvent(new CustomEvent('buy-dust:done', {detail: this.done}));
             window.dispatchEvent(new CustomEvent('dust-swap-done', {detail: {txId}}));
+            // modal: the caller (e.g. Pack Rewind) continues as soon as the ĐUST is in the wallet; the modal keeps the
+            // success line until the user closes it
+            if (this.modal && this.resolver) { const r = this.resolver; this.resolver = null; r(this.done); }
             if (typeof window.refreshProfile === 'function') { window.refreshProfile(); }
             await this.requote();
         } catch (e) {
