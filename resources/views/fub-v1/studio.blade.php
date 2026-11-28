@@ -33,6 +33,7 @@
                                     <span class="fub-badge" x-text="d.status"></span>
                                     <span class="fub-badge" x-show="d.chainFubId" x-text="'FUB #' + d.chainFubId"></span>
                                     <span class="fub-badge sync" x-show="committed" x-text="d.syncState === 'idle' ? 'on chain' : (d.syncState === 'error' ? 'sync error' : 'writing to chain…')" data-fub="sync-state"></span>
+                                    <span class="fub-badge" x-show="committed && d.settings && d.settings.island_id" x-text="'Island #' + (d.settings ? d.settings.island_id : '')" title="Your FUB building's island (chosen at commit, permanent)" data-fub="bound-island-badge"></span>
                                     <span class="fub-badge" x-text="budget.tier + ' tier'"></span>
                                 </p>
                             </div>
@@ -167,18 +168,19 @@
                                         <template x-if="preflightData">
                                             <div>
                                                 <template x-for="b in preflightData.blockers"><p class="isl-error" x-text="b"></p></template>
+                                                {{-- island bound at commit (read-only, permanent) --}}
+                                                <template x-if="preflightData.islandId">
+                                                    <div class="fub-bound" data-fub="publish-island">
+                                                        <span class="fub-bound-label">Island</span>
+                                                        <b x-text="'Island #' + preflightData.islandId"></b>
+                                                        <span x-text="((chain && chain.allIslands || []).find((i) => i.id === Number(preflightData.islandId)) || {}).name || ''"></span>
+                                                        <small>Chosen at commit, permanent: your FUB building already stands there and stays with the island.</small>
+                                                    </div>
+                                                </template>
                                                 <template x-if="!preflightData.blockers.length">
                                                     <div>
                                                         <p x-text="preflightData.items + ' items in ' + preflightData.layers.length + ' layers · heaviest F.U.N. ' + fmtBytes(preflightData.heaviest) + ' of ' + fmtBytes(preflightData.composedCap)"></p>
                                                         <p class="mono muted" style="font-size:12px" x-text="'Manifest ' + preflightData.manifest"></p>
-                                                        <template x-if="preflightData.islandId">
-                                                            <div class="fub-bound" data-fub="publish-island">
-                                                                <span class="fub-bound-label">Island</span>
-                                                                <b x-text="'Island #' + preflightData.islandId"></b>
-                                                                <span x-text="((chain && chain.allIslands || []).find((i) => i.id === Number(preflightData.islandId)) || {}).name || ''"></span>
-                                                                <small>Chosen at commit, permanent: your FUB building already stands there and stays with the island.</small>
-                                                            </div>
-                                                        </template>
                                                         {{-- FUBs committed before the island-at-commit update (testnet only) still pick their island here --}}
                                                         <template x-if="!preflightData.islandId">
                                                             <div>
