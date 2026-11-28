@@ -92,6 +92,19 @@ return [
     // The site builders ask for >= 0.05 FLOW before minting (storage), so new accounts start above that.
     'account_fund' => env('PASSKEY_ACCOUNT_FUND', '0.06'),
 
+    // Starting FLOW for NEW passkey accounts (TESTNET ONLY, Pack Rewind: enough to replay the packs). Sent once per
+    // account by the sponsor right after sign-up (App\Services\Passkey\FlowGrant). Kill switch = enabled false.
+    'flow_grant' => [
+        'enabled' => (bool) env('PASSKEY_FLOW_GRANT_ENABLED', false),
+        'amount' => (float) env('PASSKEY_FLOW_GRANT_AMOUNT', 150),
+        // only accounts created at/after this unix time get it (0 = any account without a grant yet)
+        'since' => (int) env('PASSKEY_FLOW_GRANT_SINCE', 0),
+        'per_ip_per_day' => (int) env('PASSKEY_FLOW_GRANT_PER_IP_PER_DAY', 3),
+        'per_device_per_day' => (int) env('PASSKEY_FLOW_GRANT_PER_DEVICE_PER_DAY', 3),
+        'daily_cap' => (float) env('PASSKEY_FLOW_GRANT_DAILY_CAP', 3000),   // total FLOW per UTC day
+        'sponsor_reserve' => (float) env('PASSKEY_FLOW_GRANT_SPONSOR_RESERVE', 200), // never grant below this
+    ],
+
     // Storage top-up for existing passkey accounts below the builders' minimum: the sponsor sends
     // (target - balance) when balance < min, at most `topups_max` times per account.
     'storage' => [
@@ -136,6 +149,8 @@ return [
         '0xSwapRouter' => env('DUST_SWAP_ROUTER', env('FLOW_NETWORK') === 'mainnet' ? '0xa6850776a94e6551' : '0x84e6590ef1493ae7'),
         '0xSwapConfig' => env('DUST_SWAP_CONFIG', env('FLOW_NETWORK') === 'mainnet' ? '0xb78ef7afa52ff906' : '0x84e6590ef1493ae7'),
         '0xSwapFactory' => env('DUST_SWAP_FACTORY', env('FLOW_NETWORK') === 'mainnet' ? '0xb063c16cac85dbd1' : '0x84e6590ef1493ae7'),
+        // Pack Rewind (testnet only): Sportvatar contracts for the 2023 chapter (set at runtime in the browser from window.PACK_REWIND)
+        '0xSportvatar' => env('PACK_REWIND_SPORTVATAR', env('FLOW_NETWORK') === 'testnet' ? '0xc80df59e5354ca8a' : null),
     ],
 
     // Testnet faucet shown in the passkey account panel (deposit address).

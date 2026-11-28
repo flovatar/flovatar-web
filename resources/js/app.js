@@ -46,6 +46,7 @@ const FX = {
     t: () => import(/* webpackChunkName: "t" */ './app/terrakit-check'),
     i: () => import(/* webpackChunkName: "i" */ './app/islands'),
     u: () => import(/* webpackChunkName: "u" */ './app/fub-v1'),
+    r: () => import(/* webpackChunkName: "r" */ './app/pack-rewind'),
 };
 const fx = (Array.isArray(window.__FX) ? window.__FX : []).filter((k) => FX[k]);
 if (fx.length) {

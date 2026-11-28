@@ -8,6 +8,7 @@ use App\Models\PasskeyTransaction;
 use App\Models\PasskeyWalletLink;
 use App\Services\Passkey\AccountRecovery;
 use App\Services\Passkey\EmailVerification;
+use App\Services\Passkey\FlowGrant;
 use App\Services\Passkey\FlowTransaction;
 use App\Services\Passkey\PasskeyCrypto;
 use App\Services\Passkey\PasskeyPoc;
@@ -166,6 +167,7 @@ class PasskeyPocController extends Controller
             'balance' => $chain['balance'] ?? null,
             'state' => $state,
             'transactions' => $account->transactions()->latest('id')->limit(20)->get(['kind', 'tx_id', 'status', 'signed_by', 'created_at']),
+            'flowGrant' => FlowGrant::status($account),
         ];
 
         return response()->json($out);
@@ -194,7 +196,13 @@ class PasskeyPocController extends Controller
             return $this->fail('The demo has reached today\'s limit of new accounts. Please try again tomorrow.', 429);
         }
 
-        return response()->json($this->creationOptions($request, 'signup', $email));
+        $resp = response()->json($this->creationOptions($request, 'signup', $email));
+        if (! $request->cookie(FlowGrant::DEVICE_COOKIE)) {
+            // long-lived random device id: one input of the starting-FLOW per-device limit (FlowGrant)
+            $resp->withCookie(cookie(FlowGrant::DEVICE_COOKIE, bin2hex(random_bytes(16)), 60 * 24 * 730, null, null, true, true, false, 'Lax'));
+        }
+
+        return $resp;
     }
 
     private function creationOptions(Request $request, string $mode, ?string $email, ?PasskeyAccount $account = null): array
@@ -293,7 +301,8 @@ class PasskeyPocController extends Controller
             PasskeyLogin::loginSite($request, $address);
         }
 
-        return response()->json(['address' => $address, 'txId' => $txId, 'csrf' => $request->session()->token(), 'auth_type' => 'passkey']);
+        return response()->json(['address' => $address, 'txId' => $txId, 'csrf' => $request->session()->token(), 'auth_type' => 'passkey',
+            'flowGrant' => FlowGrant::status($account)]);
     }
 
     // ------------------------------------------------------------------ sign in
@@ -866,6 +875,21 @@ class PasskeyPocController extends Controller
         } finally {
             $lock->release();
         }
+    }
+
+    // ------------------------------------------------------------------ starting FLOW (testnet, sponsor-signed)
+
+    /** Send the one-time starting FLOW to a NEW passkey account (guards in App\Services\Passkey\FlowGrant). */
+    public function flowGrant(Request $request): JsonResponse
+    {
+        [$account] = $this->requireLogin($request);
+        try {
+            $g = app(FlowGrant::class)->grant($account, $request);
+        } catch (\RuntimeException $e) {
+            return $this->fail($e->getMessage(), 409);
+        }
+
+        return response()->json(['state' => $g->status, 'txId' => $g->tx_id, 'amount' => (float) $g->amount]);
     }
 
     // ------------------------------------------------------------------ storage top-up (sponsor-signed)
