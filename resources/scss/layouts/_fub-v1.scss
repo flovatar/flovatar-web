@@ -155,6 +155,8 @@
   @include media('>=desktop', '<widescreen') { height: 665px; }
   @include media('>=desktop', '<1150px') { height: 625px; }
   .fub-shell_stage:after { @include fub-checker; background-repeat: repeat; bottom: 0; }
+  // phones: the builder's fixed 375 / 320 px stage is wider than the frame here; keep the preview square
+  @include media('<tablet') { .fub-shell_stage { width: 100%; max-width: 375px; height: auto; aspect-ratio: 1 / 1; } }
   .flovatar-img .builder-svg { object-fit: contain; display: block; } }
 
 // ---------------------------------------------------------===
@@ -280,7 +282,8 @@ $vm-lilac: #C7BCFB;
   &.dry { background: $isl-orange; color: #000; }
   &.ask { background: $vm-lilac; } }
 .fub-vm-status { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 10px; font-size: 14px; color: $isl-peri;
-  .led { flex: none; width: 10px; height: 10px; border: 2px solid #000; border-radius: 50%; background: $isl-green; animation: fubvm-blink 1s steps(2, start) infinite; }
+  &:not(.rec):not(.note) { flex-wrap: nowrap; align-items: flex-start; > span { flex: 1 1 auto; min-width: 0; } } // the light stays beside a two-line status
+  .led { flex: none; width: 10px; height: 10px; margin-top: 4px; border: 2px solid #000; border-radius: 50%; background: $isl-green; animation: fubvm-blink 1s steps(2, start) infinite; }
   &.rec { color: #fff; .dot { color: #FF7A8A; animation: fubvm-blink 1s steps(2, start) infinite; } span { color: $isl-peri; } } }
 .fub-vm-keys { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; padding-bottom: 4px;
   textarea { width: 100%; height: 66px; min-height: 66px; resize: none; padding: 8px 10px; border: 3px solid #000; border-radius: 8px; background: #fff; color: $isl-ink; font-size: 16px; line-height: 1.3; } }
