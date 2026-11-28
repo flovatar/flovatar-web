@@ -321,6 +321,8 @@ Route::view('builder-psyche', 'builder-psyche')->name('builder-psyche');
 Route::view('my-collection', 'my-collection')->name('my-collection');
 Route::view('explore', 'explore')->name('explore');
 Route::view('dust', 'dust')->name('dust');
+// Buy ĐUST (FLOW / Flow EVM stablecoin / another chain; KB notes/flow-evm-program.md EVM-B): only where the ĐUST swap is visible
+Route::get('buy-dust', fn () => \App\Support\DustSwap::enabled() ? view('buy-dust') : abort(404))->name('buy-dust');
 Route::view('story', 'story')->name('story');
 // Not-found page of the static headless site (stored as 404.html by headless:build).
 Route::view('__headless_404', 'headless.404')->name('headless.404');
@@ -366,6 +368,11 @@ if (\App\Support\Islands::active()) {
 if (\App\Support\Fub::active()) {
     Route::get('fub', [\App\Http\Controllers\Fub\FubPagesController::class, 'index'])->name('fub');
     require __DIR__.'/fub.php';
+}
+
+// Pack Rewind (TESTNET ONLY): PACK_REWIND_MODE (off|stealth|on); Stealth::mode() forces off on any other network.
+if (\App\Support\PackRewind::active()) {
+    Route::middleware('stealth:rewind')->group(__DIR__.'/pack-rewind.php');
 }
 
 // Stealth gate: /__stealth/{secret} sets the signed fl_s cookie (STEALTH_SECRET in .env; ?off=1 clears it).

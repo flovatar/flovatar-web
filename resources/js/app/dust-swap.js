@@ -20,6 +20,8 @@ import {dustSwapDustToFlowTx} from "../flow/dust-swap-dust-to-flow.tx";
 import {dustSwapBuyDustListingTx} from "../flow/dust-swap-buy-dust-listing.tx";
 import {dustSwapBuyFlowListingTx} from "../flow/dust-swap-buy-flow-listing.tx";
 import {ufix, priceImpact, impactLevel, dustPerFlow, clampSlippage, maxInWithSlippage, minOutWithSlippage, payPlan} from "./dust-swap-math";
+// Buy ĐUST widget + window.FlovatarBuyDust modal (FLOW / Flow EVM stablecoin / another chain; KB flow-evm-program.md EVM-B)
+import "./buy-dust";
 
 const CFG = window.DUST_SWAP && window.DUST_SWAP.enabled ? window.DUST_SWAP : null;
 

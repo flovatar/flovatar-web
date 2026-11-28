@@ -43,6 +43,9 @@ class TemplateRegistry
         if (\App\Support\DustSwap::passkeyBuyAllowed()) {
             $allow += (array) config('passkey-templates-dust-swap', []);
         }
+        if (\App\Support\PackRewind::active()) {
+            $allow += (array) config('passkey-templates-rewind', []);
+        }
 
         return $allow;
     }

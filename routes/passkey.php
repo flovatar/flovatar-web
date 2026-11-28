@@ -31,6 +31,8 @@ Route::prefix('passkey')->name('passkey.')->group(function () {
     Route::get('tx/{txId}', [PasskeyPocController::class, 'txStatus'])->name('tx.status')->middleware('throttle:120,1');
     Route::post('gift', [PasskeyPocController::class, 'gift'])->name('gift')->middleware('throttle:5,1');
     Route::post('storage/ensure', [PasskeyPocController::class, 'storageEnsure'])->name('storage.ensure')->middleware('throttle:5,1');
+    // Starting FLOW for new accounts (testnet only, PASSKEY_FLOW_GRANT_ENABLED; guards in App\Services\Passkey\FlowGrant)
+    Route::post('flow-grant', [PasskeyPocController::class, 'flowGrant'])->name('flow-grant')->middleware('throttle:5,1');
 
     // Email one-time codes (sign-up + verify the email of an existing account)
     Route::post('email/start', [PasskeyPocController::class, 'emailStart'])->name('email.start')->middleware('throttle:10,1');

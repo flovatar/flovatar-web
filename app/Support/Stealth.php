@@ -26,7 +26,7 @@ use Throwable;
  */
 class Stealth
 {
-    public const FEATURES = ['passkey', 'dust_market', 'quests', 'swap', 'terrakit', 'islands', 'fub'];
+    public const FEATURES = ['passkey', 'dust_market', 'quests', 'swap', 'terrakit', 'islands', 'fub', 'rewind'];
 
     public const MODES = ['off', 'stealth', 'on'];
 
@@ -39,10 +39,11 @@ class Stealth
         'terrakit' => 'terrakit.check_enabled',
         'islands' => 'islands.legacy_enabled', // never set: ISLANDS_MODE only
         'fub' => 'fub.legacy_enabled',         // never set: FUB_MODE only
+        'rewind' => 'pack_rewind.legacy_enabled', // never set: PACK_REWIND_MODE only
     ];
 
     /** Lazy JS/CSS bundle per feature (webpack chunk public/fx/<code>.js → storage/app/fx, served by FxAssetController). */
-    public const BUNDLES = ['passkey' => 'p', 'dust_market' => 'm', 'swap' => 's', 'quests' => 'q', 'terrakit' => 't', 'islands' => 'i', 'fub' => 'u'];
+    public const BUNDLES = ['passkey' => 'p', 'dust_market' => 'm', 'swap' => 's', 'quests' => 'q', 'terrakit' => 't', 'islands' => 'i', 'fub' => 'u', 'rewind' => 'r'];
 
     /** Secondary chunks a feature bundle imports on demand (same gate, never listed in window.__FX): code => feature.
      *  b = the WebGL belt of /islands (three.js scene, loaded by the islands bundle only on that page). */
@@ -56,6 +57,7 @@ class Stealth
         'terrakit' => ['terrakit/check', 'terrakit/check/*'],
         'islands' => ['islands', 'islands/*', 'api/islands', 'api/islands/*'],
         'fub' => ['fub/*', 'api/fub', 'api/fub/*', 'fub-content/*'], // not the bare /fub (the 2022 page stays public)
+        'rewind' => ['pack-rewind', 'pack-rewind/*', 'api/pack-rewind', 'api/pack-rewind/*'],
     ];
 
     /** Server-to-server paths that authenticate themselves (HMAC) and must work in stealth mode. */
@@ -67,6 +69,10 @@ class Stealth
 
     public static function mode(string $feature): string
     {
+        // Pack Rewind re-sells testnet copies of every pack: never on any other network, whatever the env says.
+        if ($feature === 'rewind' && (string) config('services.flow.network') !== 'testnet') {
+            return 'off';
+        }
         $raw = config("stealth.features.$feature");
         if ($raw === null || $raw === '') {
             $legacy = self::LEGACY[$feature] ?? null;

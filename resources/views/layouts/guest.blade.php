@@ -77,6 +77,10 @@
     {{-- ĐUST ⇄ FLOW swap (testnet): static-safe runtime config for resources/js/app/dust-swap.js --}}
     <script>window.DUST_SWAP = @json(\App\Support\DustSwap::bootstrap());</script>
 @endif
+@if(\App\Support\DustEvm::enabled())
+    {{-- Buy ĐUST with a Flow EVM stablecoin / from another chain (testnet): config for resources/js/evm/dust-evm.js --}}
+    <script>window.DUST_EVM = @json(\App\Support\DustEvm::bootstrap());</script>
+@endif
 @if(\App\Support\PasskeyLogin::enabled())
     {{-- testnet passkey sign-in: static-safe runtime config for resources/js/passkey.js --}}
     <script>window.PASSKEY_LOGIN = @json(\App\Support\PasskeyLogin::bootstrap());</script>
@@ -92,6 +96,10 @@
 @if(\App\Support\Fub::enabled())
     {{-- FUB v1 (FUB_MODE): static-safe runtime config for resources/js/app/fub-v1.js --}}
     <script>window.FUB = @json(\App\Support\Fub::bootstrap());</script>
+@endif
+@if(\App\Support\PackRewind::enabled())
+    {{-- Pack Rewind (PACK_REWIND_MODE, testnet only): runtime config for resources/js/app/pack-rewind.js --}}
+    <script>window.PACK_REWIND = @json(\App\Support\PackRewind::bootstrap());</script>
 @endif
 @php($fxBundles = \App\Support\Stealth::bundles())
 @if($fxBundles)
@@ -152,6 +160,9 @@
     @include('partials/modals')
 @if(\App\Support\PasskeyLogin::enabled())
         @include('partials/passkey-auth')
+@endif
+@if(\App\Support\DustSwap::enabled())
+    @include('partials.buy-dust-modal')
 @endif
 
 
