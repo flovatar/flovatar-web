@@ -21,8 +21,51 @@
         <p class="isl-crumbs"><a href="/islands">Asteroid belt</a> › <span>{{ \App\Support\Islands::designation((int) $id) }}</span></p>
         @if(!empty($fub))
             <div class="isl-panel isl-fub-link" data-islands="fub-link"><p>🏗️ This island hosts the FUB <b>{{ $fub->name }}</b> ({{ number_format($fub->minted) }} F.U.N.s minted). <a class="fub-btn" href="/fub/{{ $fub->flow_id }}">Visit the FUB</a></p></div>
-        @elseif(!empty($fubBuilding))
-            <div class="isl-panel isl-fub-link" data-islands="fub-building"><p>🏗️ A FUB is under construction on this island. Its builder opens here when the creator publishes it.</p></div>
+        @elseif(\App\Support\Fub::enabled())
+            {{-- committed, not yet published: its creator gets the FUB open here, ready to activate minting (the studio
+                 opens /islands/{id}?fub=<draft>#fub right after Commit; Luca 2026-11-28). Client-side: the page is cacheable. --}}
+            <div id="fub" x-data="fubIslandCreator({{ (int) $id }})" data-islands="fub-creator">
+                @if(!empty($fubBuilding))
+                    <div class="isl-panel isl-fub-link" data-islands="fub-building" x-show="!draft"><p>🏗️ A FUB is under construction on this island. Its builder opens here when the creator publishes it.</p></div>
+                @endif
+                <div class="isl-panel" x-show="needsVerify && !draft" x-cloak>
+                    <p>🏗️ Your FUB is on this island. Verify your wallet once to open it here.</p>
+                    <button class="fub-btn" @click="verifyWallet()" :disabled="verifying" x-text="verifying ? 'Check your wallet…' : 'Verify wallet (free signature)'"></button>
+                </div>
+                <template x-if="draft">
+                    <div class="isl-panel fub-act" data-fub="island-activate">
+                        <div class="fub-act-head">
+                            <span class="fub-act-kicker">Your FUB on this island</span>
+                            <h2 x-text="draft.name"></h2>
+                            <span class="fub-badge" x-text="'FUB #' + draft.chainFubId"></span>
+                        </div>
+                        <div class="fub-act-body">
+                            <div class="fub-act-preview"><img x-show="previewSrc()" :src="previewSrc()" :alt="draft.name"></div>
+                            <div class="fub-act-side">
+                                <ol class="fub-act-steps">
+                                    <li class="done"><b>Committed</b><small>Vouchers burned, building placed on this island.</small></li>
+                                    <li :class="pf && !pf.blockers.length ? 'done' : 'now'"><b>Items on chain</b>
+                                        <small x-show="!pf">Checking…</small>
+                                        <small x-show="pf && !pf.blockers.length" x-text="pf ? pf.items + ' items in ' + pf.layers.length + ' layers, all written.' : ''"></small>
+                                        <template x-for="b in (pf ? pf.blockers : [])"><small class="isl-error" x-text="b"></small></template>
+                                        <small class="muted" x-show="syncing">This page updates by itself.</small>
+                                    </li>
+                                    <li :class="ready ? 'now' : ''"><b>Activate minting</b><small>Opens your F.U.N. builder to everyone. Final: items, prices and supply rules can't change afterwards.</small></li>
+                                </ol>
+                                <details class="fub-act-terms"><summary>Creator terms</summary>@include('fub-v1.partials.terms')</details>
+                                <label class="fub-act-accept"><input type="checkbox" x-model="acceptTerms" :disabled="!ready || !!busy" data-fub="terms"> I accept the creator terms. Activating is final.</label>
+                                <p class="fub-perm" role="note" x-show="confirming" x-cloak><b>Last check.</b> Minting opens now and this FUB can never be edited again (you can still add items to free slots, pause, lower the royalty).</p>
+                                <div class="fub-row">
+                                    <button class="fub-btn" @click="activate()" :disabled="!ready || !acceptTerms || !!busy" data-fub="activate" x-text="busy || (confirming ? 'Confirm and sign' : 'Activate minting')"></button>
+                                    <button class="fub-btn alt" x-show="confirming && !busy" @click="confirming = false">Cancel</button>
+                                    <a class="isl-link" :href="'/fub/studio/' + draft.id">Keep editing in the studio</a>
+                                </div>
+                                <p class="isl-error" x-show="error" x-text="error" role="alert"></p>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
         @endif
 
         <div class="isl-panel" x-show="status === 'loading'"><p>Loading the island…</p></div>

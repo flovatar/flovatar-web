@@ -57,6 +57,7 @@ class FubDraftController extends Controller
 
         return response()->json(['drafts' => $drafts->map(fn ($d) => [
             'id' => $d->id, 'name' => $d->name, 'status' => $d->status, 'chainFubId' => $d->chain_fub_id, 'syncState' => $d->sync_state,
+            'islandId' => isset(($d->settings ?? [])['island_id']) ? (int) $d->settings['island_id'] : null, // bound at commit
             'items' => $d->items()->where('chain_state', '!=', 'deleted')->count(), 'updatedAt' => $d->updated_at->toIso8601String(),
         ]), 'fubs' => Fub::where('creator', $a)->orderByDesc('flow_id')->get()->map(fn ($f) => app(FubPagesController::class)->fubJson($f, false))]);
     }

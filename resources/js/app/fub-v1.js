@@ -20,7 +20,7 @@ import {mutate} from '../flow/fcl-tx';
 import * as C from '../fub/cadence.mjs';
 import {precheckSvg, fmtDust, fmtBytes, curvePrice, totalOf, selectionProblems, randomPicks, pickIds, txErrorText, apiErrorText, capacityOf, RARITIES, fmtDust2, mmss, refillProblem, parseDust, voiceLimit, voiceCost, receiptText, receiptShort, tankPercent, messagesLeft, fmtDustShort} from '../fub/util.mjs';
 import {mdToHtml} from '../fub/md.mjs';
-import {islandLabel, islandBlockReason, refillOptions, fmtFlow, fmtPct} from '../fub/util.mjs';
+import {islandLabel, islandBlockReason, refillOptions, fmtFlow, fmtPct, voucherList, islandImg} from '../fub/util.mjs';
 import {getDustSwapQuoteScript} from '../flow/get-dust-swap-quote.script';
 import {ufix, payPlan, dustPerFlow, clampSlippage} from './dust-swap-math';
 
@@ -110,12 +110,85 @@ async function walletFub(address) {
     const allIslands = (r.islands || islands.map((i) => ({...i, free: true, reason: ''})))
         .map((i) => ({id: Number(i.id), rarity: i.rarity, name: i.name || '', free: !!i.free, reason: i.reason || '', fubId: i.fubId == null ? null : Number(i.fubId)}))
         .sort((a, b) => (b.free - a.free) || (a.id - b.id));
-    return {vouchers, islands, allIslands, fubs: (r.fubs || []).map(Number), funCollection: !!r.funCollection};
+    const voucherTemplates = {};
+    for (const [id, tpl] of Object.entries(r.voucherTemplates || {})) { voucherTemplates[Number(id)] = Number(tpl); }
+    return {vouchers, voucherTemplates, islands, allIslands, fubs: (r.fubs || []).map(Number), funCollection: !!r.funCollection};
 }
 
 async function dustBalance(address) {
     try { return Number(await fcl.query({cadence: C.DUST_BALANCE_SCRIPT, args: (arg, t) => [arg(address, t.Address)]})); } catch (e) { return 0; }
 }
+
+// ------------------------------------------------------------------------------------------------- island page: creator
+// The island hosting a committed (not yet published) FUB shows its creator the FUB open: preview, chain sync state,
+// creator terms and "Activate minting" (= publish). The studio sends the creator here right after Commit
+// (?fub=<draft>#fub). Everyone else sees the server-rendered "under construction" note. Island pages are
+// edge-cacheable, so all of this is client-side.
+Alpine.data('fubIslandCreator', (islandId) => ({
+    ...walletMixin(),
+    islandId: Number(islandId),
+    focus: Number(new URLSearchParams(window.location.search).get('fub')) || 0,
+    draft: null,
+    pf: null,
+    error: '',
+    busy: '',
+    acceptTerms: false,
+    confirming: false,
+    polls: 0,
+    timer: null,
+    init() { this.initWallet((u) => u && this.load()); },
+    get syncing() { return !!(this.draft && ['pending', 'running'].includes(this.draft.syncState)); },
+    get ready() { return !!(this.pf && !this.pf.blockers.length && this.pf.status === 'building'); },
+    async load() {
+        this.error = '';
+        try {
+            const r = await ax().get('/api/fub/drafts');
+            const mine = (r.data.drafts || []).filter((d) => d.chainFubId && d.status !== 'published' && Number(d.islandId) === this.islandId);
+            this.draft = mine.find((d) => d.id === this.focus) || mine[0] || null;
+        } catch (e) {
+            // not verified yet: only bother the creator who just came here from the studio
+            this.needsVerify = !!(e.response && e.response.status === 401 && this.focus);
+            return;
+        }
+        if (!this.draft) { return; }
+        await this.preflight();
+        if (this.focus) { this.$nextTick(() => { const el = document.getElementById('fub'); el && el.scrollIntoView({behavior: 'smooth', block: 'start'}); }); }
+    },
+    async preflight() {
+        try {
+            this.pf = (await ax().get('/api/fub/drafts/' + this.draft.id + '/preflight')).data;
+            const r = await ax().get('/api/fub/drafts/' + this.draft.id);
+            // preview: the first item of every layer, composed like the studio preview
+            const first = {};
+            for (const it of r.data.items || []) { if (!first[it.layer]) { first[it.layer] = it.id; } }
+            this.previewIds = pickIds(r.data.layers, first);
+            this.draft = {...this.draft, syncState: r.data.syncState, items: (r.data.items || []).length};
+        } catch (e) { this.error = apiErrorText(e); }
+        // the operator is still writing the items: check again for a while
+        clearTimeout(this.timer);
+        if (this.pf && this.pf.blockers.length && (this.syncing || this.polls < 3) && this.polls < 90) {
+            this.polls++;
+            this.timer = setTimeout(() => this.preflight(), 6000);
+        }
+    },
+    previewIds: [],
+    previewSrc() { return this.draft && this.previewIds.length ? '/fub-content/draft/' + this.draft.id + '.svg?i=' + this.previewIds.join(',') : ''; },
+    async activate() {
+        const p = this.pf;
+        if (!this.ready) { return; }
+        if (!this.acceptTerms) { this.error = 'Please accept the creator terms.'; return; }
+        if (!this.confirming) { this.confirming = true; return; }
+        this.busy = 'Waiting for your wallet\u2026';
+        this.error = '';
+        try {
+            const txId = await mutate({cadence: C.PUBLISH_TX, args: (arg, t) => [arg(String(p.fubId), t.UInt64), arg(String(this.islandId), t.UInt64), arg(p.manifest, t.String), arg(p.tosHash, t.String)], limit: 9999});
+            this.busy = 'Activating minting on chain\u2026';
+            await sealed(txId);
+            await ax().post('/api/fub/' + p.fubId + '/refresh', {tx: txId});
+            window.location.href = '/fub/' + p.fubId + '?published=1';
+        } catch (e) { this.error = e.response ? apiErrorText(e) : txErrorText(e); this.busy = ''; this.confirming = false; }
+    },
+}));
 
 // ------------------------------------------------------------------------------------------------------------ home
 
@@ -182,7 +255,7 @@ Alpine.data('fubStudio', (draftId) => ({
     acceptTerms: false,
     dlg: null,           // generic confirm dialog {title, body, warn, ok, danger}
     rf: null,            // tank refill dialog state
-    islandLabel, islandBlockReason, fmtFlow, fmtPct,
+    islandLabel, islandBlockReason, fmtFlow, fmtPct, islandImg,
     royaltyNew: null,
     payoutNew: '',
     poll: null,
@@ -357,6 +430,7 @@ Alpine.data('fubStudio', (draftId) => ({
         const i = this.selVouchers.indexOf(id);
         if (i >= 0) { this.selVouchers.splice(i, 1); } else if (this.selVouchers.length < 30) { this.selVouchers.push(id); }
     },
+    get voucherCards() { return this.chain ? voucherList(this.chain.vouchers, this.chain.voucherTemplates) : []; },
     get commitIslandObj() { return this.chain && this.commitIsland ? (this.chain.allIslands || []).find((i) => i.id === this.commitIsland) || null : null; },
     pickCommitIsland(i) { if (i && i.free && !this.busy) { this.commitIsland = i.id; } },
     async commit() {
@@ -378,11 +452,10 @@ Alpine.data('fubStudio', (draftId) => ({
             await sealed(txId);
             const r = await ax().post('/api/fub/drafts/' + this.id + '/link', {tx: txId});
             this.setDraft(r.data);
-            this.selVouchers = [];
-            this.commitIsland = null;
-            this.tab = 'layers'; // the Commit tab is gone now; keep editing while the items sync
-            this.chain = await walletFub(this.wallet);
-            this.notice = 'Committed! FUB #' + r.data.chainFubId + ' is yours, its building stands on ' + islandLabel(isl) + '. Your items are now being written to the chain.';
+            // Luca 2026-11-28: after the commit, open the island with the FUB open, ready to activate minting
+            this.busy = 'Opening your island\u2026';
+            window.location.href = '/islands/' + isl.id + '?fub=' + this.id + '#fub';
+            return;
         } catch (e) { this.error = e.response ? apiErrorText(e) : txErrorText(e); }
         this.busy = '';
     },
