@@ -214,6 +214,12 @@ $vm-lilac: #C7BCFB;
     &::-webkit-scrollbar-thumb { background: #6E769C; border-radius: 4px; } }
   .m { flex: none; align-self: flex-start; max-width: 92%; padding: 8px 11px; border: 2px solid #000; border-radius: 10px 10px 10px 3px; background: #F5F5F5; color: $isl-ink; font-size: 15px; overflow-wrap: anywhere;
     .t { white-space: pre-wrap; }
+    // assistant replies: safe Markdown subset (resources/js/fub/md.mjs) -> real blocks, no pre-wrap
+    .t.md { white-space: normal; line-height: 1.4;
+      p, ul, ol { margin: 0 0 6px; } > :last-child { margin-bottom: 0; }
+      ul, ol { padding-left: 20px; } ul { list-style: disc; } ol { list-style: decimal; } li { margin: 2px 0; display: list-item; }
+      strong { font-weight: 800; } em { font-style: italic; }
+      code { padding: 0 4px; border-radius: 4px; background: rgba(26, 30, 45, .1); font: 13.5px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; } }
     &.user { align-self: flex-end; background: $vm-lilac; border-radius: 10px 10px 3px 10px; }
     &.note { align-self: center; max-width: 100%; padding: 0 6px; border: 0; background: none; color: $isl-peri; font-size: 13.5px; text-align: center; } } }
 .fub-vm-total { position: relative; z-index: 1; flex: none; display: flex; justify-content: space-between; gap: 8px; padding: 5px 11px 4px; border-bottom: 2px dashed #484F6A; font: 700 13px/1.2 $korolev-condensed; letter-spacing: .06em; text-transform: uppercase; color: $isl-peri; b { color: #fff; } }

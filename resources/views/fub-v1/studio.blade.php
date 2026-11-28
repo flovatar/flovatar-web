@@ -222,7 +222,8 @@
                                                     <p class="fub-vm-empty" x-show="!assistant.messages.length">Pick a size, then tell the machine what to make or change. It works on this draft only.</p>
                                                     <template x-for="(m, mi) in assistant.messages" :key="mi">
                                                         <div class="m" :class="m.role">
-                                                            <span class="t" x-text="m.content"></span>
+                                                            <div class="t md" x-show="m.role === 'assistant'" x-html="m.role === 'assistant' ? aMd(m.content) : ''" data-fub="assistant-reply"></div>
+                                                            <span class="t" x-show="m.role !== 'assistant'" x-text="m.content"></span>
                                                             <template x-if="m.receipt">
                                                                 <details class="fub-vm-receipt">
                                                                     <summary><b x-show="aBurned(m.receipt)" x-text="aBurned(m.receipt)" data-fub="assistant-burned"></b><span x-text="aReceiptShort(m.receipt)"></span></summary>
