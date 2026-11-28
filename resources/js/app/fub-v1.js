@@ -166,9 +166,11 @@ Alpine.data('fubIslandCreator', (islandId) => ({
         } catch (e) { this.error = apiErrorText(e); }
         // the operator is still writing the items: check again for a while
         clearTimeout(this.timer);
-        if (this.pf && this.pf.blockers.length && (this.syncing || this.polls < 3) && this.polls < 90) {
+        // (chain blockers only: a required layer without items needs the studio, not waiting)
+        const chainWait = this.pf && this.pf.blockers.some((b) => /chain/i.test(b));
+        if ((this.syncing || chainWait) && this.polls < 90) {
             this.polls++;
-            this.timer = setTimeout(() => this.preflight(), 6000);
+            this.timer = setTimeout(() => this.preflight(), this.syncing ? 5000 : 8000);
         }
     },
     previewIds: [],
