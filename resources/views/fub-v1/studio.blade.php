@@ -126,11 +126,8 @@
                                         <p>Committing burns the vouchers you pick, reserves your FUB on chain and puts its building on one of your islands. From then on your items are written to the chain while you keep editing. You can absorb more vouchers until you publish (up to 30 in total).</p>
                                         <template x-if="chain">
                                             <div>
-                                                <template x-for="(ids, r) in chain.vouchers" :key="r">
-                                                    <div style="margin:8px 0"><span class="isl-chip" :class="'isl-r-' + r" x-text="r"></span>
-                                                        <div class="fub-vouchers"><template x-for="id in ids" :key="id"><button :class="{on: selVouchers.includes(id)}" @click="toggleVoucher(id)" x-text="'#' + id" data-fub="voucher"></button></template></div>
-                                                    </div>
-                                                </template>
+                                                {{-- vouchers as cards with their TerraKit illustration, one row (Luca 2026-11-28) --}}
+                                                @include('fub-v1.partials.voucher-row')
                                                 <p x-show="!Object.keys(chain.vouchers).length">This wallet has no FUB vouchers.</p>
                                                 <p x-show="selVouchers.length" x-text="'Selected ' + selVouchers.length + ': ' + capacity.slots + ' item slots, ' + capacity.mints.toLocaleString('en-US') + ' mints, ' + capacity.tier + ' tier (' + ({common: 8, epic: 12, legendary: 16})[capacity.tier] + ' layers)'"></p>
                                                 {{-- island at commit (Luca 2026-11-28): required, permanent, one FUB per island --}}
@@ -141,9 +138,12 @@
                                                     <div class="fub-isl-list" role="radiogroup" aria-label="Island for your FUB building">
                                                         <template x-for="i in (chain.allIslands || [])" :key="'ci' + i.id">
                                                             <label class="fub-isl-opt" :class="{on: commitIsland === i.id, off: !i.free}" :data-island="i.id" :title="i.free ? '' : islandBlockReason(i)">
-                                                                <input type="radio" name="commit-island" :value="i.id" :disabled="!i.free || !!busy" :checked="commitIsland === i.id" @change="pickCommitIsland(i)" :aria-describedby="i.free ? null : 'fub-isl-why-' + i.id">
+                                                                <input type="radio" class="fub-sr" name="commit-island" :value="i.id" :disabled="!i.free || !!busy" :checked="commitIsland === i.id" @change="pickCommitIsland(i)" :aria-label="'Island #' + i.id + ' ' + i.name" :aria-describedby="i.free ? null : 'fub-isl-why-' + i.id">
+                                                                {{-- island preview in a box, like the items of a layer (Luca 2026-11-28) --}}
+                                                                <span class="fub-isl-thumb"><img :src="islandImg(i.id)" alt="" loading="lazy"></span>
                                                                 <span class="isl-chip" :class="'isl-r-' + i.rarity" x-text="i.rarity"></span>
-                                                                <span class="fub-isl-name"><b x-text="'Island #' + i.id"></b> <span x-text="i.name"></span></span>
+                                                                <b class="fub-isl-title" x-text="'Island #' + i.id"></b>
+                                                                <span class="fub-isl-sub" x-text="i.name"></span>
                                                                 <small class="fub-isl-why" x-show="!i.free" :id="'fub-isl-why-' + i.id" x-text="islandBlockReason(i)"></small>
                                                             </label>
                                                         </template>
@@ -161,7 +161,7 @@
                                         <h3>Publish</h3>
                                         <template x-if="chain && chain.vouchers && Object.keys(chain.vouchers).length">
                                             <div class="isl-notice"><b>More room?</b> Absorb more vouchers before you publish:
-                                                <div class="fub-vouchers" style="margin-top:6px"><template x-for="id in [].concat(...Object.values(chain.vouchers))" :key="'a' + id"><button :class="{on: selVouchers.includes(id)}" @click="toggleVoucher(id)" x-text="'#' + id"></button></template></div>
+                                                @include('fub-v1.partials.voucher-row')
                                                 <button class="fub-btn alt" style="margin-top:6px" @click="absorb()" :disabled="!selVouchers.length">Absorb selected</button>
                                             </div>
                                         </template>

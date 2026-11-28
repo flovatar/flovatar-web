@@ -236,6 +236,25 @@ export function islandLabel(i) {
 }
 
 /** Why an island can't take a new FUB (commit step), '' when it can. */
+/**
+ * Commit/absorb voucher picker: every voucher in one row, legendary first, then epic, common, other; ids ascending.
+ * templates = {voucherId: templateId} from the wallet script (older script: {} -> img '').
+ */
+export function voucherList(vouchers, templates) {
+    const order = {legendary: 0, epic: 1, rare: 2, common: 3};
+    const out = [];
+    for (const [rarity, ids] of Object.entries(vouchers || {})) {
+        for (const id of ids || []) {
+            const tpl = templates && templates[id] != null ? Number(templates[id]) : null;
+            out.push({id: Number(id), rarity, tpl, img: tpl ? '/api/image/template/' + tpl : ''});
+        }
+    }
+    return out.sort((a, b) => ((order[a.rarity] ?? 9) - (order[b.rarity] ?? 9)) || (a.id - b.id));
+}
+
+/** Island preview for the picker (same source as the belt / islands pages). */
+export function islandImg(id) { return id ? '/islands/' + Number(id) + '/full.svg' : ''; }
+
 export function islandBlockReason(i) {
     if (!i || i.free) { return ''; }
     if (i.reason === 'hosts-fub') { return i.fubId ? 'Already hosts FUB #' + i.fubId : 'Already hosts a FUB'; }

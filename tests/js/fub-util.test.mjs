@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {precheckSvg, curvePrice, totalOf, selectionProblems, randomPicks, pickIds, capacityOf, fmtDust, txErrorText, fmtDust2, mmss, refillProblem, parseDust, voiceLimit, voiceCost, receiptText, receiptShort, tankPercent, messagesLeft, fmtDustShort, islandLabel, islandBlockReason, refillOptions, fmtFlow, fmtPct} from '../../resources/js/fub/util.mjs';
+import {precheckSvg, curvePrice, totalOf, selectionProblems, randomPicks, pickIds, capacityOf, fmtDust, txErrorText, fmtDust2, mmss, refillProblem, parseDust, voiceLimit, voiceCost, receiptText, receiptShort, tankPercent, messagesLeft, fmtDustShort, islandLabel, islandBlockReason, refillOptions, fmtFlow, fmtPct, voucherList, islandImg} from '../../resources/js/fub/util.mjs';
 import {payPlan} from '../../resources/js/app/dust-swap-math.js';
 import * as C from '../../resources/js/fub/cadence.mjs';
 
@@ -139,4 +139,14 @@ test('generated Cadence: commit takes the island, FLOW refill swaps then burns',
 test('swap revert messages are friendly', () => {
     assert.match(txErrorText(new Error('error: assertion failed: [IncSwapErrorMsg:SwapRouter: EXCESSIVE_INPUT_AMOUNT][IncSwapErrorCode:5]')), /moved above your maximum/);
     assert.match(txErrorText(new Error('[IncSwapErrorMsg:SwapRouter: expired][IncSwapErrorCode:2]')), /expired/);
+});
+
+test('voucherList: one row, legendary first, illustration from the template id', () => {
+    const l = voucherList({common: [175, 171], epic: [172], legendary: [173]}, {171: 72, 172: 73, 173: 74});
+    assert.deepEqual(l.map((v) => v.id), [173, 172, 171, 175]);
+    assert.equal(l[0].img, '/api/image/template/74');
+    assert.equal(l[3].img, ''); // older wallet script without voucherTemplates
+    assert.deepEqual(voucherList(null, null), []);
+    assert.equal(islandImg(12), '/islands/12/full.svg');
+    assert.equal(islandImg(0), '');
 });
