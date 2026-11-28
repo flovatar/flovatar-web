@@ -7,8 +7,9 @@
 // _content, .widget-frame, .widget-content, .scroll-y, .connector, .flovatar-machine + .machine-frame + .btns-list)
 // and adds only the left column: .fub-shell_options = .fub-shell_info (info box) + .fub-shell_panel (section buttons
 // + one scrollable area). Same machine widths (691 / 630 / 590 / 550 px), same 7 px gutters, same breakpoints; below
-// 1024 px the preview comes first (column-reverse, like .flovatar-builder_content). Pages that should adopt
-// .fub-shell later: /fub/{id} (F.U.N. builder: today .fub-grid, preview already on the right) and /islands/build.
+// 1024 px the preview comes first (column-reverse, like .flovatar-builder_content). Used by the studio
+// (/fub/studio/N) and the F.U.N. builder (/fub/N). To adopt later: /islands/build (own layout today); the Flovatar,
+// Flobot, ĐUST and Sportvatar builders already share the original shell this one is built on.
 // ---------------------------------------------------------===
 
 @mixin fub-checker { background-color: #fff;
@@ -123,6 +124,8 @@
   h1 { margin: 0 0 6px; font-size: 30px; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .fub-info-state { margin: 0; display: flex; flex-wrap: wrap; gap: 4px; .fub-badge { margin: 0; text-transform: capitalize; } }
   .fub-info-meters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 14px; }
+  .fub-info-text { min-width: 0; p { margin: 0 0 3px; font-size: 14px; line-height: 1.35; } .mono { font-size: 13px; } }
+  .fub-info-desc { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   .fub-meter { margin: 0; font-size: 13px; line-height: 1.25; span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; @include media('<tablet') { white-space: normal; } } .bar { height: 6px; } } }
 .fub-shell_panel { position: relative; flex: 1; min-height: 0;
   > .widget-frame { display: flex; flex-direction: column; }

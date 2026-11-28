@@ -503,8 +503,10 @@ Alpine.data('fubStudio', (draftId) => ({
         const added = Math.max(0, n - (el._n === undefined ? n : el._n));
         el._n = n;
         const stick = A.stick !== false;
+        // pinned to the bottom again after the receipt lines of a new reply are laid out
+        const pin = () => { if (A.stick !== false) { el.scrollTop = el.scrollHeight; } };
         this.$nextTick(() => {
-            if (stick) { el.scrollTop = el.scrollHeight; } else if (added) { A.unseen = (A.unseen || 0) + added; }
+            if (stick) { pin(); requestAnimationFrame(pin); setTimeout(pin, 150); } else if (added) { A.unseen = (A.unseen || 0) + added; }
         });
     },
     aJump() {
