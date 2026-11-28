@@ -433,13 +433,13 @@
             <div class="fub-rf_opts" role="radiogroup" aria-label="Pay with">
                 <label class="fub-rf_opt" :class="{on: rf.method === 'dust', off: !rfOpts().dustOk}">
                     <input type="radio" name="fub-rf-method" value="dust" x-model="rf.method" :disabled="!rfOpts().dustOk || !!rf.busy" data-rf-method="dust" aria-describedby="fub-rf-dust-note">
-                    <span class="fub-rf_coin dust" aria-hidden="true">Đ</span>
+                    <span class="fub-rf_coin is-dust" aria-hidden="true">Đ</span>
                     <span class="fub-rf_txt"><b>Pay with ĐUST</b><span x-text="fmtDust(rf.amount) + ' from your wallet'"></span>
                         <small id="fub-rf-dust-note" class="warn" x-show="!rfOpts().dustOk" x-text="rfOpts().dustReason"></small></span>
                 </label>
                 <label class="fub-rf_opt" x-show="rfSwapOn()" :class="{on: rf.method === 'flow', off: !rfOpts().flowOk}">
                     <input type="radio" name="fub-rf-method" value="flow" x-model="rf.method" :disabled="!rfOpts().flowOk || !!rf.busy" data-rf-method="flow" aria-describedby="fub-rf-flow-note">
-                    <span class="fub-rf_coin flow" aria-hidden="true">F</span>
+                    <span class="fub-rf_coin is-flow" aria-hidden="true">F</span>
                     <span class="fub-rf_txt"><b>Pay with FLOW</b><span x-text="rf.plan ? '≈ ' + fmtFlow(rf.q.flowIn) + ' FLOW, swapped to exactly ' + fmtDust(rf.amount) : (rf.loading ? 'Getting the price…' : '')" data-fub="refill-flow-quote"></span>
                         <small>Auto-swap on Increment, burn, leftover FLOW back to you. One transaction.</small>
                         <small id="fub-rf-flow-note" class="warn" x-show="!rfOpts().flowOk && !rf.loading" x-text="rfOpts().flowReason"></small></span>
