@@ -13,7 +13,7 @@ $evm-sky: #91E3F9;
 $evm-green: #52F618;
 
 .evm-bridge {
-  margin: 14px 0 0;
+  margin: 14px 0 28px;
   padding: 12px 14px;
   border-radius: 10px;
   background: rgba(52, 59, 90, .92);
@@ -50,6 +50,7 @@ $evm-green: #52F618;
   .evm-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
   .evm-row input { flex: 1 1 320px; min-width: 0; padding: 12px 14px; border-radius: 8px; border: 0; background: #fff; color: $evm-ink; font-size: 16px; }
   .evm-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-all; }
+  h2 .evm-mono { text-transform: none; }
   .evm-err { color: #ffb3b3; }
   .evm-steps { margin: 8px 0 0 20px; padding: 0; }
   .evm-steps li { margin: 6px 0; }

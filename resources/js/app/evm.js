@@ -130,7 +130,8 @@ const fmt = (v) => {
     const n = parseFloat(v);
     return isNaN(n) ? '?' : (n < 0.01 ? n.toFixed(5) : n.toFixed(3)).replace(/0+$/, '').replace(/\.$/, '');
 };
-const short = (a) => (a ? hex(a).slice(0, 6) + '…' + hex(a).slice(-4) : '');
+// COAs all start with 0x000000000000000000000002…: show their distinctive tail instead of the zeros
+const short = (a) => (!a ? '' : (/^0x0{10}/.test(hex(a)) ? '0x…' + hex(a).slice(-10) : hex(a).slice(0, 6) + '…' + hex(a).slice(-4)));
 
 document.addEventListener('alpine:init', () => {
     // Item page panel: partials/evm-bridge.blade.php
