@@ -227,6 +227,7 @@ class FubDraftController extends Controller
         $s['tier'] = $f->tier;
         $s['slots'] = $f->slots;
         $s['max_supply'] = min((int) ($s['max_supply'] ?? $f->mint_cap), $f->mint_cap);
+        $s['island_id'] = $f->island_id; // bound at commit, permanent
         $d->update(['chain_fub_id' => $fubId, 'status' => 'committed', 'settings' => $s, 'sync_state' => 'pending']);
         SyncFubDraft::dispatch($d->id);
 
@@ -297,6 +298,8 @@ class FubDraftController extends Controller
             'fubId' => (int) $d->chain_fub_id, 'status' => $f['status'], 'manifest' => (string) $f['manifest'], 'pending' => (string) ($f['pending'] ?? ''),
             'pendingIds' => array_map('intval', (array) $cf['pendingIds']), 'heaviest' => (int) $cf['heaviest'], 'composedCap' => (int) $cf['composedCap'],
             'items' => (int) $f['items'], 'layers' => $f['layers'], 'blockers' => $blockers, 'tosHash' => FubPagesController::tosHash(),
+            // island bound at commit (permanent); null only for FUBs committed before the island-at-commit update (testnet)
+            'islandId' => isset($f['islandId']) ? (int) $f['islandId'] : null,
         ]);
     }
 

@@ -72,8 +72,11 @@ class IslandsController extends Controller
 
         // FUB v1: the permanent FUB building on this island links to its F.U.N. builder (site-hidden FUBs are not linked)
         $fub = \App\Support\Fub::enabled() ? \App\Models\Fub::query()->visible()->where('island_id', $id)->first() : null;
+        // since 2026-11-28 the island is chosen at commit: the building stands before the FUB is published
+        $fubBuilding = ! $fub && \App\Support\Fub::enabled()
+            && \App\Models\Fub::query()->where('island_id', $id)->where('status', 'building')->whereNull('hidden_at')->exists();
 
-        return view('islands.show', ['island' => $island, 'id' => $id, 'og' => ItemImages::og('island', $id), 'fub' => $fub]);
+        return view('islands.show', ['island' => $island, 'id' => $id, 'og' => ItemImages::og('island', $id), 'fub' => $fub, 'fubBuilding' => $fubBuilding]);
     }
 
     public function fullSvg(int $id)
