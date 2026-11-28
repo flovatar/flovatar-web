@@ -394,7 +394,7 @@ $vm-lilac: #C7BCFB;
   dt { font: 700 12px/1 $korolev-condensed; letter-spacing: .08em; text-transform: uppercase; color: $isl-peri; }
   dd { margin: 3px 0 0; font: 700 22px/1 $korolev-compressed; color: #fff; font-variant-numeric: tabular-nums; } }
 .fub-rf_opts { display: grid; gap: 6px; }
-.fub-rf_opt { display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: start; gap: 8px; padding: 8px 10px; border: 3px solid #000; border-radius: 10px; background: $vm-lilac; color: $isl-ink; cursor: pointer; box-shadow: 0 4px 0 #000;
+.fub-rf_opt { display: grid; grid-template-columns: 16px 30px minmax(0, 1fr); align-items: start; gap: 8px; padding: 8px 10px; border: 3px solid #000; border-radius: 10px; background: $vm-lilac; color: $isl-ink; cursor: pointer; box-shadow: 0 4px 0 #000;
   input { margin: 6px 0 0; accent-color: $isl-pink; }
   .fub-rf_txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 14px; }
   b { font: 400 20px/1 $staatliches; letter-spacing: .03em; text-transform: uppercase; }
@@ -402,8 +402,9 @@ $vm-lilac: #C7BCFB;
   &:focus-within { outline: 3px solid $isl-yellow; outline-offset: 2px; }
   &.on { background: $isl-yellow; transform: translateY(3px); box-shadow: 0 1px 0 #000; }
   &.off { cursor: not-allowed; background: #A9A2CF; } }
-.fub-rf_coin { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 3px solid #000; border-radius: 50%; font: 400 17px/1 $staatliches;
-  &.dust { background: $isl-yellow; } &.flow { background: $isl-green; } }
+// (not .dust/.flow: the site's global .dust rules add a negative margin)
+.fub-rf_coin { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; margin: 0; border: 3px solid #000; border-radius: 50%; font: 400 17px/1 $staatliches;
+  &.is-dust { background: $isl-yellow; } &.is-flow { background: $isl-green; } }
 .fub-rf_quote { margin-top: 8px; padding: 8px 10px; border: 3px solid #000; border-radius: 10px; background: $vm-screen; color: #fff; font-size: 14px;
   dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0 0 6px; }
   dt { font: 700 11.5px/1 $korolev-condensed; letter-spacing: .08em; text-transform: uppercase; color: $isl-peri; }
