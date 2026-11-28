@@ -19,6 +19,7 @@ import * as fcl from '@onflow/fcl';
 import {mutate} from '../flow/fcl-tx';
 import * as C from '../fub/cadence.mjs';
 import {precheckSvg, fmtDust, fmtBytes, curvePrice, totalOf, selectionProblems, randomPicks, pickIds, txErrorText, apiErrorText, capacityOf, RARITIES, fmtDust2, mmss, refillProblem, parseDust, voiceLimit, voiceCost, receiptText, receiptShort, tankPercent, messagesLeft, fmtDustShort} from '../fub/util.mjs';
+import {mdToHtml} from '../fub/md.mjs';
 
 const CFG = window.FUB || null;
 
@@ -516,6 +517,8 @@ Alpine.data('fubStudio', (draftId) => ({
         A.unseen = 0;
         if (el) { el.scrollTop = el.scrollHeight; }
     },
+    // assistant replies: untrusted text -> safe Markdown subset (escapes everything, attribute-less tags only)
+    aMd(s) { return mdToHtml(s); },
     aReceiptShort(rc) {
         let t = receiptShort(rc);
         const n = ((rc && rc.actions) || []).filter((a) => a.ok && !A_READS.includes(a.tool)).length;
