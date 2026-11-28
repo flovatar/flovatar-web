@@ -86,11 +86,12 @@ export function impactLevel(impactPct, warnPct, blockPct) {
 export function payPlan({quoteIn, priceOut, reserveIn, reserveOut, available, slippagePct, warnPct, blockPct, feeMargin}) {
     const margin = feeMargin === undefined ? 0.001 : feeMargin;
     const spendable = Math.max(0, (Number(available) || 0) - margin);
-    let maxIn = maxInWithSlippage(quoteIn, slippagePct);
+    const need = maxInWithSlippage(quoteIn, slippagePct); // what the swap may take (shown when the wallet is short)
+    let maxIn = need;
     if (maxIn > spendable) {
         maxIn = Number(ufix(spendable, 'down'));
     }
     const enough = spendable >= quoteIn && maxIn >= quoteIn;
     const impact = priceImpact(quoteIn, priceOut, reserveIn, reserveOut);
-    return {maxIn, enough, impact, level: impactLevel(impact, warnPct, blockPct)};
+    return {maxIn, need, enough, impact, level: impactLevel(impact, warnPct, blockPct)};
 }

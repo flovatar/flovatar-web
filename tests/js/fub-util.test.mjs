@@ -118,7 +118,7 @@ test('refill dialog options: ĐUST balance, FLOW quote, thin pool, FLOW balance'
     assert.match(o.dustReason, /you have \u0110100\.5/);
     o = refillOptions({amount: 1234, dust: 0, plan: plan(1), swapOn: true});
     assert.equal(o.flowOk, false);
-    assert.match(o.flowReason, /Not enough FLOW/);
+    assert.match(o.flowReason, /Not enough FLOW: this needs up to 4\.3908 FLOW/, 'the amount the swap needs, not the (capped) wallet balance');
     o = refillOptions({amount: 5000, dust: 0, plan: plan(100, 5000, 21.1631143), swapOn: true});
     assert.match(o.flowReason, /too thin/);
     assert.match(refillOptions({amount: 1, dust: 0, plan: null, swapOn: false}).flowReason, /not available/);

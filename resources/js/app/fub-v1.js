@@ -891,6 +891,7 @@ Alpine.data('fubStudio', (draftId) => ({
         const R = this.rf;
         if (!R || !this.rfCanPay()) { return; }
         R.error = '';
+        R.note = '';
         R.busy = 'Preparing\u2026';
         try {
             const ref = (await this.aFetch('/api/v1/tank/refills/intent', {method: 'POST', body: JSON.stringify({amount: R.amount})})).ref;
