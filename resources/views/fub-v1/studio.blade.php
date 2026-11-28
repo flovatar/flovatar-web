@@ -403,7 +403,7 @@
     </template>
     {{-- ======== in-page confirm (no native confirm()) ======== --}}
     <template x-if="dlg">
-    <div class="fub-modal" @keydown="dlgKey($event)" data-fub="confirm-dialog">
+    <div class="fub-modal" @keydown.window="dlgKey($event)" data-fub="confirm-dialog">
         <div class="fub-modal_back" @click="dlgClose(false)" aria-hidden="true"></div>
         <div class="fub-modal_box" x-ref="dlg" role="alertdialog" aria-modal="true" aria-labelledby="fub-dlg-title" aria-describedby="fub-dlg-body">
             <h3 id="fub-dlg-title" x-text="dlg.title"></h3>
@@ -418,7 +418,7 @@
 
     {{-- ======== tank refill: vending-machine dialog (burn notice, balances, pay with ĐUST or FLOW via auto-swap) ======== --}}
     <template x-if="rf">
-    <div class="fub-modal" @keydown="rfKey($event)" data-fub="refill-dialog">
+    <div class="fub-modal" @keydown.window="rfKey($event)" data-fub="refill-dialog">
         <div class="fub-modal_back" @click="rfClose()" aria-hidden="true"></div>
         <div class="fub-modal_box fub-rf" x-ref="rf" role="dialog" aria-modal="true" aria-labelledby="fub-rf-title" aria-describedby="fub-rf-burn">
             <div class="fub-rf_sign">
