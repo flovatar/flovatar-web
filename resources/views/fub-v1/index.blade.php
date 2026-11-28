@@ -30,7 +30,7 @@
                     </p>
                     <p class="muted" x-show="state && !state.islands.length">You need an Asteroid Island without a FUB to publish. <a href="/islands/build">Terraform one</a>.</p>
                     <div class="fub-row">
-                        <input type="text" maxlength="40" placeholder="Name your FUB" x-model="newName" @keydown.enter="create()" style="max-width:320px;border-radius:8px;border:0;padding:8px 10px;">
+                        <input type="text" maxlength="40" placeholder="Name your FUB" x-model="newName" @keydown.enter="create()" aria-label="Name your FUB" class="fub-input fub-name" data-fub="new-name">
                         <button class="fub-btn" @click="create()" :disabled="creating" data-fub="new-draft">Start a new FUB</button>
                     </div>
                 </div>
