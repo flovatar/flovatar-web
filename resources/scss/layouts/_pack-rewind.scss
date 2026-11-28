@@ -9,7 +9,7 @@
     @include media('<tablet') { font-size: 44px; } }
   .rw-row { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
   .fub-btn.small { padding: 4px 12px; font-size: 13px; }
-  .fub-btn.ghost { background: transparent; border: 2px solid rgba(255, 255, 255, .5); color: #fff; }
+  .fub-btn.ghost { background: transparent; border: 2px solid rgba(255, 255, 255, .5); color: #fff !important; }
 }
 
 .rw-wallet { margin: 18px 0;

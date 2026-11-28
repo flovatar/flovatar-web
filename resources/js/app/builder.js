@@ -331,8 +331,10 @@ Alpine.data('builderData', (templates) => ({
         return _.filter(this.components, function(comp){ return comp.category == category && self.templateIds[category] && comp.templateId == self.templateIds[category]; });
     },
     filterRarityComp(rarity){
-        let tempRarity = _.find(this.templates, function(temp){ return temp.category == 'boost' && temp.rarity == rarity; });
-        return (tempRarity) ? _.filter(this.components, function(comp){ return comp.category == 'boost' && comp.templateId == tempRarity.flow_id; }) : [];
+        // Every boost template of that rarity counts (testnet has two Rare/Epic/Legendary boost templates since the
+        // Pack Rewind re-mint copied the mainnet ones; mainnet has exactly one each, so behaviour there is unchanged).
+        let ids = _.map(_.filter(this.templates, function(temp){ return temp.category == 'boost' && temp.rarity == rarity; }), function(t){ return parseInt(t.flow_id, 10); });
+        return ids.length ? _.filter(this.components, function(comp){ return comp.category == 'boost' && ids.indexOf(parseInt(comp.templateId, 10)) !== -1; }) : [];
     },
     filterTemp(category){
         let templates = [];
