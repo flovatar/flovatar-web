@@ -5,7 +5,8 @@
  * Alpine components:
  *   fubHome      /fub           wallet state (vouchers, islands, FUBs) + my drafts + new draft
  *   fubStudio    /fub/studio/N  manual editor (layers, items, SVG upload, preview, budget) + Commit / Publish / powers
- *                               + optional design-assistant panel (talks to the assistant API with its own login)
+ *                               + optional design-assistant machine (a section of the options column; talks to the
+ *                               assistant API with its own login). Layout = the Flovatar builder shell (.fub-shell).
  *   fubBuilder   /fub/N         F.U.N. builder for buyers (pick, preview, quote, mint)
  *   fubReport    report dialog on FUB / F.U.N. pages
  *
@@ -17,7 +18,7 @@ import Alpine from 'alpinejs';
 import * as fcl from '@onflow/fcl';
 import {mutate} from '../flow/fcl-tx';
 import * as C from '../fub/cadence.mjs';
-import {precheckSvg, fmtDust, fmtBytes, curvePrice, totalOf, selectionProblems, randomPicks, pickIds, txErrorText, apiErrorText, capacityOf, RARITIES, fmtDust2, mmss, refillProblem, parseDust, voiceLimit, voiceCost, receiptText} from '../fub/util.mjs';
+import {precheckSvg, fmtDust, fmtBytes, curvePrice, totalOf, selectionProblems, randomPicks, pickIds, txErrorText, apiErrorText, capacityOf, RARITIES, fmtDust2, mmss, refillProblem, parseDust, voiceLimit, voiceCost, receiptText, receiptShort, tankPercent, messagesLeft, fmtDustShort} from '../fub/util.mjs';
 
 const CFG = window.FUB || null;
 
@@ -67,7 +68,7 @@ function walletMixin() {
             // success: handleLoginResponse reloads the page with the server session
             Promise.resolve(window.createSignature(window.loginMessage)).finally(() => { setTimeout(() => { this.verifying = false; }, 20000); });
         },
-        fmtDust, fmtBytes, fmtDust2, mmss,
+        fmtDust, fmtBytes, fmtDust2, fmtDustShort, mmss,
         short(a) { return a ? a.slice(0, 6) + '\u2026' + a.slice(-4) : ''; },
     };
 }
@@ -149,9 +150,11 @@ Alpine.data('fubStudio', (draftId) => ({
     royaltyNew: null,
     payoutNew: '',
     poll: null,
-    assistant: null,     // assistant panel state
+    assistant: null,     // assistant machine state
+    assistantName: 'Design assistant', // the real name comes from the assistant API (never hardcoded here)
     init() {
         this.initWallet((u) => u && this.load());
+        this.aPeek();
     },
     async load() {
         this.loading = true;
@@ -282,6 +285,16 @@ Alpine.data('fubStudio', (draftId) => ({
         this.picks = {...this.picks};
         this.previewRev++;
     },
+    // a random combination of the draft's items in the preview (like the builders' Randomize)
+    shuffle() {
+        const picks = {};
+        for (const l of this.d.layers) {
+            const pool = this.itemsOf(l.key);
+            if (pool.length && (l.required || Math.random() < 0.7)) { picks[l.key] = pool[Math.floor(Math.random() * pool.length)].id; }
+        }
+        this.picks = picks;
+        this.previewRev++;
+    },
     async saveSettings(patch) { await this.api('patch', '', patch); },
     // ----- commit (burn vouchers) / absorb
     toggleVoucher(id) {
@@ -384,20 +397,38 @@ Alpine.data('fubStudio', (draftId) => ({
         await this.api('delete', '?confirm=1', null, 'Deleting\u2026');
         window.location.href = '/fub';
     },
-    // ----- design assistant (optional; name, levels, models and token prices come from its /api/v1/meta at runtime)
-    // Token-metered (Luca 2026-11-27): refill any amount; each message burns ĐUST for the tokens it used; a run goes on
-    // while the tank can pay; voice up to 10 minutes with a live timer + Đ counter.
+    // ----- design assistant (optional; its name, sizes and indicative burn come from its /api/v1/meta at runtime)
+    // Metered: refill any amount; each message burns ĐUST for the work it did; a run goes on while the tank can pay;
+    // voice up to 10 minutes with a live timer + Đ counter. Shown as a vending machine in the options column (the
+    // "assistant" section): display (name + tank gauge), size buttons, coin slot (refill), glass window (the
+    // conversation, the only scrollable part), dispenser (text, voice, send).
+    async aMeta() {
+        const m = await fetch(CFG.assistantUrl + '/api/v1/meta');
+        if (!m.ok) { throw new Error('meta ' + m.status); }
+        const j = await m.json();
+        if (j && j.name) { this.assistantName = j.name; }
+        return j;
+    },
+    // the section button shows the assistant's name before it is opened
+    aPeek() { if (this.hasAssistant) { this.aMeta().catch(() => { /* the button keeps its generic label */ }); } },
     async openAssistant() {
         if (!CFG.assistantUrl) { return; }
         this.assistant = this.assistant || {open: true, meta: null, token: '', conv: null, messages: [], input: '', level: '', busy: '', error: '', tank: null, recording: false,
-            refillAmount: '', confirm: null, dry: false, convTotal: 0, live: null, recSec: 0, recLimit: 0, voiceNote: ''};
+            refillAmount: '', confirm: null, dry: false, convTotal: 0, live: null, recSec: 0, recLimit: 0, voiceNote: '', stick: true, unseen: 0, slotOpen: false, slotSeen: false, wide: false, peak: 0};
         this.assistant.open = true;
+        this.tab = 'assistant';
         const A = this.assistant;
+        // wide machine (controls beside the glass): the coin slot starts open; narrow: behind its button
+        this.$nextTick(() => {
+            const vm = this.$root.querySelector('[data-fub=assistant]');
+            A.wide = !!(vm && vm.offsetWidth >= 600);
+            if (A.wide && !A.slotSeen) { A.slotOpen = true; }
+            A.slotSeen = true;
+        });
         if (!A.busy) { A.error = ''; } // reopening retries: an old "not reachable" must not stick
+        A.peak = A.peak || Number(localStorage.getItem('fubA:peak:' + this.wallet) || 0);
         try {
-            const m = await fetch(CFG.assistantUrl + '/api/v1/meta');
-            if (!m.ok) { throw new Error('meta ' + m.status); }
-            A.meta = await m.json();
+            A.meta = await this.aMeta();
         } catch (e) { A.error = A_UNREACHABLE; return; }
         A.level = A.level || (A.meta.levels[0] && A.meta.levels[0].key);
         A.meta.refill = A.meta.refill || {min: 100, max: 10000000, chips: A.meta.refillPresets || []};
@@ -446,8 +477,48 @@ Alpine.data('fubStudio', (draftId) => ({
             A.convTotal = Number(A.conv.conversationTotal || 0);
         }
     },
-    aLevelLabel(l) { return l.name + ' \u00b7 ' + l.model + (l.effort ? ' (' + l.effort + ')' : ''); },
-    aLevelBurn(l) { return '\u2248 ' + fmtDust(Math.round(Number(l.indicativeDust || 0))) + ' per message'; },
+    aLevelBurn(l) { return '\u2248 ' + fmtDust(Math.round(Number(l.indicativeDust || 0))) + ' / message'; },
+    // tank gauge: what is left of the last fill (the fill mark is remembered per wallet)
+    aSeeTank(balance) {
+        const A = this.assistant;
+        const b = Number(balance) || 0;
+        if (A && b > (Number(A.peak) || 0)) { this.aPeak(b); }
+    },
+    aPeak(b) { this.assistant.peak = b; try { localStorage.setItem('fubA:peak:' + this.wallet, String(b)); } catch (e) { /* private mode */ } },
+    aTankPct() { const A = this.assistant; return A && A.tank ? tankPercent(A.tank.balance, A.peak) : 0; },
+    aTankLow() { const A = this.assistant; const l = this.aLevel(); return !!(A && A.tank) && (Number(A.tank.balance) < Number((l && l.minToStart) || 0) || this.aTankPct() <= 15); },
+    aNote() { const A = this.assistant; return (A && A.meta && A.meta.note) || 'Each message burns \u0110UST for the work the assistant actually does; the run continues while your tank can pay.'; },
+    aMsgsLeft() { const A = this.assistant; const l = this.aLevel(); return A && A.tank && l ? messagesLeft(A.tank.balance, l.indicativeDust, l.name) : ''; },
+    // conversation window: follow the latest message unless the user scrolled up (then offer a jump button)
+    aScrolled(el) {
+        const A = this.assistant;
+        if (!A || !el.clientHeight) { return; }
+        A.stick = el.scrollHeight - el.scrollTop - el.clientHeight < 48;
+        if (A.stick) { A.unseen = 0; }
+    },
+    aFollow(el, n) {
+        const A = this.assistant;
+        if (!A) { return; }
+        const added = Math.max(0, n - (el._n === undefined ? n : el._n));
+        el._n = n;
+        const stick = A.stick !== false;
+        this.$nextTick(() => {
+            if (stick) { el.scrollTop = el.scrollHeight; } else if (added) { A.unseen = (A.unseen || 0) + added; }
+        });
+    },
+    aJump() {
+        const A = this.assistant;
+        const el = this.$root.querySelector('[data-fub=assistant-msgs]');
+        A.stick = true;
+        A.unseen = 0;
+        if (el) { el.scrollTop = el.scrollHeight; }
+    },
+    aReceiptShort(rc) {
+        let t = receiptShort(rc);
+        const n = ((rc && rc.actions) || []).filter((a) => a.ok && !A_READS.includes(a.tool)).length;
+        if (n) { t += (t ? ' \u00b7 ' : '') + n + (n === 1 ? ' change' : ' changes'); }
+        return t;
+    },
     aRefillError() { const A = this.assistant; return A && A.meta ? refillProblem(A.refillAmount, A.meta.refill.min, A.meta.refill.max) : ''; },
     aVoiceLimit() { const A = this.assistant; return A && A.meta ? voiceLimit(A.tank && A.tank.voice, A.meta.voice) : 0; },
     aVoiceRate() { const A = this.assistant; return A && A.meta && A.meta.voice ? Number(A.meta.voice.dustPerSecond || 0) : 0; },
@@ -464,6 +535,8 @@ Alpine.data('fubStudio', (draftId) => ({
         A.error = '';
         A.dry = false;
         A.live = {burned: 0, steps: 0};
+        A.stick = true; // your own message always scrolls into view
+        A.unseen = 0;
         A.messages.push({role: 'user', content: text});
         A.input = '';
         A.sentAt = Date.now();
@@ -593,8 +666,10 @@ Alpine.data('fubStudio', (draftId) => ({
             await sealed(txId);
             await this.aFetch('/api/v1/tank/refills', {method: 'POST', body: JSON.stringify({tx: txId})});
             await this.aTank();
+            if (A.tank) { this.aPeak(Number(A.tank.balance) || 0); } // a refill is the new "full" mark of the gauge
             A.dry = false;
             A.error = '';
+            if (!A.wide) { A.slotOpen = false; }
             this.dust = await dustBalance(this.wallet);
         } catch (e) { A.error = txErrorText(e); }
         A.busy = '';
