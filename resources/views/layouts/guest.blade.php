@@ -77,6 +77,10 @@
     {{-- ĐUST ⇄ FLOW swap (testnet): static-safe runtime config for resources/js/app/dust-swap.js --}}
     <script>window.DUST_SWAP = @json(\App\Support\DustSwap::bootstrap());</script>
 @endif
+@if(\App\Support\DustEvm::enabled())
+    {{-- Buy ĐUST with a Flow EVM stablecoin / from another chain (testnet): config for resources/js/evm/dust-evm.js --}}
+    <script>window.DUST_EVM = @json(\App\Support\DustEvm::bootstrap());</script>
+@endif
 @if(\App\Support\PasskeyLogin::enabled())
     {{-- testnet passkey sign-in: static-safe runtime config for resources/js/passkey.js --}}
     <script>window.PASSKEY_LOGIN = @json(\App\Support\PasskeyLogin::bootstrap());</script>
@@ -156,6 +160,9 @@
     @include('partials/modals')
 @if(\App\Support\PasskeyLogin::enabled())
         @include('partials/passkey-auth')
+@endif
+@if(\App\Support\DustSwap::enabled())
+    @include('partials.buy-dust-modal')
 @endif
 
 

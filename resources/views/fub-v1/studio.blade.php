@@ -444,7 +444,41 @@
                         <small>Auto-swap on Increment, burn, leftover FLOW back to you. One transaction.</small>
                         <small id="fub-rf-flow-note" class="warn" x-show="!rfOpts().flowOk && !rf.loading" x-text="rfOpts().flowReason"></small></span>
                 </label>
+                {{-- pay with a stablecoin on Flow EVM / from another chain (window.DUST_EVM; KB notes/flow-evm-program.md EVM-B) --}}
+                <label class="fub-rf_opt" x-show="rfEvmOn()" :class="{on: rf.method === 'usdc', off: !rfOpts().usdcOk}" data-fub="refill-opt-usdc">
+                    <input type="radio" name="fub-rf-method" value="usdc" x-model="rf.method" :disabled="!rfOpts().usdcOk || !!rf.busy" data-rf-method="usdc" aria-describedby="fub-rf-usdc-note">
+                    <span class="fub-rf_coin is-usdc" aria-hidden="true">$</span>
+                    <span class="fub-rf_txt"><b x-text="'Pay with ' + rfSym() + ' (Flow EVM)'"></b><span x-text="rf.eq && rf.eq.best ? '≈ ' + rfFmtPay(rf.eq.best.amountIn) + ' ' + rfSym() + ' from your Flow EVM account' : (rf.eLoading ? 'Getting the price…' : '')" data-fub="refill-usdc-quote"></span>
+                        <small x-text="'In your Flow EVM account: ' + (rf.eq ? (rf.eq.coa ? rfFmtPay(rf.eq.balance) + ' ' + rfSym() : 'no account yet') : '…') + ' · swap, bridge and burn in one transaction.'" data-fub="refill-usdc-balance"></small>
+                        <small id="fub-rf-usdc-note" class="warn" x-show="!rfOpts().usdcOk && !rf.eLoading" x-text="rfOpts().usdcReason"></small>
+                        <button type="button" class="fub-rf_link" x-show="rfFaucetOn() && !rfOpts().usdcOk && !rf.eLoading && rf.eq && rf.eq.plan && rf.eq.plan.level !== 'block'" @click.prevent="rfFaucet()" :disabled="!!rf.busy" data-fub="refill-faucet" x-text="'Testnet: get 25 test ' + rfSym()"></button></span>
+                </label>
+                <label class="fub-rf_opt" x-show="rfEvmOn() && rfXchainMode() !== 'off'" :class="{on: rf.method === 'xchain', off: !rfOpts().xchainOk}" data-fub="refill-opt-xchain">
+                    <input type="radio" name="fub-rf-method" value="xchain" x-model="rf.method" :disabled="!rfOpts().xchainOk || !!rf.busy" data-rf-method="xchain" aria-describedby="fub-rf-xchain-note">
+                    <span class="fub-rf_coin is-xchain" aria-hidden="true">⇄</span>
+                    <span class="fub-rf_txt"><b>From another chain</b><span x-text="rfXchainMode() === 'simulate' ? 'USDC from Base, Arbitrum, Ethereum… (testnet: simulated)' : 'USDC from Base, Arbitrum, Ethereum or Optimism'"></span>
+                        <small x-text="rfBridgeUnits() > 0n ? 'Bridges ' + rfFmtPay(rfBridgeUnits()) + ' ' + rfSym() + ' to your Flow EVM account, then pays. Two confirmations.' : 'Your Flow EVM account already holds enough: no bridge needed.'"></small>
+                        <small id="fub-rf-xchain-note" class="warn" x-show="!rfOpts().xchainOk && !rf.eLoading" x-text="rfOpts().xchainReason"></small></span>
+                </label>
             </div>
+            <template x-if="(rf.method === 'usdc' || rf.method === 'xchain') && rf.eq && rf.eq.plan">
+                <div class="fub-rf_quote" data-fub="refill-usdc-detail">
+                    <dl>
+                        <div><dt>Route</dt><dd x-text="rfRouteLabel()" data-fub="refill-route"></dd></div>
+                        <div><dt>Price impact</dt><dd :class="{warn: rf.eq.plan.level !== 'ok'}" x-text="fmtPct(rf.eq.plan.impact)" data-fub="refill-usdc-impact"></dd></div>
+                        <div><dt>You pay at most</dt><dd x-text="rfFmtPay(rf.eq.plan.maxIn) + ' ' + rfSym()" data-fub="refill-usdc-max"></dd></div>
+                    </dl>
+                    <label class="fub-rf_origin" x-show="rf.method === 'xchain' && rfXchainMode() === 'relay'"><span>From</span>
+                        <select x-model.number="rf.origin" :disabled="!!rf.busy"><template x-for="(o, i) in rfOrigins()" :key="'o' + o.chainId"><option :value="i" x-text="o.name + ' (USDC)'"></option></template></select>
+                    </label>
+                    <div class="fub-rf_slip" role="group" aria-label="Maximum slippage"><span>Max slippage</span>
+                        <template x-for="v in rfSlippages()" :key="'e' + v"><button type="button" :class="{on: rf.slippage === v}" :aria-pressed="rf.slippage === v ? 'true' : 'false'" @click="rfSlippage(v)" :disabled="!!rf.busy" x-text="v + '%'"></button></template>
+                    </div>
+                    <p class="fub-rf_warn" x-show="rf.eq.plan.level === 'warn'" role="alert">Thin pools: this refill moves the price by <b x-text="fmtPct(rf.eq.plan.impact)"></b>. A smaller refill costs less per ĐUST.</p>
+                    <small class="fub-rf_age" x-text="(rf.eLoading ? 'Updating the price…' : 'Quotes refresh every 15 s') + ' · if the price moves past your maximum, nothing is spent; unused ' + rfSym() + ' stays in your account.'"></small>
+                </div>
+            </template>
+            <p class="fub-rf_note" x-show="rf.note" x-text="rf.note" role="status" data-fub="refill-note"></p>
             <template x-if="rf.method === 'flow' && rf.plan">
                 <div class="fub-rf_quote" data-fub="refill-quote">
                     <dl>
@@ -464,7 +498,7 @@
             <div class="fub-modal_actions">
                 <button type="button" class="fub-btn alt" @click="rfClose()" :disabled="!!rf.busy" data-fub="refill-cancel">Cancel</button>
                 <button type="button" class="fub-vm-refill" @click="rfPay()" :disabled="!rfCanPay()" data-fub="refill-pay"
-                        x-text="rf.method === 'flow' ? ('Pay ' + (rf.plan ? '≈ ' + fmtFlow(rf.q.flowIn) + ' FLOW' : 'with FLOW') + ' & burn') : ('Burn ' + fmtDust(rf.amount))"></button>
+                        x-text="rfPayLabel()"></button>
             </div>
         </div>
     </div>
