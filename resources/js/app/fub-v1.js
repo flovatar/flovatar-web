@@ -24,7 +24,7 @@ import {islandLabel, islandBlockReason, refillOptions, fmtFlow, fmtPct} from '..
 import {getDustSwapQuoteScript} from '../flow/get-dust-swap-quote.script';
 import {ufix, payPlan, dustPerFlow, clampSlippage} from './dust-swap-math';
 import {EVMCFG, quoteDustEvm, replan, refillTankEvmTx, bridgeIn, xchainMode, testFaucetTx, sealedTx} from '../evm/dust-evm';
-import {fmtUnits, evmReason, evmTxErrorText, bridgeAmount, ROUTE_LABELS} from '../evm/dust-evm-math.mjs';
+import {fmtUnits, evmReason, evmTxErrorText, bridgeAmount, ROUTE_LABELS, pow10} from '../evm/dust-evm-math.mjs';
 
 const CFG = window.FUB || null;
 // ĐUST ⇄ FLOW swap config (window.DUST_SWAP, config flovatar.dustSwap): "pay with FLOW" for tank refills. Absent = ĐUST only.
@@ -848,7 +848,7 @@ Alpine.data('fubStudio', (draftId) => ({
         R.error = '';
         R.busy = 'Getting test ' + this.rfSym() + '\u2026';
         try {
-            const units = 25n * 10n ** BigInt(EVMCFG.pay.decimals);
+            const units = 25n * pow10(EVMCFG.pay.decimals);
             await sealedTx(await testFaucetTx(units));
             R.busy = '';
             await this.rfQuoteEvm();
