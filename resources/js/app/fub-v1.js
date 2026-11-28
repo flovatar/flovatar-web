@@ -380,6 +380,7 @@ Alpine.data('fubStudio', (draftId) => ({
             this.setDraft(r.data);
             this.selVouchers = [];
             this.commitIsland = null;
+            this.tab = 'layers'; // the Commit tab is gone now; keep editing while the items sync
             this.chain = await walletFub(this.wallet);
             this.notice = 'Committed! FUB #' + r.data.chainFubId + ' is yours, its building stands on ' + islandLabel(isl) + '. Your items are now being written to the chain.';
         } catch (e) { this.error = e.response ? apiErrorText(e) : txErrorText(e); }
@@ -735,12 +736,13 @@ Alpine.data('fubStudio', (draftId) => ({
         this.rfReturn = document.activeElement;
         this.rf = {amount: amt, method: this.dust >= amt || !SWAP ? 'dust' : 'flow', slippage: SWAP ? clampSlippage(SWAP.slippageDefault || 1, SWAP.slippageMax || 3) : 1,
             q: null, plan: null, qErr: '', qAt: 0, now: Date.now(), busy: '', error: '', loading: !!SWAP};
-        this.$nextTick(() => focusFirst(this.$refs.rf, '[data-rf-method="' + this.rf.method + '"]'));
+        this.$nextTick(() => this.rfFocus());
         this.dust = await dustBalance(this.wallet);
         if (SWAP) {
             await this.rfQuote();
             if (this.rf && this.rf.method === 'dust' && this.dust < amt && this.rfOpts().flowOk) { this.rf.method = 'flow'; }
             if (this.rf && this.rf.method === 'flow' && !this.rfOpts().flowOk && this.dust >= amt) { this.rf.method = 'dust'; }
+            this.rfFocus();
             clearInterval(this.rfTimer);
             this.rfTimer = setInterval(() => this.rfQuote(), 15000); // live quote every ~15 s while open
         }
@@ -776,6 +778,13 @@ Alpine.data('fubStudio', (draftId) => ({
         R.slippage = clampSlippage(v, (SWAP && SWAP.slippageMax) || 3);
         if (R.q) { R.plan = payPlan({quoteIn: R.q.flowIn, priceOut: R.amount, reserveIn: R.q.reserveFlow, reserveOut: R.q.reserveDust, available: R.q.flowAvailable,
             slippagePct: R.slippage, warnPct: REFILL_IMPACT_WARN, blockPct: SWAP.impactBlock || 10}); }
+    },
+    /** Focus the chosen payment option (or the first usable control) unless focus is already inside the dialog. */
+    rfFocus() {
+        const root = this.$refs.rf;
+        if (!root || !this.rf || root.contains(document.activeElement)) { return; }
+        const el = root.querySelector('input[data-rf-method="' + this.rf.method + '"]:not([disabled])') || root.querySelector('input[data-rf-method]:not([disabled])') || root.querySelector('[data-fub=refill-cancel]');
+        if (el) { el.focus(); }
     },
     rfOpts() { const R = this.rf; return R ? refillOptions({amount: R.amount, dust: this.dust, plan: R.plan, swapOn: !!SWAP, quoteError: R.qErr}) : {}; },
     rfSwapOn() { return !!SWAP; },
