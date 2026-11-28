@@ -421,7 +421,8 @@ Alpine.data('fubStudio', (draftId) => ({
         // wide machine (controls beside the glass): the coin slot starts open; narrow: behind its button
         this.$nextTick(() => {
             const vm = this.$root.querySelector('[data-fub=assistant]');
-            A.wide = !!(vm && vm.offsetWidth >= 600);
+            const cs = vm ? getComputedStyle(vm) : null; // same measure as the container query: the content box
+            A.wide = !!(vm && vm.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) >= 540);
             if (A.wide && !A.slotSeen) { A.slotOpen = true; }
             A.slotSeen = true;
         });

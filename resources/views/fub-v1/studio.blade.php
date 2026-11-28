@@ -3,7 +3,7 @@
      All state is loaded in the browser for the signed-in wallet (fubStudio); user art only via <img>.
      Layout = the Flovatar / Sportvatar builder shell (.flovatar-builder: options LEFT, big preview RIGHT; on phones the
      preview comes first): shared layout classes in resources/scss/layouts/_fub-v1.scss (.fub-shell). --}}
-<section class="isl fub flovatar-builder fub-shell" x-data="fubStudio({{ (int) $draftId }})" data-fub="studio">
+<section class="isl fub flovatar-builder fub-shell" :class="{'is-assistant': tab === 'assistant'}" x-data="fubStudio({{ (int) $draftId }})" data-fub="studio">
     <div class="flovatar-builder_bg"></div>
     <div class="flovatar-builder_frame">
         <div class="flovatar-builder_content">
@@ -39,7 +39,7 @@
                             <div class="fub-info-meters">
                                 <div class="fub-meter" :class="{warn: budget.used >= budget.slots}"><span x-text="'Item slots ' + budget.used + ' / ' + budget.slots"></span><div class="bar"><i :style="'width:' + pct(budget.used, budget.slots) + '%'"></i></div></div>
                                 <div class="fub-meter"><span x-text="'Layers ' + budget.layers + ' / ' + budget.maxLayers"></span><div class="bar"><i :style="'width:' + pct(budget.layers, budget.maxLayers) + '%'"></i></div></div>
-                                <div class="fub-meter" :class="{warn: budget.heaviest > budget.composedCap}"><span x-text="'Heaviest F.U.N. ' + fmtBytes(budget.heaviest) + ' / ' + fmtBytes(budget.composedCap)"></span><div class="bar"><i :style="'width:' + pct(budget.heaviest, budget.composedCap) + '%'"></i></div></div>
+                                <div class="fub-meter" :class="{warn: budget.heaviest > budget.composedCap}" title="The heaviest F.U.N. your items can compose, against the size limit of one F.U.N."><span x-text="'Heaviest ' + fmtBytes(budget.heaviest) + ' / ' + fmtBytes(budget.composedCap)"></span><div class="bar"><i :style="'width:' + pct(budget.heaviest, budget.composedCap) + '%'"></i></div></div>
                                 <div class="fub-meter"><span x-text="'Large items ' + budget.largeItems + ' / ' + budget.largeCap"></span><div class="bar"><i :style="'width:' + pct(budget.largeItems, budget.largeCap) + '%'"></i></div></div>
                             </div>
                         </div></div>
