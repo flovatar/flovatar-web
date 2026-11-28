@@ -182,6 +182,22 @@ window.extEnsureStorage = async function () {
     return api('post', '/passkey/storage/ensure', {});
 };
 
+// Testnet starting FLOW for new passkey accounts (App\Services\Passkey\FlowGrant). Emits `passkey-flow-grant`
+// on window with {state, txId, amount} or {error}; pages (e.g. /pack-rewind) listen and refresh balances.
+window.extFlowGrant = async function () {
+    if (!(window.extSession && window.extSession.active)) { return null; }
+    window.dispatchEvent(new CustomEvent('passkey-flow-grant', {detail: {state: 'pending'}}));
+    try {
+        const out = await api('post', '/passkey/flow-grant', {});
+        window.dispatchEvent(new CustomEvent('passkey-flow-grant', {detail: out}));
+        return out;
+    } catch (e) {
+        const detail = {state: 'failed', error: errorText(e)};
+        window.dispatchEvent(new CustomEvent('passkey-flow-grant', {detail}));
+        throw new Error(detail.error);
+    }
+};
+
 window.extMutate = async function (opts) {
     const template = await sha256hex(opts.cadence);
     const prep = await api('post', '/passkey/tx/template', {template, args: argsToJson(opts)}).catch((e) => { throw new Error(errorText(e)); });
@@ -400,6 +416,10 @@ Alpine.data('passkeyAuth', () => ({
             this.code = '';
             this.signinOpen = false;
             await startSession(out.address);
+            // Testnet: new accounts get their starting FLOW from the sponsor (server-guarded, once per account).
+            if (out.flowGrant && out.flowGrant.enabled && out.flowGrant.state === 'none') {
+                window.extFlowGrant().catch(() => null);
+            }
         }).finally(() => { if (this.error && !this.codeSentTo) { this.info = ''; } });
     },
     signIn() {

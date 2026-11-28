@@ -968,6 +968,20 @@
       "customSigners": false,
       "cadence": "\nimport FlovatarComponent, FlovatarPack from 0xFlovatar\n\ntransaction(packId: UInt64) {\n    let packs: auth(FlovatarPack.WithdrawEnt) &FlovatarPack.Collection\n\n    prepare(signer: auth(Storage, Capabilities) &Account) {\n        if signer.storage.type(at: FlovatarComponent.CollectionStoragePath) == nil {\n            signer.storage.save(<-FlovatarComponent.createEmptyCollection(nftType: Type<@FlovatarComponent.NFT>()), to: FlovatarComponent.CollectionStoragePath)\n        }\n        if !signer.capabilities.get<&{FlovatarComponent.CollectionPublic}>(FlovatarComponent.CollectionPublicPath).check() {\n            signer.capabilities.unpublish(FlovatarComponent.CollectionPublicPath)\n            signer.capabilities.publish(signer.capabilities.storage.issue<&FlovatarComponent.Collection>(FlovatarComponent.CollectionStoragePath), at: FlovatarComponent.CollectionPublicPath)\n        }\n        self.packs = signer.storage.borrow<auth(FlovatarPack.WithdrawEnt) &FlovatarPack.Collection>(from: FlovatarPack.CollectionStoragePath)\n            ?? panic(\"No pack collection\")\n    }\n\n    execute {\n        self.packs.openPack(id: packId)\n    }\n}\n"
     },
+    "island-set-layer": {
+      "id": "island-set-layer",
+      "file": "resources/js/flow/island-set-layer.tx.js",
+      "function": "islandSetLayerTx",
+      "sha256": "5a437e231be00e1e2caae08a4e9ca1b4fa2de28e105e8ec27e6cce4befe9f80d",
+      "argTypes": [
+        "UInt64",
+        "String",
+        "Optional(UInt64)"
+      ],
+      "limit": 9999,
+      "customSigners": false,
+      "cadence": "\nimport FlovatarAsteroidIsland from 0xIslands\n\ntransaction(islandId: UInt64, layer: String, templateId: UInt64?) {\n    let island: auth(FlovatarAsteroidIsland.Edit) &FlovatarAsteroidIsland.NFT\n    prepare(signer: auth(BorrowValue) &Account) {\n        let col = signer.storage.borrow<auth(FlovatarAsteroidIsland.Edit) &FlovatarAsteroidIsland.Collection>(from: FlovatarAsteroidIsland.CollectionStoragePath)\n            ?? panic(\"No island collection\")\n        self.island = col.borrowIslandForEdit(id: islandId) ?? panic(\"Island not found\")\n    }\n    execute {\n        self.island.setLayer(layer: layer, templateId: templateId)\n    }\n}\n"
+    },
     "island-set-name-description": {
       "id": "island-set-name-description",
       "file": "resources/js/flow/island-set-name-description.tx.js",
@@ -1010,6 +1024,22 @@
       "limit": 9999,
       "customSigners": false,
       "cadence": "\nimport NonFungibleToken from 0xNonFungible\nimport FlovatarComponent from 0xFlovatar\nimport FlovatarAsteroidIsland from 0xIslands\n\ntransaction(deedIds: [UInt64], layers: {String: UInt64}, tint: String?) {\n    let deeds: @[FlovatarComponent.NFT]\n    let collection: &FlovatarAsteroidIsland.Collection\n\n    prepare(signer: auth(Storage, Capabilities) &Account) {\n        if signer.storage.type(at: FlovatarAsteroidIsland.CollectionStoragePath) == nil {\n            signer.storage.save(<-FlovatarAsteroidIsland.createEmptyCollection(nftType: Type<@FlovatarAsteroidIsland.NFT>()), to: FlovatarAsteroidIsland.CollectionStoragePath)\n        }\n        if !signer.capabilities.get<&FlovatarAsteroidIsland.Collection>(FlovatarAsteroidIsland.CollectionPublicPath).check() {\n            signer.capabilities.unpublish(FlovatarAsteroidIsland.CollectionPublicPath)\n            signer.capabilities.publish(\n                signer.capabilities.storage.issue<&FlovatarAsteroidIsland.Collection>(FlovatarAsteroidIsland.CollectionStoragePath),\n                at: FlovatarAsteroidIsland.CollectionPublicPath)\n        }\n        self.collection = signer.storage.borrow<&FlovatarAsteroidIsland.Collection>(from: FlovatarAsteroidIsland.CollectionStoragePath)!\n\n        let components = signer.storage.borrow<auth(NonFungibleToken.Withdraw) &FlovatarComponent.Collection>(from: FlovatarComponent.CollectionStoragePath)\n            ?? panic(\"No FlovatarComponent collection\")\n        self.deeds <- []\n        for id in deedIds {\n            self.deeds.append(<-(components.withdraw(withdrawID: id) as! @FlovatarComponent.NFT))\n        }\n    }\n\n    execute {\n        FlovatarAsteroidIsland.terraform(deeds: <-self.deeds, layers: layers, tint: tint, collection: self.collection, payment: nil)\n    }\n}\n"
+    },
+    "island-update-residents": {
+      "id": "island-update-residents",
+      "file": "resources/js/flow/island-update-residents.tx.js",
+      "function": "islandUpdateResidentsTx",
+      "sha256": "2749a5f8f2918a4c5e07334f62b500c644b6a9f4b77a1ba36d164ef650d5bf91",
+      "argTypes": [
+        "UInt64",
+        "Array(String)",
+        "Array(String)",
+        "Array(String)",
+        "Array(UInt64)"
+      ],
+      "limit": 9999,
+      "customSigners": false,
+      "cadence": "\nimport FlovatarAsteroidIsland from 0xIslands\n\ntransaction(islandId: UInt64, clearSlots: [String], slots: [String], nftTypes: [String], nftIds: [UInt64]) {\n    let island: auth(FlovatarAsteroidIsland.Edit) &FlovatarAsteroidIsland.NFT\n    prepare(signer: auth(BorrowValue) &Account) {\n        assert(slots.length == nftTypes.length && slots.length == nftIds.length, message: \"length mismatch\")\n        let col = signer.storage.borrow<auth(FlovatarAsteroidIsland.Edit) &FlovatarAsteroidIsland.Collection>(from: FlovatarAsteroidIsland.CollectionStoragePath)\n            ?? panic(\"No island collection\")\n        self.island = col.borrowIslandForEdit(id: islandId) ?? panic(\"Island not found\")\n    }\n    execute {\n        let residents = self.island.getResidents()\n        for slot in clearSlots {\n            if residents[slot] != nil { self.island.clearResident(slot: slot) }\n        }\n        var i = 0\n        while i < slots.length {\n            let t = CompositeType(nftTypes[i]) ?? panic(\"Unknown NFT type\")\n            self.island.setResident(slot: slots[i], nftType: t, nftId: nftIds[i], collectionPath: nil, metadata: {})\n            i = i + 1\n        }\n    }\n}\n"
     },
     "pack-buy-dapper-v2": {
       "id": "pack-buy-dapper-v2",
@@ -1083,6 +1113,65 @@
       "limit": 9999,
       "customSigners": false,
       "cadence": "\nimport Flovatar, FlovatarComponent, FlovatarComponentTemplate, FlovatarPack, FlovatarMarketplace from 0xFlovatar\nimport FungibleToken from 0xFungible\nimport NonFungibleToken from 0xNonFungible\nimport FlowToken from 0xFlowToken\n\ntransaction(packId: UInt64) {\n\n    let flovatarPackCollection: auth(FlovatarPack.WithdrawEnt) &FlovatarPack.Collection\n\n    prepare(account: auth(Storage) &Account) {\n        self.flovatarPackCollection = account.storage.borrow<auth(FlovatarPack.WithdrawEnt) &FlovatarPack.Collection>(from: FlovatarPack.CollectionStoragePath)!\n    }\n\n    execute {\n        self.flovatarPackCollection.openPack(id: packId)\n    }\n\n}\n"
+    },
+    "rewind-buy-dust-with-flow": {
+      "id": "rewind-buy-dust-with-flow",
+      "file": "resources/js/flow/rewind-buy-dust-with-flow.tx.js",
+      "function": "rewindBuyDustWithFlowTx",
+      "sha256": "47149235ca6b43e6417e6a95c565a556cc4ffb5467412b63d40ad1b905c16d54",
+      "argTypes": [
+        "UInt64",
+        "UFix64",
+        "UFix64",
+        "UFix64",
+        "UInt64",
+        "String"
+      ],
+      "limit": 9999,
+      "customSigners": false,
+      "cadence": "\nimport FlovatarComponent, FlovatarPack, FlovatarDustToken from 0xFlovatar\nimport FungibleToken from 0xFungible\nimport FlowToken from 0xFlowToken\nimport SwapRouter from 0xSwapRouter\nimport SwapConfig from 0xSwapConfig\n\ntransaction(tokenId: UInt64, amount: UFix64, maxFlowIn: UFix64, deadline: UFix64, expiry: UInt64, signature: String) {\n    let collectionCap: Capability<&{FlovatarPack.CollectionPublic}>\n    let payment: @{FungibleToken.Vault}\n\n    prepare(account: auth(Storage, Capabilities) &Account) {\n        assert(maxFlowIn <= account.availableBalance, message: \"Not enough FLOW (the storage reserve can't be spent)\")\n        if account.storage.borrow<&FlovatarPack.Collection>(from: FlovatarPack.CollectionStoragePath) == nil {\n            let wallet = account.capabilities.get<&FlowToken.Vault>(/public/flowTokenReceiver)\n            account.storage.save<@FlovatarPack.Collection>(<- FlovatarPack.createEmptyCollection(ownerVault: wallet), to: FlovatarPack.CollectionStoragePath)\n        }\n        if !account.capabilities.get<&FlovatarPack.Collection>(FlovatarPack.CollectionPublicPath).check() {\n            account.capabilities.unpublish(FlovatarPack.CollectionPublicPath)\n            account.capabilities.publish(account.capabilities.storage.issue<&FlovatarPack.Collection>(FlovatarPack.CollectionStoragePath), at: FlovatarPack.CollectionPublicPath)\n        }\n        if account.storage.type(at: FlovatarComponent.CollectionStoragePath) == nil {\n            account.storage.save(<-FlovatarComponent.createEmptyCollection(nftType: Type<@FlovatarComponent.NFT>()), to: FlovatarComponent.CollectionStoragePath)\n        }\n        if !account.capabilities.get<&{FlovatarComponent.CollectionPublic}>(FlovatarComponent.CollectionPublicPath).check() {\n            account.capabilities.unpublish(FlovatarComponent.CollectionPublicPath)\n            account.capabilities.publish(account.capabilities.storage.issue<&FlovatarComponent.Collection>(FlovatarComponent.CollectionStoragePath), at: FlovatarComponent.CollectionPublicPath)\n        }\n        self.collectionCap = account.capabilities.get<&{FlovatarPack.CollectionPublic}>(FlovatarPack.CollectionPublicPath)\n\n        let flowVault = account.storage.borrow<auth(FungibleToken.Withdraw) &FlowToken.Vault>(from: /storage/flowTokenVault)\n            ?? panic(\"Could not borrow your FLOW vault\")\n        let flowKey = SwapConfig.SliceTokenTypeIdentifierFromVaultType(vaultTypeIdentifier: Type<@FlowToken.Vault>().identifier)\n        let dustKey = SwapConfig.SliceTokenTypeIdentifierFromVaultType(vaultTypeIdentifier: Type<@FlovatarDustToken.Vault>().identifier)\n        let vaults <- SwapRouter.swapTokensForExactTokens(\n            vaultInMax: <-flowVault.withdraw(amount: maxFlowIn),\n            exactAmountOut: amount,\n            tokenKeyPath: [flowKey, dustKey],\n            deadline: deadline\n        )\n        let leftover <- vaults.removeLast()\n        let swapped <- vaults.removeLast()\n        destroy vaults\n        flowVault.deposit(from: <-leftover)\n        assert(swapped.balance >= amount, message: \"The swap returned less DUST than the pack price\")\n        self.payment <- swapped.withdraw(amount: amount)\n        // exact-output swap: nothing should be left; any rounding extra goes to the buyer's DUST vault\n        if let mine = account.storage.borrow<&FlovatarDustToken.Vault>(from: FlovatarDustToken.VaultStoragePath) {\n            mine.deposit(from: <-swapped)\n        } else {\n            assert(swapped.balance == 0.0, message: \"No DUST vault for the swap remainder\")\n            destroy swapped\n        }\n    }\n\n    execute {\n        FlovatarPack.purchasePack(tokenId: tokenId, recipientCap: self.collectionCap, buyTokens: <- self.payment, expiry: expiry, signature: signature, expectedPrice: amount)\n    }\n}\n"
+    },
+    "rewind-buy-flow": {
+      "id": "rewind-buy-flow",
+      "file": "resources/js/flow/rewind-buy-flow.tx.js",
+      "function": "rewindBuyFlowTx",
+      "sha256": "5386576b5442e4cf11cd60f77f5c9e486fb89fd91c44539c87e33d27cfd30f98",
+      "argTypes": [
+        "UInt64",
+        "UFix64",
+        "UInt64",
+        "String"
+      ],
+      "limit": 9999,
+      "customSigners": false,
+      "cadence": "\nimport FlovatarComponent, FlovatarPack from 0xFlovatar\nimport FungibleToken from 0xFungible\nimport FlowToken from 0xFlowToken\n\ntransaction(tokenId: UInt64, amount: UFix64, expiry: UInt64, signature: String) {\n    let collectionCap: Capability<&{FlovatarPack.CollectionPublic}>\n    let payment: @{FungibleToken.Vault}\n\n    prepare(account: auth(Storage, Capabilities) &Account) {\n        assert(amount <= account.availableBalance, message: \"Not enough FLOW (the storage reserve can't be spent)\")\n        if account.storage.borrow<&FlovatarPack.Collection>(from: FlovatarPack.CollectionStoragePath) == nil {\n            let wallet = account.capabilities.get<&FlowToken.Vault>(/public/flowTokenReceiver)\n            account.storage.save<@FlovatarPack.Collection>(<- FlovatarPack.createEmptyCollection(ownerVault: wallet), to: FlovatarPack.CollectionStoragePath)\n        }\n        if !account.capabilities.get<&FlovatarPack.Collection>(FlovatarPack.CollectionPublicPath).check() {\n            account.capabilities.unpublish(FlovatarPack.CollectionPublicPath)\n            account.capabilities.publish(account.capabilities.storage.issue<&FlovatarPack.Collection>(FlovatarPack.CollectionStoragePath), at: FlovatarPack.CollectionPublicPath)\n        }\n        if account.storage.type(at: FlovatarComponent.CollectionStoragePath) == nil {\n            account.storage.save(<-FlovatarComponent.createEmptyCollection(nftType: Type<@FlovatarComponent.NFT>()), to: FlovatarComponent.CollectionStoragePath)\n        }\n        if !account.capabilities.get<&{FlovatarComponent.CollectionPublic}>(FlovatarComponent.CollectionPublicPath).check() {\n            account.capabilities.unpublish(FlovatarComponent.CollectionPublicPath)\n            account.capabilities.publish(account.capabilities.storage.issue<&FlovatarComponent.Collection>(FlovatarComponent.CollectionStoragePath), at: FlovatarComponent.CollectionPublicPath)\n        }\n        self.collectionCap = account.capabilities.get<&{FlovatarPack.CollectionPublic}>(FlovatarPack.CollectionPublicPath)\n        let vault = account.storage.borrow<auth(FungibleToken.Withdraw) &FlowToken.Vault>(from: /storage/flowTokenVault)\n            ?? panic(\"Could not borrow your FLOW vault\")\n        self.payment <- vault.withdraw(amount: amount)\n    }\n\n    execute {\n        FlovatarPack.purchasePack(tokenId: tokenId, recipientCap: self.collectionCap, buyTokens: <- self.payment, expiry: expiry, signature: signature, expectedPrice: amount)\n    }\n}\n"
+    },
+    "rewind-sv-buy-flow": {
+      "id": "rewind-sv-buy-flow",
+      "file": "resources/js/flow/rewind-sv-buy-flow.tx.js",
+      "function": "rewindSvBuyFlowTx",
+      "sha256": "26eba0aa9edadc9428c88587e10f002f23b575e866ed30bec452a94324aaba96",
+      "argTypes": [
+        "UInt64",
+        "UFix64",
+        "UInt64",
+        "String"
+      ],
+      "limit": 9999,
+      "customSigners": false,
+      "cadence": "\nimport Sportbit, SportvatarPack from 0xSportvatar\nimport NonFungibleToken from 0xNonFungible\nimport FungibleToken from 0xFungible\nimport FlowToken from 0xFlowToken\n\ntransaction(tokenId: UInt64, amount: UFix64, expiry: UInt64, signature: String) {\n    let collectionCap: Capability<&{SportvatarPack.CollectionPublic}>\n    let payment: @FlowToken.Vault\n\n    prepare(account: auth(Storage, Capabilities) &Account) {\n        assert(amount <= account.availableBalance, message: \"Not enough FLOW (the storage reserve can't be spent)\")\n        if account.storage.borrow<&SportvatarPack.Collection>(from: SportvatarPack.CollectionStoragePath) == nil {\n            account.storage.save<@SportvatarPack.Collection>(<- SportvatarPack.createEmptyCollection(), to: SportvatarPack.CollectionStoragePath)\n        }\n        if !account.capabilities.get<&SportvatarPack.Collection>(SportvatarPack.CollectionPublicPath).check() {\n            account.capabilities.unpublish(SportvatarPack.CollectionPublicPath)\n            account.capabilities.publish(account.capabilities.storage.issue<&SportvatarPack.Collection>(SportvatarPack.CollectionStoragePath), at: SportvatarPack.CollectionPublicPath)\n        }\n        if account.storage.borrow<&Sportbit.Collection>(from: Sportbit.CollectionStoragePath) == nil {\n            account.storage.save<@{NonFungibleToken.Collection}>(<- Sportbit.createEmptyCollection(nftType: Type<@Sportbit.Collection>()), to: Sportbit.CollectionStoragePath)\n        }\n        if !account.capabilities.get<&Sportbit.Collection>(Sportbit.CollectionPublicPath).check() {\n            account.capabilities.unpublish(Sportbit.CollectionPublicPath)\n            account.capabilities.publish(account.capabilities.storage.issue<&Sportbit.Collection>(Sportbit.CollectionStoragePath), at: Sportbit.CollectionPublicPath)\n        }\n        self.collectionCap = account.capabilities.get<&{SportvatarPack.CollectionPublic}>(SportvatarPack.CollectionPublicPath)\n        let vault = account.storage.borrow<auth(FungibleToken.Withdraw) &FlowToken.Vault>(from: /storage/flowTokenVault)\n            ?? panic(\"Could not borrow your FLOW vault\")\n        self.payment <- vault.withdraw(amount: amount) as! @FlowToken.Vault\n    }\n\n    execute {\n        SportvatarPack.purchasePackFlow(tokenId: tokenId, recipientCap: self.collectionCap, buyTokens: <- self.payment, expiry: expiry, signature: signature, expectedPrice: amount)\n    }\n}\n"
+    },
+    "rewind-sv-open": {
+      "id": "rewind-sv-open",
+      "file": "resources/js/flow/rewind-sv-open.tx.js",
+      "function": "rewindSvOpenTx",
+      "sha256": "74f3858a62a0595914df1268564ce741e08f79b6a33be88a59b7a44395e54c2e",
+      "argTypes": [
+        "UInt64"
+      ],
+      "limit": 9999,
+      "customSigners": false,
+      "cadence": "\nimport Sportbit, SportvatarPack from 0xSportvatar\nimport NonFungibleToken from 0xNonFungible\n\ntransaction(packId: UInt64) {\n    let packs: auth(SportvatarPack.WithdrawEnt) &SportvatarPack.Collection\n\n    prepare(account: auth(Storage, Capabilities) &Account) {\n        if account.storage.borrow<&Sportbit.Collection>(from: Sportbit.CollectionStoragePath) == nil {\n            account.storage.save<@{NonFungibleToken.Collection}>(<- Sportbit.createEmptyCollection(nftType: Type<@Sportbit.Collection>()), to: Sportbit.CollectionStoragePath)\n        }\n        if !account.capabilities.get<&Sportbit.Collection>(Sportbit.CollectionPublicPath).check() {\n            account.capabilities.unpublish(Sportbit.CollectionPublicPath)\n            account.capabilities.publish(account.capabilities.storage.issue<&Sportbit.Collection>(Sportbit.CollectionStoragePath), at: Sportbit.CollectionPublicPath)\n        }\n        self.packs = account.storage.borrow<auth(SportvatarPack.WithdrawEnt) &SportvatarPack.Collection>(from: SportvatarPack.CollectionStoragePath)\n            ?? panic(\"No Sportvatar pack collection\")\n    }\n\n    execute {\n        self.packs.openPack(id: packId)\n    }\n}\n"
     },
     "send-dust-to-address": {
       "id": "send-dust-to-address",
