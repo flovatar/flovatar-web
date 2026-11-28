@@ -19,18 +19,26 @@ export function big(v) {
     } catch (e) { return 0n; }
 }
 
+/** 10^dec as BigInt. No `**` on BigInt anywhere in the site code: Babel rewrites `**` to Math.pow, which throws on BigInt
+ *  ("Cannot convert a BigInt value to a number") — that broke every stablecoin quote in the first testnet build. */
+export function pow10(dec) {
+    let r = 1n;
+    for (let i = 0; i < Number(dec); i++) { r *= 10n; }
+    return r;
+}
+
 /** Decimal string (e.g. "1000.5") → base units BigInt with `dec` decimals (truncates extra digits). */
 export function toUnits(value, dec) {
     const s = String(value).trim();
     if (!/^\d+(\.\d+)?$/.test(s)) { return 0n; }
     const [i, f = ''] = s.split('.');
-    return BigInt(i) * 10n ** BigInt(dec) + BigInt((f + '0'.repeat(dec)).slice(0, dec) || '0');
+    return BigInt(i) * pow10(dec) + BigInt((f + '0'.repeat(dec)).slice(0, dec) || '0');
 }
 
 /** Base units → Number (display only). */
 export function fromUnits(units, dec) {
     const u = big(units);
-    const d = 10n ** BigInt(dec);
+    const d = pow10(dec);
     return Number(u / d) + Number(u % d) / Number(d);
 }
 
@@ -146,7 +154,7 @@ export function evmReason({symbol, plan, quoteError, coa, loading}) {
 export function bridgeAmount(shortUnits, dec) {
     const s = big(shortUnits);
     if (s <= 0n) { return 0n; }
-    const min = 10n ** BigInt(Math.max(0, dec - 2));
+    const min = pow10(Math.max(0, dec - 2));
     const buf = (s * 2n + 99n) / 100n;
     return s + (buf > min ? buf : min);
 }

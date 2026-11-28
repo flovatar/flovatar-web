@@ -18,7 +18,7 @@ import Alpine from 'alpinejs';
 import {dustSwapFlowToDustTx} from '../flow/dust-swap-flow-to-dust.tx';
 import {ufix} from './dust-swap-math';
 import {EVMCFG, quoteDustEvm, replan, buyDustEvmTx, bridgeIn, xchainMode, testFaucetTx, sealedTx} from '../evm/dust-evm';
-import {fmtUnits, evmReason, evmTxErrorText, bridgeAmount, ROUTE_LABELS, impactLevel} from '../evm/dust-evm-math.mjs';
+import {fmtUnits, evmReason, evmTxErrorText, bridgeAmount, ROUTE_LABELS, impactLevel, pow10} from '../evm/dust-evm-math.mjs';
 
 const SWAP = window.DUST_SWAP && window.DUST_SWAP.enabled ? window.DUST_SWAP : null;
 const CHIPS = [1000, 5000, 10000, 50000];
@@ -43,7 +43,7 @@ Alpine.data('buyDust', (opts) => ({
     method: 'flow',
     slippage: (EVMCFG && EVMCFG.slippageDefault) || (SWAP && SWAP.slippageDefault) || 1,
     fq: null, fErr: '', fLoading: false,        // FLOW quote (Increment)
-    eq: null, eErr: '', eLoading: false,        // stablecoin quote (Flow EVM)
+    eq: null, eErr: '', eLoading: false, eDebug: '', // stablecoin quote (Flow EVM)
     origin: 0,
     busy: '', error: '', done: null, note: '',
     open: false, resolver: null, timer: null, seq: 0,
@@ -71,10 +71,10 @@ Alpine.data('buyDust', (opts) => ({
     },
     // ---- session / availability
     session() { void this.user; return window.dustSwapSession ? window.dustSwapSession() : 'none'; },
-    addr() { void this.user; return window.user && window.user.addr ? window.user.addr : null; },
+    addr() { const u = this.user || window.user; return u && u.addr ? u.addr : (window.user && window.user.addr) || null; },
     visible() { return !!SWAP || !!EVMCFG; },
     /** EVM routes need a Flow Wallet COA: not Dapper, not passkey accounts (their templates are not allowlisted). */
-    evmWallet() { void this.user; const u = window.user; return !!(u && u.addr) && window.currentWallet !== 'dapper' && u.authType !== 'passkey'; },
+    evmWallet() { const u = this.user || window.user; return !!(u && u.addr) && window.currentWallet !== 'dapper' && u.authType !== 'passkey'; },
     evmOn() { return !!EVMCFG; },
     swapOn() { return !!SWAP; },
     sym() { return EVMCFG ? EVMCFG.pay.symbol : 'USDC'; },
@@ -109,7 +109,7 @@ Alpine.data('buyDust', (opts) => ({
             jobs.push(quoteDustEvm(user, n, this.slippage).then((q) => {
                 if (my !== this.seq) { return; }
                 this.eq = q; this.eErr = q.best ? '' : 'No ' + this.sym() + ' route for this amount right now.';
-            }).catch(() => { if (my === this.seq) { this.eq = null; this.eErr = 'The ' + this.sym() + ' price is not available right now.'; } }).finally(() => { if (my === this.seq) { this.eLoading = false; } }));
+            }).catch((e) => { if (my === this.seq) { this.eq = null; this.eDebug = String((e && e.message) || e).slice(0, 300); this.eErr = 'The ' + this.sym() + ' price is not available right now.'; } }).finally(() => { if (my === this.seq) { this.eLoading = false; } }));
         }
         await Promise.all(jobs);
         if (my === this.seq) { this.pick(); }
@@ -194,7 +194,7 @@ Alpine.data('buyDust', (opts) => ({
         if (this.busy || !this.canFaucet()) { return; }
         this.error = ''; this.busy = 'Getting test ' + this.sym() + '\u2026';
         try {
-            await sealedTx(await testFaucetTx(25n * 10n ** BigInt(EVMCFG.pay.decimals)));
+            await sealedTx(await testFaucetTx(25n * pow10(EVMCFG.pay.decimals)));
             this.note = '25 test ' + this.sym() + ' added to your Flow EVM account.';
         } catch (e) { this.error = txText(e, this.sym()); }
         this.busy = '';
