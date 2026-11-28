@@ -176,7 +176,6 @@ export function receiptText(rc, levelName) {
     else if (rc.status === 'blocked') { parts.push('not run, nothing charged'); }
     else { parts.push(fmtDust2(rc.charged) + ' burned'); }
     parts.push(levelName || rc.level);
-    if (rc.modelLabel || rc.model) { parts.push(rc.modelLabel || rc.model); }
     if (rc.steps) { parts.push(rc.steps + (rc.steps === 1 ? ' step' : ' steps')); }
     const t = rc.tokens || {};
     const tok = Number(t.input || 0) + Number(t.output || 0);
@@ -186,4 +185,43 @@ export function receiptText(rc, levelName) {
     if (rc.seconds) { parts.push(Math.round(rc.seconds) + ' s'); }
     if (rc.balanceAfter !== undefined) { parts.push('tank ' + fmtDust2(rc.balanceAfter)); }
     return 'Receipt #' + rc.run + ': ' + parts.join(' \u00b7 ');
+}
+
+/** Short amount for a small button: Đ1K, Đ10K, Đ1.5K, Đ1M (whole amounts below 1,000 as they are). */
+export function fmtDustShort(v) {
+    const n = Number(v || 0);
+    const cut = (x) => String(Math.round(x * 10) / 10);
+    if (n >= 1000000) { return '\u0110' + cut(n / 1000000) + 'M'; }
+    if (n >= 1000) { return '\u0110' + cut(n / 1000) + 'K'; }
+    return fmtDust(n);
+}
+
+/** One compact line for a receipt in the conversation (the full text is behind it): "5 steps · 18 s". */
+export function receiptShort(rc) {
+    if (!rc) { return ''; }
+    const parts = [];
+    if (rc.status === 'refunded') { parts.push('refunded, nothing charged'); }
+    if (rc.status === 'blocked') { parts.push('not run, nothing charged'); }
+    if (rc.status === 'failed') { parts.push('stopped part-way'); }
+    if (rc.status === 'stopped') { parts.push(rc.stopReason === 'time' ? 'stopped at the time limit' : 'tank ran dry'); }
+    if (rc.steps) { parts.push(rc.steps + (rc.steps === 1 ? ' step' : ' steps')); }
+    if (rc.seconds) { parts.push(Math.round(rc.seconds) + ' s'); }
+    return parts.join(' \u00b7 ');
+}
+
+/** Tank gauge: percent of the last fill that is left (0-100; a non-empty tank always shows a sliver). */
+export function tankPercent(balance, peak) {
+    const b = Math.max(0, Number(balance) || 0);
+    const p = Math.max(Number(peak) || 0, b);
+    if (!(b > 0) || !(p > 0)) { return 0; }
+    return Math.max(4, Math.min(100, Math.round(100 * b / p)));
+}
+
+/** "About 30 Sip messages in your tank" from the indicative burn of the chosen size ('' when unknown). */
+export function messagesLeft(balance, indicative, levelName) {
+    const ind = Number(indicative) || 0;
+    if (!(ind > 0)) { return ''; }
+    const n = Math.floor(Math.max(0, Number(balance) || 0) / ind);
+    if (n < 1) { return 'Not enough for a ' + levelName + ' message: refill first'; }
+    return 'About ' + n.toLocaleString('en-US') + ' ' + levelName + (n === 1 ? ' message' : ' messages') + ' in your tank';
 }

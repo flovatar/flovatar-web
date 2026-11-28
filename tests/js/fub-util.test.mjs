@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {precheckSvg, curvePrice, totalOf, selectionProblems, randomPicks, pickIds, capacityOf, fmtDust, txErrorText, fmtDust2, mmss, refillProblem, parseDust, voiceLimit, voiceCost, receiptText} from '../../resources/js/fub/util.mjs';
+import {precheckSvg, curvePrice, totalOf, selectionProblems, randomPicks, pickIds, capacityOf, fmtDust, txErrorText, fmtDust2, mmss, refillProblem, parseDust, voiceLimit, voiceCost, receiptText, receiptShort, tankPercent, messagesLeft, fmtDustShort} from '../../resources/js/fub/util.mjs';
 import * as C from '../../resources/js/fub/cadence.mjs';
 
 test('precheck flags dangerous SVG and accepts clean art', () => {
@@ -75,7 +75,20 @@ test('token-metered assistant helpers: Đ with 2 decimals, timer, refill range, 
     assert.equal(voiceCost(-3, 1.1), 0);
     // receipts
     const rc = {run: 7, level: 'sip', status: 'done', charged: 38.456, modelLabel: 'Claude Haiku 5.5', steps: 6, tokens: {input: 52000, output: 4100, cached: 40000}, seconds: 21.4, balanceAfter: 961.544};
-    assert.equal(receiptText(rc, 'Sip'), 'Receipt #7: \u011038.46 burned \u00b7 Sip \u00b7 Claude Haiku 5.5 \u00b7 6 steps \u00b7 56,100 tokens (52,000 in, 4,100 out, 40,000 cached) \u00b7 21 s \u00b7 tank \u0110961.54');
+    // the model is never shown (an old API or a stored receipt may still carry it)
+    assert.equal(receiptText(rc, 'Sip'), 'Receipt #7: \u011038.46 burned \u00b7 Sip \u00b7 6 steps \u00b7 56,100 tokens (52,000 in, 4,100 out, 40,000 cached) \u00b7 21 s \u00b7 tank \u0110961.54');
+    assert.doesNotMatch(receiptText({...rc, model: 'claude-haiku-5-5'}, 'Sip'), /haiku|claude/i);
+    assert.equal(receiptShort(rc), '6 steps \u00b7 21 s');
+    assert.equal(receiptShort({...rc, status: 'stopped', stopReason: 'tank'}), 'tank ran dry \u00b7 6 steps \u00b7 21 s');
+    assert.equal(receiptShort({run: 8, status: 'refunded'}), 'refunded, nothing charged');
+    assert.equal(receiptShort(null), '');
+    // tank gauge: share of the last fill; a non-empty tank never looks empty
+    assert.deepEqual([tankPercent(1234, 1234), tankPercent(617, 1234), tankPercent(1, 100000), tankPercent(0, 500), tankPercent(50, 0), tankPercent(-3, 10)], [100, 50, 4, 0, 100, 0]);
+    assert.equal(messagesLeft(1234, 40, 'Sip'), 'About 30 Sip messages in your tank');
+    assert.equal(messagesLeft(1300, 1300, 'Big'), 'About 1 Big message in your tank');
+    assert.equal(messagesLeft(20, 40, 'Sip'), 'Not enough for a Sip message: refill first');
+    assert.equal(messagesLeft(500, 0, 'Sip'), '');
+    assert.deepEqual([1000, 10000, 100000, 1500, 2000000, 250].map(fmtDustShort), ['\u01101K', '\u011010K', '\u0110100K', '\u01101.5K', '\u01102M', '\u0110250']);
     assert.match(receiptText({...rc, status: 'stopped', stopReason: 'tank'}, 'Sip'), /tank ran dry/);
     assert.match(receiptText({...rc, status: 'running', charged: 12}, 'Sip'), /^Receipt #7: \u011012.00 burned so far/);
     assert.match(receiptText({...rc, status: 'refunded', charged: 0}, 'Sip'), /refunded, nothing charged/);
