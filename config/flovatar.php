@@ -148,4 +148,52 @@ return [
         'lowLiquidityFlow' => (float) env('DUST_SWAP_LOW_LIQUIDITY_FLOW', env('FLOW_NETWORK') === 'mainnet' ? 1000 : 5),
         'deadlineSeconds' => (int) env('DUST_SWAP_DEADLINE_SECONDS', 300),
     ],
+
+    /*
+    | "Buy ĐUST from any chain" (KB notes/flow-evm-program.md EVM-B, notes/dust-swap.md): pay with a stablecoin on Flow
+    | EVM (the wallet's COA) and, from another chain, bridge it into the COA first. One Cadence tx swaps on the Flow EVM
+    | DEX (PunchSwap V2), bridges ĐUST back or goes via FLOW + Increment, then burns/deposits. Needs DUST_SWAP (same
+    | feature/bundle) + DUST_EVM_ENABLED. Testnet: test USDC (public faucet) + "simulated" bridge. Mainnet: USDF (deep
+    | USDF/WFLOW pool) via FLOW + Increment — no ĐUST pool on EVM needed; the cross-chain step is Relay (relay.link).
+    | Every address is env-overridable; the browser fails closed (no quote = option hidden).
+    */
+    'dustEvm' => [
+        'enabled' => (bool) env('DUST_EVM_ENABLED', false),
+        'evm' => env('DUST_EVM_CADENCE_EVM', env('FLOW_NETWORK') === 'mainnet' ? '0xe467b9dd11fa00df' : '0x8c5303eaa26202d6'),
+        'bridge' => env('DUST_EVM_BRIDGE', env('FLOW_NETWORK') === 'mainnet' ? '0x1e4aa0b87d10b141' : '0xdfc20aee650fcbdf'),
+        'chainId' => (int) env('DUST_EVM_CHAIN_ID', env('FLOW_NETWORK') === 'mainnet' ? 747 : 545),
+        'explorer' => env('DUST_EVM_EXPLORER', env('FLOW_NETWORK') === 'mainnet' ? 'https://evm.flowscan.io' : 'https://evm-testnet.flowscan.io'),
+        // PunchSwap V2 (KittyPunch; UniswapV2 interface, WFLOW() instead of WETH())
+        'router' => env('DUST_EVM_ROUTER', env('FLOW_NETWORK') === 'mainnet' ? '0xf45AFe28fd5519d5f8C1d4787a4D5f724C0eFa4d' : '0xeD53235cC3E9d2d464E9c408B95948836648870B'),
+        'factory' => env('DUST_EVM_FACTORY', env('FLOW_NETWORK') === 'mainnet' ? '0x29372c22459a4e373851798bFd6808e71EA34A71' : '0x0f6C2EF40FA42B2F0E0a9f5987b2f3F8Af3C173f'),
+        'wflow' => env('DUST_EVM_WFLOW', '0xd3bF53DAC106A0290B0483EcBC89d40FcC961f3e'),
+        // bridged ĐUST ERC-20 (checked against the bridge association on chain by every tx)
+        'dustErc20' => env('DUST_EVM_DUST', env('FLOW_NETWORK') === 'mainnet' ? '0x6f90cef53868878be7a2edbf41d715de09851b54' : '0x783ee59f55cae490ba81335b46cc06c391ac55bd'),
+        // the stablecoin users pay with on Flow EVM (testnet: FlovatarTestUSDC with a public faucet; mainnet: USDF)
+        'pay' => [
+            'symbol' => env('DUST_EVM_PAY_SYMBOL', env('FLOW_NETWORK') === 'mainnet' ? 'USDF' : 'USDC'),
+            'name' => env('DUST_EVM_PAY_NAME', env('FLOW_NETWORK') === 'mainnet' ? 'USD Flow (USDF)' : 'Test USDC'),
+            'address' => env('DUST_EVM_PAY_TOKEN', env('FLOW_NETWORK') === 'mainnet' ? '0x2aaBea2058b5aC2D339b163C6Ab6f2b6d53aabED' : '0x12baeb407594ded4e5463578a6ce18c9bfdbf543'),
+            'decimals' => (int) env('DUST_EVM_PAY_DECIMALS', 6),
+        ],
+        // candidate routes (the browser quotes all, takes the cheapest that passes the impact guard):
+        // "direct" pay→ĐUST pool, "hop" pay→WFLOW→ĐUST, "via" pay→WFLOW then FLOW→ĐUST on Increment (Cadence)
+        'routes' => array_values(array_filter(explode(',', (string) env('DUST_EVM_ROUTES', env('FLOW_NETWORK') === 'mainnet' ? 'via' : 'direct,hop,via')))),
+        'testFaucet' => env('FLOW_NETWORK') !== 'mainnet' && (bool) env('DUST_EVM_TEST_FAUCET', true),
+        // cross-chain step: 'simulate' (testnet: faucet stands in for the bridge), 'relay' (relay.link API), 'off'
+        'xchain' => env('DUST_EVM_XCHAIN', env('FLOW_NETWORK') === 'mainnet' ? 'relay' : 'simulate'),
+        'relayApi' => env('DUST_EVM_RELAY_API', 'https://api.relay.link'),
+        // source chains offered for the cross-chain step (Relay chain ids; USDC addresses on each)
+        'origins' => [
+            ['chainId' => 8453, 'name' => 'Base', 'usdc' => '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'],
+            ['chainId' => 42161, 'name' => 'Arbitrum', 'usdc' => '0xaf88d065e77c8cC2239327C5EDb3A432268e5831'],
+            ['chainId' => 1, 'name' => 'Ethereum', 'usdc' => '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'],
+            ['chainId' => 10, 'name' => 'Optimism', 'usdc' => '0x0b2C639c533813f4Aa9D7837cAf62653d097Ff85'],
+        ],
+        'slippageDefault' => (float) env('DUST_EVM_SLIPPAGE_DEFAULT', 1.0),
+        'slippageMax' => (float) env('DUST_EVM_SLIPPAGE_MAX', 3.0),
+        'impactWarn' => (float) env('DUST_EVM_IMPACT_WARN', 5.0),
+        'impactBlock' => (float) env('DUST_EVM_IMPACT_BLOCK', 10.0),
+        'deadlineSeconds' => (int) env('DUST_EVM_DEADLINE_SECONDS', 300),
+    ],
 ];

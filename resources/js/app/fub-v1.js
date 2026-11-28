@@ -23,6 +23,8 @@ import {mdToHtml} from '../fub/md.mjs';
 import {islandLabel, islandBlockReason, refillOptions, fmtFlow, fmtPct} from '../fub/util.mjs';
 import {getDustSwapQuoteScript} from '../flow/get-dust-swap-quote.script';
 import {ufix, payPlan, dustPerFlow, clampSlippage} from './dust-swap-math';
+import {EVMCFG, quoteDustEvm, replan, refillTankEvmTx, bridgeIn, xchainMode, testFaucetTx, sealedTx} from '../evm/dust-evm';
+import {fmtUnits, evmReason, evmTxErrorText, bridgeAmount, ROUTE_LABELS} from '../evm/dust-evm-math.mjs';
 
 const CFG = window.FUB || null;
 // ĐUST ⇄ FLOW swap config (window.DUST_SWAP, config flovatar.dustSwap): "pay with FLOW" for tank refills. Absent = ĐUST only.
@@ -735,19 +737,44 @@ Alpine.data('fubStudio', (draftId) => ({
         const amt = parseDust(A.refillAmount);
         this.rfReturn = document.activeElement;
         this.rf = {amount: amt, method: this.dust >= amt || !SWAP ? 'dust' : 'flow', slippage: SWAP ? clampSlippage(SWAP.slippageDefault || 1, SWAP.slippageMax || 3) : 1,
-            q: null, plan: null, qErr: '', qAt: 0, now: Date.now(), busy: '', error: '', loading: !!SWAP};
+            q: null, plan: null, qErr: '', qAt: 0, now: Date.now(), busy: '', error: '', loading: !!SWAP,
+            // pay with a Flow EVM stablecoin / from another chain (window.DUST_EVM; KB notes/flow-evm-program.md EVM-B)
+            eq: null, eErr: '', eLoading: !!EVMCFG, origin: 0, note: ''};
         this.$nextTick(() => this.rfFocus());
         this.dust = await dustBalance(this.wallet);
-        if (SWAP) {
-            await this.rfQuote();
-            if (this.rf && this.rf.method === 'dust' && this.dust < amt && this.rfOpts().flowOk) { this.rf.method = 'flow'; }
-            if (this.rf && this.rf.method === 'flow' && !this.rfOpts().flowOk && this.dust >= amt) { this.rf.method = 'dust'; }
+        if (SWAP || EVMCFG) {
+            await Promise.all([SWAP ? this.rfQuote() : null, EVMCFG ? this.rfQuoteEvm() : null]);
+            this.rfPickMethod();
             this.rfFocus();
             clearInterval(this.rfTimer);
-            this.rfTimer = setInterval(() => this.rfQuote(), 15000); // live quote every ~15 s while open
+            this.rfTimer = setInterval(() => { this.rfQuote(); this.rfQuoteEvm(); }, 15000); // live quotes every ~15 s while open
         }
         clearInterval(this.rfClock);
         this.rfClock = setInterval(() => { if (this.rf) { this.rf.now = Date.now(); } }, 1000);
+    },
+    /** Preferred usable method: ĐUST if the wallet has enough, else FLOW, else the stablecoin, else from another chain. */
+    rfPickMethod() {
+        const R = this.rf;
+        if (!R) { return; }
+        const o = this.rfOpts();
+        const ok = {dust: o.dustOk, flow: o.flowOk, usdc: o.usdcOk, xchain: o.xchainOk};
+        if (ok[R.method]) { return; }
+        R.method = ['dust', 'flow', 'usdc', 'xchain'].find((m) => ok[m]) || R.method;
+    },
+    /** Stablecoin route quote (dust_evm_quote script: COA balance + cheapest route + impact). Fails closed. */
+    async rfQuoteEvm() {
+        const R = this.rf;
+        if (!R || !EVMCFG || R.busy) { return; }
+        R.eLoading = true;
+        try {
+            const q = await quoteDustEvm(this.wallet, R.amount, R.slippage);
+            if (!this.rf || this.rf.amount !== R.amount) { return; }
+            this.rf.eq = q;
+            this.rf.eErr = q.best ? '' : 'No ' + EVMCFG.pay.symbol + ' route for this amount right now.';
+        } catch (e) {
+            if (this.rf) { this.rf.eq = null; this.rf.eErr = 'The ' + EVMCFG.pay.symbol + ' price is not available right now.'; }
+        }
+        if (this.rf) { this.rf.eLoading = false; }
     },
     /** FLOW needed for exactly rf.amount ĐUST (router getAmountsIn) + price impact + max with slippage. Fails closed. */
     async rfQuote() {
@@ -775,9 +802,10 @@ Alpine.data('fubStudio', (draftId) => ({
     rfSlippage(v) {
         const R = this.rf;
         if (!R || R.busy) { return; }
-        R.slippage = clampSlippage(v, (SWAP && SWAP.slippageMax) || 3);
+        R.slippage = clampSlippage(v, (SWAP && SWAP.slippageMax) || (EVMCFG && EVMCFG.slippageMax) || 3);
         if (R.q) { R.plan = payPlan({quoteIn: R.q.flowIn, priceOut: R.amount, reserveIn: R.q.reserveFlow, reserveOut: R.q.reserveDust, available: R.q.flowAvailable,
             slippagePct: R.slippage, warnPct: REFILL_IMPACT_WARN, blockPct: SWAP.impactBlock || 10}); }
+        if (R.eq) { R.eq.plan = replan(R.eq, R.slippage); }
     },
     /** Focus the chosen payment option (or the first usable control) unless focus is already inside the dialog. */
     rfFocus() {
@@ -786,10 +814,66 @@ Alpine.data('fubStudio', (draftId) => ({
         const el = root.querySelector('input[data-rf-method="' + this.rf.method + '"]:not([disabled])') || root.querySelector('input[data-rf-method]:not([disabled])') || root.querySelector('[data-fub=refill-cancel]');
         if (el) { el.focus(); }
     },
-    rfOpts() { const R = this.rf; return R ? refillOptions({amount: R.amount, dust: this.dust, plan: R.plan, swapOn: !!SWAP, quoteError: R.qErr}) : {}; },
+    rfOpts() {
+        const R = this.rf;
+        if (!R) { return {}; }
+        const o = refillOptions({amount: R.amount, dust: this.dust, plan: R.plan, swapOn: !!SWAP, quoteError: R.qErr});
+        if (!EVMCFG) { return {...o, usdcOk: false, usdcReason: '', xchainOk: false, xchainReason: ''}; }
+        const sym = EVMCFG.pay.symbol;
+        const plan = R.eq && R.eq.plan;
+        const usdcReason = evmReason({symbol: sym, plan, quoteError: R.eErr, coa: R.eq && R.eq.coa, loading: R.eLoading});
+        // from another chain: the route must be priced and not blocked; the bridge brings what the COA is missing
+        let xchainReason = '';
+        if (xchainMode() === 'off') { xchainReason = 'Not available on this site.'; }
+        else if (R.eErr) { xchainReason = R.eErr; }
+        else if (!plan) { xchainReason = R.eLoading ? 'Getting the price\u2026' : 'No price right now.'; }
+        else if (plan.level === 'block') { xchainReason = usdcReason; }
+        else if (xchainMode() === 'relay' && !(R.eq && R.eq.coa)) { xchainReason = 'Your wallet needs a Flow EVM account first (Flow Wallet: enable EVM).'; }
+        return {...o, usdcOk: usdcReason === '', usdcReason, xchainOk: xchainReason === '', xchainReason};
+    },
     rfSwapOn() { return !!SWAP; },
-    rfSlippages() { const m = (SWAP && SWAP.slippageMax) || 3; return [0.5, 1, 2, 3].filter((x) => x <= m); },
-    rfCanPay() { const R = this.rf; const o = this.rfOpts(); return !!R && !R.busy && (R.method === 'flow' ? o.flowOk : o.dustOk); },
+    rfEvmOn() { return !!EVMCFG; },
+    rfSym() { return EVMCFG ? EVMCFG.pay.symbol : 'USDC'; },
+    rfFmtPay(units) { return EVMCFG ? fmtUnits(units, EVMCFG.pay.decimals) : ''; },
+    rfRouteLabel() { const R = this.rf; return R && R.eq && R.eq.best ? ROUTE_LABELS[R.eq.best.name] || R.eq.best.name : ''; },
+    rfXchainMode() { return xchainMode(); },
+    rfOrigins() { return (EVMCFG && EVMCFG.origins) || []; },
+    rfFaucetOn() { return !!(EVMCFG && EVMCFG.testFaucet); },
+    /** Units the cross-chain step brings in (shortfall + 2% buffer; 0 when the COA already holds enough). */
+    rfBridgeUnits() { const R = this.rf; return R && R.eq && R.eq.plan ? bridgeAmount(R.eq.plan.short, EVMCFG.pay.decimals) : 0n; },
+    /** TESTNET: top up the COA with test USDC (the faucet also creates the Flow EVM account). */
+    async rfFaucet() {
+        const R = this.rf;
+        if (!R || R.busy || !this.rfFaucetOn()) { return; }
+        R.error = '';
+        R.busy = 'Getting test ' + this.rfSym() + '\u2026';
+        try {
+            const units = 25n * 10n ** BigInt(EVMCFG.pay.decimals);
+            await sealedTx(await testFaucetTx(units));
+            R.busy = '';
+            await this.rfQuoteEvm();
+            this.rfPickMethod();
+            R.note = '25 test ' + this.rfSym() + ' added to your Flow EVM account.';
+        } catch (e) {
+            R.error = evmTxErrorText(e, this.rfSym()) || txErrorText(e);
+        }
+        R.busy = '';
+    },
+    rfSlippages() { const m = (SWAP && SWAP.slippageMax) || (EVMCFG && EVMCFG.slippageMax) || 3; return [0.5, 1, 2, 3].filter((x) => x <= m); },
+    rfCanPay() {
+        const R = this.rf; const o = this.rfOpts();
+        if (!R || R.busy) { return false; }
+        return ({dust: o.dustOk, flow: o.flowOk, usdc: o.usdcOk, xchain: o.xchainOk})[R.method] || false;
+    },
+    rfPayLabel() {
+        const R = this.rf;
+        if (!R) { return ''; }
+        const sym = this.rfSym();
+        if (R.method === 'flow') { return 'Pay ' + (R.plan ? '\u2248 ' + fmtFlow(R.q.flowIn) + ' FLOW' : 'with FLOW') + ' & burn'; }
+        if (R.method === 'usdc') { return 'Pay ' + (R.eq && R.eq.best ? '\u2248 ' + this.rfFmtPay(R.eq.best.amountIn) + ' ' + sym : 'with ' + sym) + ' & burn'; }
+        if (R.method === 'xchain') { return (this.rfBridgeUnits() > 0n ? 'Bridge ' + this.rfFmtPay(this.rfBridgeUnits()) + ' ' + sym + ', pay' : 'Pay') + ' & burn'; }
+        return 'Burn ' + fmtDust(R.amount);
+    },
     rfAge() { const R = this.rf; return R && R.qAt ? Math.max(0, Math.round((R.now - R.qAt) / 1000)) : null; },
     rfClose() {
         if (this.rf && this.rf.busy) { return; } // never hide a wallet / chain step in progress
@@ -811,7 +895,22 @@ Alpine.data('fubStudio', (draftId) => ({
         try {
             const ref = (await this.aFetch('/api/v1/tank/refills/intent', {method: 'POST', body: JSON.stringify({amount: R.amount})})).ref;
             let txId;
-            if (R.method === 'flow') {
+            const sym = this.rfSym();
+            if (R.method === 'usdc' || R.method === 'xchain') {
+                if (R.method === 'xchain' && this.rfBridgeUnits() > 0n) {
+                    // step 1: bring the missing stablecoin into the wallet's Flow EVM account (testnet: simulated)
+                    const units = this.rfBridgeUnits();
+                    const origin = this.rfOrigins()[R.origin] || this.rfOrigins()[0] || {};
+                    await bridgeIn({units, coa: R.eq.coa, origin, onStatus: (s) => { R.busy = s; A.busy = s; }});
+                    R.note = fmtUnits(units, EVMCFG.pay.decimals) + ' ' + sym + (xchainMode() === 'simulate' ? ' arrived (simulated bridge, testnet).' : ' arrived on Flow EVM.');
+                }
+                R.busy = '';
+                await this.rfQuoteEvm(); // fresh route + price right before the wallet opens
+                if (!this.rfOpts().usdcOk) { throw new Error(this.rfOpts().usdcReason || 'The ' + sym + ' price changed.'); }
+                R.busy = 'Waiting for your wallet\u2026';
+                txId = await refillTankEvmTx({amount: R.amount, route: R.eq.best, maxIn: R.eq.plan.maxIn, ref});
+                R.busy = 'Swapping ' + sym + ' on Flow EVM and burning on chain\u2026';
+            } else if (R.method === 'flow') {
                 R.busy = '';
                 await this.rfQuote(); // fresh price right before the wallet opens
                 if (!this.rfOpts().flowOk) { throw new Error(this.rfOpts().flowReason || 'The FLOW price changed.'); }
@@ -832,14 +931,14 @@ Alpine.data('fubStudio', (draftId) => ({
             if (A.tank) { this.aPeak(Number(A.tank.balance) || 0); } // a refill is the new "full" mark of the gauge
             A.dry = false;
             A.error = '';
-            A.refillNote = fmtDust(R.amount) + ' burned into your tank' + (R.method === 'flow' ? ' (paid with FLOW)' : '') + '.';
+            A.refillNote = fmtDust(R.amount) + ' burned into your tank' + (R.method === 'flow' ? ' (paid with FLOW)' : (R.method === 'usdc' || R.method === 'xchain' ? ' (paid with ' + this.rfSym() + ')' : '')) + '.';
             if (!A.wide) { A.slotOpen = false; }
             this.dust = await dustBalance(this.wallet);
             R.busy = '';
             A.busy = '';
             this.rfClose();
         } catch (e) {
-            R.error = e && e.response ? apiErrorText(e) : txErrorText(e);
+            R.error = e && e.response ? apiErrorText(e) : (evmTxErrorText(e, this.rfSym()) || txErrorText(e));
             R.busy = '';
             A.busy = '';
         }

@@ -317,6 +317,8 @@ Route::view('builder-psyche', 'builder-psyche')->name('builder-psyche');
 Route::view('my-collection', 'my-collection')->name('my-collection');
 Route::view('explore', 'explore')->name('explore');
 Route::view('dust', 'dust')->name('dust');
+// Buy ĐUST (FLOW / Flow EVM stablecoin / another chain; KB notes/flow-evm-program.md EVM-B): only where the ĐUST swap is visible
+Route::get('buy-dust', fn () => \App\Support\DustSwap::enabled() ? view('buy-dust') : abort(404))->name('buy-dust');
 Route::view('story', 'story')->name('story');
 // Not-found page of the static headless site (stored as 404.html by headless:build).
 Route::view('__headless_404', 'headless.404')->name('headless.404');
